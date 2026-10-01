@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a5` — nonblocking diagnostics + controller sensitivity milestone.
+**Current version:** `0.1.0a6` — full code-review and UI-consistency milestone.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -20,7 +20,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - PXN/SDL-compatible wheel discovery with pygame-ce.
 - Guided calibration with automatic axis detection and inversion.
 - Minimal, modeless read-only diagnostics with four live checks and a copyable support report.
-- Separate/combined pedal modes, steering deadzone/expo, adjustable controller sensitivity, and throttle limiting.
+- Separate/combined pedal modes, steering deadzone/expo, adjustable steering sensitivity, and throttle limiting.
 - Explicit Apply Settings vs. Apply & Reconnect workflow.
 - Configurable CH1 steering / CH3 throttle defaults.
 - Explicit ARM/DISARM; never auto-arm.
@@ -41,7 +41,7 @@ No cloud/server database is used in the control path. Configuration is local JSO
 Use **Diagnostics** for four live field checks only: **Link, Controller, Mapping, Safety**. The window is modeless and refreshes every 2 seconds, so it does not block ARM/DISARM or PC Control. Detailed technical context is generated only when **Copy Report** is pressed.
 
 ## Controller sensitivity
-**Controller sensitivity** adjusts steering response from 25–100%. At 100% response is linear. Lower values soften the center response while preserving full steering travel at the endpoints. It affects steering only; throttle authority remains controlled separately by **Throttle limit**.
+**Steering sensitivity** adjusts steering authority from 25–100%. At 100% the configured deadzone/expo curve can command full steering; lower values proportionally reduce maximum steering command. **Steering expo** remains the independent control for center-response curvature. Throttle authority remains controlled separately by **Throttle limit**.
 
 ## Safety
 The PC cannot guarantee a final neutral packet after Wi-Fi disappears. Configure ArduRover's independent GCS/telemetry fail-safe before powered testing. See `docs/ARDUPILOT.md`.
@@ -86,3 +86,7 @@ The software workflow is simulated and CI-tested, but real field readiness is no
 Raise the driven wheels so the rover cannot propel itself. Verify calibration and axis directions before motor power. Then test wheel unplug and Wi-Fi loss independently. The rover-side ArduRover fail-safe must provide the safe action even if the PC cannot send another packet.
 
 See `AGENTS.md`, `docs/DECISIONS.md`, `docs/BUTTON_AUDIT.md`, and `docs/TESTING.md` for continuity.
+
+
+## Code-review baseline
+The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev dependency pins, `pip check`, version consistency, headless Qt UI construction, equal main-card column geometry, modeless diagnostics, unit/integration tests, and the Windows PyInstaller build.
