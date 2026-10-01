@@ -1,20 +1,20 @@
 # Changelog
 
+## 0.1.0a6 — 2026-10-01
+### Full code review
+- Fixed a diagnostics report syntax regression introduced during the minimal-diagnostics refactor.
+- Updated diagnostics tests to the current four-check feature contract.
+- Added a headless PySide6 UI smoke test covering main-window construction, equal three-column geometry, and modeless diagnostics.
+- Added package/pyproject version-consistency testing.
+- Changed Steering Sensitivity to a clear gain/authority control so it no longer duplicates Steering Expo behavior.
+- Normalized the three primary UI cards with equal column stretch/minimum widths and expanding size policy.
+- Made safety-state colors deterministic instead of relying on runtime objectName stylesheet repolishing.
+- Removed an unused network-field constant.
+- Added `pip check` to CI.
+- Updated checkout, setup-python, upload-artifact and release actions to current major versions.
+
 ## 0.1.0a5 — 2026-10-01
-### Diagnostics
-- Replaced modal diagnostics with a modeless, non-blocking field-status window.
-- Reduced live diagnostics to four targeted checks: Link, Controller, Mapping, Safety.
-- Reduced refresh rate to 2 seconds and removed continuous full-report rendering.
-- Full technical details are generated only when Copy Report is pressed.
-
-### Controller
-- Added Controller Sensitivity (25–100%) for steering.
-- 100% is linear; lower settings soften center response while preserving full steering endpoints.
-- Sensitivity is independent from throttle limit and persists in local settings.
-
-### Verification
-- Added sensitivity endpoint/midrange/clamping tests.
-- Added targeted-diagnostics regression tests.
+- Modeless targeted diagnostics and persisted steering sensitivity.
 
 ## 0.1.0a4 — 2026-10-01
 - Field-hardening simulation baseline with centralized safety rules, vehicle-source lock, repeated neutral/release, transport simulation and field logging.
