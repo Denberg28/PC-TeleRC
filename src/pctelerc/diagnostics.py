@@ -9,6 +9,7 @@ from .config import AppSettings
 from .controller import ControllerDevice, ControllerSnapshot
 from .core import LinkState, control_is_fresh
 from .mavlink import MavlinkSnapshot
+from .logging_setup import log_path
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,7 @@ def build_diagnostic_report(
     items: list[DiagnosticItem] = []
 
     items.append(_item("INFO", "App", f"PC TeleRC {app_version} on {platform.system()} {platform.release()}"))
+    items.append(_item("INFO", "Field log", str(log_path())))
     items.append(
         _item(
             "WARN" if settings_dirty else "PASS",
