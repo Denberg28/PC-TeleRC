@@ -94,6 +94,8 @@ def build_diagnostic_report(
         )
     )
     items.append(_item("INFO", "MAVLink traffic", f"RX {mav.rx_messages}; TX {mav.tx_messages}."))
+    if mav.ignored_heartbeats:
+        items.append(_item("WARN", "Foreign vehicle heartbeat", f"Ignored {mav.ignored_heartbeats} heartbeat(s) from another MAVLink system ID."))
     if mav.vehicle_system is not None:
         items.append(
             _item(
