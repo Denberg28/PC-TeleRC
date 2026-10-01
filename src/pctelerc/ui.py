@@ -4,7 +4,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSpinBox, QVBoxLayout, QWidget,
+    QSpinBox, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from . import __version__
@@ -31,12 +31,10 @@ QPushButton#Danger { background:#7a2831; }
 QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox { background:#0f141a; border:1px solid #344458; border-radius:6px; padding:5px; }
 """
 
-NETWORK_FIELDS = ("bind_host", "listen_port", "target_host", "target_port")
-
-
 def card(title: str):
     frame = QFrame()
     frame.setObjectName("Card")
+    frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     layout = QVBoxLayout(frame)
     layout.setContentsMargins(14, 14, 14, 14)
     heading = QLabel(title)
@@ -90,8 +88,12 @@ class MainWindow(QMainWindow):
         main.addLayout(top)
 
         grid = QGridLayout()
+        self.main_grid = grid
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(12)
+        for column in range(3):
+            grid.setColumnStretch(column, 1)
+            grid.setColumnMinimumWidth(column, 330)
         main.addLayout(grid, 1)
 
         connection_card, connection = card("1. MAVLink / ESP32-S3")
@@ -173,7 +175,7 @@ class MainWindow(QMainWindow):
         self.steering_sensitivity = QSpinBox()
         self.steering_sensitivity.setRange(25, 100)
         self.steering_sensitivity.setSuffix(" %")
-        self.steering_sensitivity.setToolTip("Lower values soften steering response around center while preserving full steering travel.")
+        self.steering_sensitivity.setToolTip("Scale steering authority. 100% = full steering command; lower values reduce steering gain.")
         wheel_form.addRow("Deadzone", self.deadzone)
         wheel_form.addRow("Steering expo", self.expo)
         wheel_form.addRow("Controller sensitivity", self.steering_sensitivity)
@@ -497,15 +499,15 @@ class MainWindow(QMainWindow):
 
         if mav.control_enabled:
             self.safety_label.setText("PC CONTROL ACTIVE")
-            self.safety_label.setObjectName("Good")
+            self.safety_label.setStyleSheet("color:#64d98b;font-weight:700;")
             self.control_btn.setText("Disable PC Control")
         elif mav.failsafe_latched:
             self.safety_label.setText("FAIL-SAFE LATCHED — manual re-enable required")
-            self.safety_label.setObjectName("Bad")
+            self.safety_label.setStyleSheet("color:#ff6b6b;font-weight:700;")
             self.control_btn.setText("Re-enable PC Control")
         else:
             self.safety_label.setText("Control disabled")
-            self.safety_label.setObjectName("Muted")
+            self.safety_label.setStyleSheet("color:#91a0b2;")
             self.control_btn.setText("Enable PC Control")
 
         if mav.error:
