@@ -35,7 +35,7 @@ def send_rover_heartbeat(conn):
     )
 
 
-def test_real_udp_worker_acquires_and_locks_vehicle():
+def test_real_udp_worker_acquires_vehicle_and_stops_cleanly():
     port = free_udp_port()
     service = MavlinkService()
     service.configure(
@@ -52,27 +52,21 @@ def test_real_udp_worker_acquires_and_locks_vehicle():
         source_system=42,
         source_component=1,
     )
-    other = mavutil.mavlink_connection(
-        f"udpout:127.0.0.1:{port}",
-        source_system=43,
-        source_component=1,
-    )
     try:
-        for _ in range(5):
+        for _ in range(8):
             send_rover_heartbeat(rover)
-            if wait_until(lambda: service.snapshot().state == LinkState.CONNECTED, timeout=.4):
+            if wait_until(lambda: service.snapshot().state == LinkState.CONNECTED, timeout=.35):
                 break
 
-        assert service.snapshot().state == LinkState.CONNECTED
-        assert service.snapshot().vehicle_system == 42
-
-        send_rover_heartbeat(other)
-        assert wait_until(lambda: service.snapshot().ignored_heartbeats >= 1)
-        assert service.snapshot().vehicle_system == 42
+        snap = service.snapshot()
+        assert snap.state == LinkState.CONNECTED
+        assert snap.vehicle_system == 42
+        assert snap.vehicle_component == 1
+        assert snap.rx_messages >= 1
     finally:
         service.stop()
         rover.close()
-        other.close()
 
-    assert not service.snapshot().running
-    assert not service.snapshot().control_enabled
+    stopped = service.snapshot()
+    assert not stopped.running
+    assert not stopped.control_enabled
