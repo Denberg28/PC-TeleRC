@@ -19,7 +19,9 @@ Automated coverage includes:
 - diagnostics healthy/failure states,
 - duplicate RC-channel detection,
 - end-to-end field workflow state simulation,
-- first-vehicle MAVLink system-ID lock and foreign-heartbeat rejection.
+- first-vehicle MAVLink system-ID lock and foreign-heartbeat rejection,
+- steering sensitivity endpoint/midrange/clamping behavior,
+- targeted four-state diagnostics.
 
 ## UI/button review
 See `docs/BUTTON_AUDIT.md`.
@@ -40,4 +42,6 @@ See `docs/BUTTON_AUDIT.md`.
 13. Foreign MAVLink heartbeat does not switch vehicle identity.
 14. Editing/applying settings while control is active forces PC Control OFF.
 15. Override transport failure latches PC Control OFF.
-16. Exit sends repeated neutral/release attempts while link is available.
+16. Diagnostics window remains modeless while ARM/DISARM/control buttons remain available.
+17. Sensitivity changes steering response only and preserves full steering endpoints.
+18. Exit sends repeated neutral/release attempts while link is available.
