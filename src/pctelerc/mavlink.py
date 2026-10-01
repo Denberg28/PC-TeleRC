@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import logging
 import threading
 import time
 from typing import Optional
@@ -8,6 +9,8 @@ from typing import Optional
 from .config import AppSettings
 from .core import ControlFrame, LinkState, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
 from .field_safety import can_arm, can_continue_control, can_enable_control
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -92,6 +95,7 @@ class MavlinkService:
             self._failsafe_latched = False
             self._control_enabled = True
             self._snapshot = replace(self._snapshot, control_enabled=True, failsafe_latched=False, error="")
+        logger.info("PC control enabled for MAVLink sys=%s comp=%s", snap.vehicle_system, snap.vehicle_component)
         return True, "PC control enabled."
 
     def disable_control(self):
@@ -105,6 +109,8 @@ class MavlinkService:
                 throttle_pwm=PWM_NEUTRAL,
             )
         if was_enabled or self._rx is not None or self._tx is not None:
+            if was_enabled:
+                logger.info("PC control disabled; issuing neutral/release")
             self._send_neutral_then_release()
 
     def arm(self):
@@ -231,6 +237,10 @@ class MavlinkService:
                         snap,
                         ignored_heartbeats=snap.ignored_heartbeats + 1,
                     )
+                    logger.warning(
+                        "Ignored foreign MAVLink heartbeat sys=%s comp=%s; locked sys=%s comp=%s",
+                        src_sys, src_comp, snap.vehicle_system, snap.vehicle_component,
+                    )
                     return
 
                 try:
@@ -241,6 +251,7 @@ class MavlinkService:
                     mode = ""
                     armed = False
 
+                first_lock = snap.vehicle_system is None
                 snap = replace(
                     snap,
                     last_heartbeat=now,
@@ -252,6 +263,8 @@ class MavlinkService:
                     armed=armed,
                     error="",
                 )
+                if first_lock:
+                    logger.info("Locked MAVLink vehicle identity sys=%s comp=%s", src_sys, src_comp)
             self._snapshot = snap
 
     def _refresh_link_state(self, now: float):
@@ -266,6 +279,7 @@ class MavlinkService:
             )
             age = None if snap.last_heartbeat is None else max(0.0, now - snap.last_heartbeat)
             if state == LinkState.STALE and self._control_enabled:
+                logger.error("Heartbeat stale while PC control active; latching fail-safe")
                 self._control_enabled = False
                 self._failsafe_latched = True
                 release = True
@@ -298,6 +312,7 @@ class MavlinkService:
             now=now,
         )
         if not decision.allowed:
+            logger.error("RC override transmission failed; latching fail-safe")
             with self._lock:
                 self._control_enabled = False
                 self._failsafe_latched = True
@@ -307,6 +322,7 @@ class MavlinkService:
                     failsafe_latched=True,
                     error=f"Control disabled by fail-safe: {decision.message}",
                 )
+            logger.error("PC control fail-safe: %s", decision.message)
             self._send_neutral_then_release()
             return
 
@@ -348,6 +364,7 @@ class MavlinkService:
             with self._lock:
                 self._snapshot = replace(self._snapshot, tx_messages=self._snapshot.tx_messages + 1)
         except Exception as exc:
+            logger.warning("GCS heartbeat send failed: %s", exc)
             with self._lock:
                 self._snapshot = replace(self._snapshot, error=f"GCS heartbeat send failed: {exc}")
 
@@ -392,5 +409,6 @@ class MavlinkService:
                 channels[settings.throttle_channel - 1] = 0
                 conn.mav.rc_channels_override_send(sysid, compid or 1, *channels)
                 time.sleep(0.02)
-            except Exception:
+            except Exception as exc:
+                logger.warning("Neutral/release attempt failed: %s", exc)
                 continue
