@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a5 — modeless targeted diagnostics + persisted steering sensitivity on the field-hardening baseline.
+0.1.0a6 — full code-review baseline: feature-contract cleanup, dependency integrity checks, UI symmetry smoke testing, and steering-gain semantics.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -33,7 +33,8 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 ## Controller sensitivity
 - Range 25–100%; default 100%.
 - Applies only to steering after deadzone/expo shaping.
-- Preserve 0 and ±1 endpoints; lower values soften midrange response.
+- Acts as steering gain: lower values proportionally reduce steering authority.
+- Steering expo remains the independent nonlinear response control.
 - Throttle limit remains independent.
 
 ## Field-hardening rules
