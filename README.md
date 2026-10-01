@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a2` — private/hardware-test milestone.
+**Current version:** `0.1.0a3` — diagnostics/hardware-test milestone.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -19,6 +19,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - MAVLink UDP receive/transmit with pymavlink.
 - PXN/SDL-compatible wheel discovery with pygame-ce.
 - Guided calibration with automatic axis detection and inversion.
+- Read-only troubleshooting diagnostics with copyable report.
 - Separate/combined pedal modes, steering deadzone/expo, and throttle limiting.
 - Explicit Apply Settings vs. Apply & Reconnect workflow.
 - Configurable CH1 steering / CH3 throttle defaults.
@@ -31,6 +32,9 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 
 ## Database decision
 No cloud/server database is used in the control path. Configuration is local JSON. If session history is added later, local SQLite is the recommended first persistence layer.
+
+## Diagnostics
+Use **Diagnostics** to inspect MAVLink worker state, heartbeat age, RX/TX counts, vehicle identity/mode, detected and selected controller GUID, controller freshness, throttle-neutral state, axis mapping validity, RC channel mapping, pending settings, fail-safe state, and throttle limit. The report is read-only and can be copied to the clipboard for troubleshooting.
 
 ## Safety
 The PC cannot guarantee a final neutral packet after Wi-Fi disappears. Configure ArduRover's independent GCS/telemetry fail-safe before powered testing. See `docs/ARDUPILOT.md`.
