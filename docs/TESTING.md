@@ -20,7 +20,7 @@ Automated coverage includes:
 - duplicate RC-channel detection,
 - end-to-end field workflow state simulation,
 - first-vehicle MAVLink system-ID lock and foreign-heartbeat rejection,
-- steering sensitivity endpoint/midrange/clamping behavior,
+- steering sensitivity gain/clamping behavior,
 - targeted four-state diagnostics.
 
 ## UI/button review
@@ -45,3 +45,11 @@ See `docs/BUTTON_AUDIT.md`.
 16. Diagnostics window remains modeless while ARM/DISARM/control buttons remain available.
 17. Sensitivity changes steering response only and preserves full steering endpoints.
 18. Exit sends repeated neutral/release attempts while link is available.
+
+
+## UI/dependency review gate
+- `pip check` must pass after installation.
+- Headless Qt smoke test must construct MainWindow.
+- Main three-card layout must retain equal column stretch/minimum widths.
+- Diagnostics must instantiate as non-modal.
+- Package version must match `pyproject.toml`.
