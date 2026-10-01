@@ -31,17 +31,15 @@ def test_combined_pedal_respects_inversion():
     assert math.isclose(a,-b)
 
 
-def test_steering_sensitivity_preserves_center_and_endpoints():
+def test_steering_sensitivity_is_gain():
     assert apply_sensitivity(0.0, 0.5) == 0.0
-    assert apply_sensitivity(1.0, 0.5) == 1.0
-    assert apply_sensitivity(-1.0, 0.5) == -1.0
+    assert math.isclose(apply_sensitivity(1.0, 0.5), 0.5)
+    assert math.isclose(apply_sensitivity(-1.0, 0.5), -0.5)
 
-def test_lower_sensitivity_softens_midrange():
-    linear = apply_sensitivity(0.5, 1.0)
-    soft = apply_sensitivity(0.5, 0.5)
-    assert soft < linear
-    assert math.isclose(soft, 0.25)
+def test_lower_sensitivity_reduces_authority_linearly():
+    assert math.isclose(apply_sensitivity(0.5, 1.0), 0.5)
+    assert math.isclose(apply_sensitivity(0.5, 0.5), 0.25)
 
 def test_sensitivity_is_clamped():
     assert math.isclose(apply_sensitivity(0.5, 5.0), 0.5)
-    assert apply_sensitivity(0.5, 0.0) < 0.5
+    assert math.isclose(apply_sensitivity(0.5, 0.0), 0.125)
