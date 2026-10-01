@@ -82,6 +82,9 @@ class WheelService:
         try:
             import pygame
 
+            # SDL events back joystick hot-plug/input updates; initialize only
+            # the display/event and joystick subsystems (no mixer/audio side effects).
+            pygame.display.init()
             pygame.joystick.init()
         except Exception as exc:
             with self._lock:
@@ -190,5 +193,6 @@ class WheelService:
 
         try:
             pygame.joystick.quit()
+            pygame.display.quit()
         except Exception:
             pass
