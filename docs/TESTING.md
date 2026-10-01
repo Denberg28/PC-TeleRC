@@ -15,7 +15,9 @@ Automated coverage includes:
 - separate-pedal calibration,
 - reversed driver-axis inversion,
 - combined-pedal calibration,
-- rejection of insufficient steering movement.
+- rejection of insufficient steering movement,
+- diagnostics healthy/failure states,
+- duplicate RC-channel detection.
 
 ## UI/button review
 See `docs/BUTTON_AUDIT.md`.
@@ -31,4 +33,6 @@ See `docs/BUTTON_AUDIT.md`.
 8. Wheel unplug causes safe behavior.
 9. Wi-Fi loss triggers independent ArduRover GCS fail-safe.
 10. Reconnect does not resume drive automatically.
-11. Exit sends neutral/release while link is available.
+11. Diagnostics correctly identifies heartbeat/controller/mapping faults without sending commands.
+12. Copy Diagnostic Report copies the displayed report.
+13. Exit sends neutral/release while link is available.
