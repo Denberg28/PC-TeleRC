@@ -46,6 +46,7 @@ class MavlinkService:
         with self._lock:
             snap=self._snapshot; frame=self._control_frame; settings=self._settings
             if snap.state!=LinkState.CONNECTED: return False,"MAVLink heartbeat is not healthy."
+            if settings.steering_channel==settings.throttle_channel: return False,"Steering and throttle must use different RC channels."
             if not control_is_fresh(frame,stale_after=settings.controller_timeout): return False,"Controller input is missing or stale."
             if frame is None or not frame.neutral: return False,"Release throttle/brake to neutral before enabling PC control."
             self._failsafe_latched=False; self._control_enabled=True
@@ -62,6 +63,7 @@ class MavlinkService:
         with self._lock:
             snap=self._snapshot; frame=self._control_frame; settings=self._settings; conn=self._tx or self._rx
             if snap.state!=LinkState.CONNECTED or conn is None: return False,"Vehicle link is not connected."
+            if arm and settings.steering_channel==settings.throttle_channel: return False,"Steering and throttle must use different RC channels before arming."
             if arm and (not control_is_fresh(frame,stale_after=settings.controller_timeout) or frame is None or not frame.neutral):
                 return False,"Controller must be connected and throttle neutral before arming."
             sysid=snap.vehicle_system or 1; compid=snap.vehicle_component or 1
