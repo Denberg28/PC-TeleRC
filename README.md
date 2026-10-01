@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a3` — diagnostics/hardware-test milestone.
+**Current version:** `0.1.0a4` — field-hardening simulation milestone.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -26,6 +26,10 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - Explicit ARM/DISARM; never auto-arm.
 - 20 Hz RC override only while control is explicitly enabled.
 - 350 ms controller watchdog and 3 s heartbeat watchdog.
+- Session vehicle-ID lock: foreign MAVLink vehicle heartbeats are ignored.
+- Fail-closed controller-axis validation and duplicate RC-channel blocking.
+- Multi-attempt neutral/release sequence on control shutdown/fail-safe.
+- Any live configuration edit disables PC Control and requires manual re-enable.
 - 25% default throttle authority for first tests.
 - Atomic local settings at `%LOCALAPPDATA%\PC-TeleRC\settings.json`.
 - Windows CI, PyInstaller portable EXE and SHA-256 artifact.
@@ -71,6 +75,9 @@ Every push to main runs syntax checks, unit tests and the Windows build. The res
 - Reconnect never resumes PC control automatically.
 - Disable/exit sends neutral and releases the two RC overrides if network remains available.
 - No credentials, Wi-Fi passwords, signing keys or user-specific paths are committed.
+
+## Field-readiness status
+The software workflow is simulated and CI-tested, but real field readiness is not claimed until the PXN, ESP32-S3, SpeedyBee/ArduRover, motor drivers, and Wi-Fi failure modes are physically exercised. See `docs/FIELD_READINESS.md`.
 
 ## First powered test
 Raise the driven wheels so the rover cannot propel itself. Verify calibration and axis directions before motor power. Then test wheel unplug and Wi-Fi loss independently. The rover-side ArduRover fail-safe must provide the safe action even if the PC cannot send another packet.
