@@ -167,5 +167,4 @@ def build_diagnostic_report(
     ]
     lines.extend(f"[{item.level}] {item.name}: {item.detail}" for item in items)
     lines.extend(["", "Diagnostics are read-only and do not alter control state."])
-    return DiagnosticReport(tuple(items), "
-".join(lines))
+    return DiagnosticReport(tuple(items), "\n".join(lines))
