@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         self.settings = load_settings()
         self._settings_dirty = False
         self._network_dirty = False
+        self._diagnostics_window = None
 
         self.wheel = WheelService()
         self.mav = MavlinkService()
@@ -169,8 +170,13 @@ class MainWindow(QMainWindow):
         self.expo = QDoubleSpinBox()
         self.expo.setRange(0, 1)
         self.expo.setSingleStep(.05)
+        self.steering_sensitivity = QSpinBox()
+        self.steering_sensitivity.setRange(25, 100)
+        self.steering_sensitivity.setSuffix(" %")
+        self.steering_sensitivity.setToolTip("Lower values soften steering response around center while preserving full steering travel.")
         wheel_form.addRow("Deadzone", self.deadzone)
         wheel_form.addRow("Steering expo", self.expo)
+        wheel_form.addRow("Controller sensitivity", self.steering_sensitivity)
         wheel_layout.addLayout(wheel_form)
 
         self.apply_btn = QPushButton("Apply Settings")
@@ -260,7 +266,7 @@ class MainWindow(QMainWindow):
         non_network = (
             self.pedal_mode, self.steer_axis, self.throttle_axis, self.brake_axis,
             self.invert_steer, self.invert_throttle, self.invert_brake,
-            self.deadzone, self.expo, self.throttle_limit,
+            self.deadzone, self.expo, self.steering_sensitivity, self.throttle_limit,
             self.steer_channel, self.throttle_channel,
         )
         for widget in non_network:
@@ -298,6 +304,7 @@ class MainWindow(QMainWindow):
         self.invert_brake.setChecked(s.invert_brake)
         self.deadzone.setValue(s.deadzone)
         self.expo.setValue(s.expo)
+        self.steering_sensitivity.setValue(round(s.steering_sensitivity * 100))
         self.throttle_limit.setValue(round(s.throttle_limit * 100))
         self.steer_channel.setValue(s.steering_channel)
         self.throttle_channel.setValue(s.throttle_channel)
@@ -320,6 +327,7 @@ class MainWindow(QMainWindow):
             invert_brake=self.invert_brake.isChecked(),
             deadzone=self.deadzone.value(),
             expo=self.expo.value(),
+            steering_sensitivity=self.steering_sensitivity.value() / 100,
             throttle_limit=self.throttle_limit.value() / 100,
             steering_channel=self.steer_channel.value(),
             throttle_channel=self.throttle_channel.value(),
@@ -403,15 +411,23 @@ class MainWindow(QMainWindow):
         )
 
     def _open_diagnostics(self):
-        dialog = DiagnosticsDialog(
+        if self._diagnostics_window is not None and self._diagnostics_window.isVisible():
+            self._diagnostics_window.raise_()
+            self._diagnostics_window.activateWindow()
+            return
+
+        def state_provider():
+            return self.settings, self._settings_dirty, self._network_dirty
+
+        self._diagnostics_window = DiagnosticsDialog(
             settings=self.settings,
             wheel=self.wheel,
             mav=self.mav,
-            settings_dirty=self._settings_dirty,
-            network_dirty=self._network_dirty,
+            state_provider=state_provider,
             parent=self,
         )
-        dialog.exec()
+        self._diagnostics_window.destroyed.connect(lambda *_: setattr(self, "_diagnostics_window", None))
+        self._diagnostics_window.show()
 
     def _toggle_control(self):
         if self._settings_dirty:
