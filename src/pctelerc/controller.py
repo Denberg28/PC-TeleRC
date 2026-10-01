@@ -10,6 +10,7 @@ from .config import AppSettings
 from .core import (
     AxisConfig,
     ControlFrame,
+    apply_sensitivity,
     combined_pedal_to_throttle,
     separate_pedals_to_throttle,
     shape_axis,
@@ -151,6 +152,7 @@ class WheelService:
                     steer_raw,
                     AxisConfig(settings.deadzone, settings.expo, settings.invert_steer),
                 )
+                steer = apply_sensitivity(steer, settings.steering_sensitivity)
 
                 if settings.pedal_mode == "combined":
                     pedal_raw = axes[settings.throttle_axis] if settings.throttle_axis < len(axes) else 0.0
