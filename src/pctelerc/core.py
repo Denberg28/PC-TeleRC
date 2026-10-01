@@ -57,17 +57,10 @@ def combined_pedal_to_throttle(axis: float, *, invert: bool = False, deadzone: f
     return shape_axis(axis, AxisConfig(deadzone=deadzone, expo=0.0, invert=invert))
 
 def apply_sensitivity(value: float, sensitivity: float = 1.0) -> float:
-    """Soften steering around center while preserving full-scale travel.
-
-    sensitivity=1.0 is linear. Lower values progressively soften mid-stick/wheel
-    response while keeping -1/+1 endpoints unchanged.
-    """
+    """Scale steering authority without changing the configured expo curve."""
     value = clamp(float(value), -1.0, 1.0)
     sensitivity = clamp(float(sensitivity), 0.25, 1.0)
-    if value == 0.0:
-        return 0.0
-    exponent = 1.0 / sensitivity
-    return math.copysign(abs(value) ** exponent, value)
+    return clamp(value * sensitivity, -1.0, 1.0)
 
 def normalized_to_pwm(value: float, limit: float = 1.0) -> int:
     value = clamp(value, -1.0, 1.0)
