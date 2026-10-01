@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
         self.control_btn.clicked.connect(self._toggle_control)
         self.diagnostics_btn.clicked.connect(self._open_diagnostics)
         self.arm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.arm))
-        self.disarm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.disarm))
+        self.disarm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.disarm, allow_dirty=True))
 
         non_network = (
             self.pedal_mode, self.steer_axis, self.throttle_axis, self.brake_axis,
@@ -427,10 +427,10 @@ class MainWindow(QMainWindow):
         if not ok:
             QApplication.beep()
 
-    def _vehicle_command(self, command):
-        if self._settings_dirty:
+    def _vehicle_command(self, command, allow_dirty: bool = False):
+        if self._settings_dirty and not allow_dirty:
             QApplication.beep()
-            self.message.setText("Apply pending settings before ARM/DISARM.")
+            self.message.setText("Apply pending settings before ARM.")
             return
         ok, message = command()
         self.message.setText(message)
@@ -501,9 +501,12 @@ class MainWindow(QMainWindow):
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
-        self.arm_btn.setEnabled(link_ok and not mav.armed and not self._settings_dirty)
-        self.disarm_btn.setEnabled(link_ok and mav.armed and not self._settings_dirty)
-        self.control_btn.setEnabled(link_ok and wheel_ok and not self._settings_dirty)
+        neutral_ok = wheel.frame is not None and wheel.frame.neutral
+        self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty)
+        self.disarm_btn.setEnabled(link_ok and mav.armed)
+        self.control_btn.setEnabled(
+            mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty)
+        )
 
     def closeEvent(self, event):
         self.timer.stop()
