@@ -276,6 +276,9 @@ class MainWindow(QMainWindow):
                 return
 
     def _mark_dirty(self, network: bool):
+        if self.mav.snapshot().control_enabled:
+            self.mav.disable_control()
+            self.message.setText("PC control disabled because configuration was edited. Apply settings and re-enable manually.")
         self._settings_dirty = True
         self._network_dirty = self._network_dirty or network
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Pending settings — click Apply Settings")
@@ -333,6 +336,8 @@ class MainWindow(QMainWindow):
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Settings applied")
 
     def _apply_settings(self):
+        if self.mav.snapshot().control_enabled:
+            self.mav.disable_control()
         network_pending = self._network_dirty
         self._persist_and_configure()
         self._network_dirty = network_pending
@@ -353,6 +358,9 @@ class MainWindow(QMainWindow):
         self.message.setText("MAVLink restarted. PC control remains OFF until manually enabled.")
 
     def _select_controller(self):
+        if self.mav.snapshot().control_enabled:
+            self.mav.disable_control()
+            self.message.setText("PC control disabled before changing controller.")
         guid = self.device_combo.currentData()
         if not guid:
             QApplication.beep()
