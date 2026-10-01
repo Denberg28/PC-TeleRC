@@ -8,8 +8,8 @@ from typing import Iterable
 from .config import AppSettings
 from .controller import ControllerDevice, ControllerSnapshot
 from .core import LinkState, control_is_fresh
-from .mavlink import MavlinkSnapshot
 from .logging_setup import log_path
+from .mavlink import MavlinkSnapshot
 
 
 @dataclass(frozen=True)
@@ -18,9 +18,13 @@ class DiagnosticItem:
     name: str
     detail: str
 
-    @property
-    def ok(self) -> bool:
-        return self.level in {"PASS", "INFO"}
+
+@dataclass(frozen=True)
+class DiagnosticStatus:
+    link: DiagnosticItem
+    controller: DiagnosticItem
+    mapping: DiagnosticItem
+    safety: DiagnosticItem
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,79 @@ def _item(level: str, name: str, detail: str) -> DiagnosticItem:
     return DiagnosticItem(level, name, detail)
 
 
+def build_targeted_status(
+    *,
+    settings: AppSettings,
+    wheel: ControllerSnapshot,
+    devices: Iterable[ControllerDevice],
+    mav: MavlinkSnapshot,
+    settings_dirty: bool,
+    network_dirty: bool,
+    now: float | None = None,
+) -> DiagnosticStatus:
+    now = time.monotonic() if now is None else now
+    devices = tuple(devices)
+
+    if not mav.running:
+        link = _item("FAIL", "Link", "MAVLink worker stopped.")
+    elif mav.state == LinkState.CONNECTED:
+        age = 0.0 if mav.heartbeat_age is None else mav.heartbeat_age
+        link = _item("PASS", "Link", f"Connected • HB {age:.1f}s")
+    elif mav.state == LinkState.STALE:
+        link = _item("FAIL", "Link", "Heartbeat stale.")
+    elif mav.rx_messages > 0:
+        link = _item("WARN", "Link", "Traffic seen, no vehicle heartbeat.")
+    else:
+        link = _item("WARN", "Link", "Waiting for heartbeat.")
+
+    selected = settings.wheel_guid
+    match = next((d for d in devices if d.guid == selected), None) if selected else None
+    fresh = wheel.connected and control_is_fresh(
+        wheel.frame, now=now, stale_after=settings.controller_timeout
+    )
+    if not devices:
+        controller = _item("FAIL", "Controller", "No controller detected.")
+    elif selected and match is None:
+        controller = _item("FAIL", "Controller", "Selected controller missing.")
+    elif not wheel.connected:
+        controller = _item("FAIL", "Controller", wheel.error or "No live input.")
+    elif not fresh:
+        controller = _item("FAIL", "Controller", "Input stale.")
+    else:
+        controller = _item("PASS", "Controller", f"{wheel.name} • {len(wheel.axes)} axes")
+
+    max_axis = len(wheel.axes) - 1
+    mapped = [settings.steer_axis, settings.throttle_axis]
+    if settings.pedal_mode == "separate":
+        mapped.append(settings.brake_axis)
+    invalid = [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped
+    if settings.steering_channel == settings.throttle_channel:
+        mapping = _item("FAIL", "Mapping", "Steer/throttle share one RC channel.")
+    elif invalid:
+        mapping = _item("FAIL", "Mapping", "Mapped controller axis unavailable.")
+    else:
+        mapping = _item(
+            "PASS",
+            "Mapping",
+            f"Steer CH{settings.steering_channel} • Throttle CH{settings.throttle_channel}",
+        )
+
+    if settings_dirty:
+        safety = _item("WARN", "Safety", "Settings pending apply.")
+    elif network_dirty:
+        safety = _item("WARN", "Safety", "Network restart required.")
+    elif mav.failsafe_latched:
+        safety = _item("WARN", "Safety", "Fail-safe latched.")
+    elif mav.control_enabled:
+        safety = _item("PASS", "Safety", "PC Control ACTIVE.")
+    elif wheel.frame is not None and not wheel.frame.neutral:
+        safety = _item("WARN", "Safety", "Throttle not neutral.")
+    else:
+        safety = _item("PASS", "Safety", "Ready / control OFF.")
+
+    return DiagnosticStatus(link, controller, mapping, safety)
+
+
 def build_diagnostic_report(
     *,
     app_version: str,
@@ -52,128 +129,28 @@ def build_diagnostic_report(
     network_dirty: bool,
     now: float | None = None,
 ) -> DiagnosticReport:
-    now = time.monotonic() if now is None else now
-    devices = tuple(devices)
-    items: list[DiagnosticItem] = []
-
-    items.append(_item("INFO", "App", f"PC TeleRC {app_version} on {platform.system()} {platform.release()}"))
-    items.append(_item("INFO", "Field log", str(log_path())))
-    items.append(
-        _item(
-            "WARN" if settings_dirty else "PASS",
-            "Settings",
-            "Pending edits are not applied." if settings_dirty else "Applied configuration is active.",
-        )
+    status = build_targeted_status(
+        settings=settings,
+        wheel=wheel,
+        devices=devices,
+        mav=mav,
+        settings_dirty=settings_dirty,
+        network_dirty=network_dirty,
+        now=now,
     )
-    if network_dirty:
-        items.append(_item("WARN", "MAVLink restart", "Network address/port edits require Apply & Reconnect."))
-
-    items.append(
-        _item(
-            "PASS" if mav.running else "FAIL",
-            "MAVLink worker",
-            "Listener thread is running." if mav.running else "Listener thread is not running.",
-        )
-    )
-
-    if mav.state == LinkState.CONNECTED:
-        age = 0.0 if mav.heartbeat_age is None else mav.heartbeat_age
-        items.append(_item("PASS", "Vehicle heartbeat", f"Connected; latest heartbeat age {age:.2f}s."))
-    elif mav.state == LinkState.STALE:
-        age = 0.0 if mav.heartbeat_age is None else mav.heartbeat_age
-        items.append(_item("FAIL", "Vehicle heartbeat", f"Heartbeat stale at {age:.2f}s (limit {settings.heartbeat_timeout:.2f}s)."))
-    elif mav.rx_messages > 0:
-        items.append(_item("WARN", "Vehicle heartbeat", f"MAVLink traffic is arriving ({mav.rx_messages} RX) but no accepted vehicle heartbeat is current."))
-    else:
-        items.append(_item("FAIL", "Vehicle heartbeat", "No vehicle heartbeat received."))
-
-    items.append(
-        _item(
-            "INFO" if settings.target_host else "WARN",
-            "MAVLink endpoint",
-            f"Listen {settings.bind_host}:{settings.listen_port}; "
-            + (f"fixed target {settings.target_host}:{settings.target_port}." if settings.target_host
-               else "no fixed target IP; reply routing depends on the received UDP peer. A fixed ESP32 target is preferred for field use."),
-        )
-    )
-    items.append(_item("INFO", "MAVLink traffic", f"RX {mav.rx_messages}; TX {mav.tx_messages}."))
-    if mav.ignored_heartbeats:
-        items.append(_item("WARN", "Foreign vehicle heartbeat", f"Ignored {mav.ignored_heartbeats} heartbeat(s) from another MAVLink source."))
-    if mav.vehicle_system is not None:
-        items.append(
-            _item(
-                "INFO",
-                "Vehicle",
-                f"sys {mav.vehicle_system}, comp {mav.vehicle_component or '—'}, mode {mav.mode or '—'}, "
-                f"{'ARMED' if mav.armed else 'disarmed'}.",
-            )
-        )
-
-    selected = settings.wheel_guid
-    if not devices:
-        items.append(_item("FAIL", "Controller discovery", "Windows/SDL reports no controllers."))
-    else:
-        items.append(_item("PASS", "Controller discovery", f"{len(devices)} controller(s) detected."))
-
-    if selected:
-        match = next((device for device in devices if device.guid == selected), None)
-        items.append(
-            _item(
-                "PASS" if match is not None else "FAIL",
-                "Selected controller",
-                f"{match.name} ({match.axes} axes)." if match else "Saved controller GUID is not currently present.",
-            )
-        )
-    else:
-        items.append(_item("WARN", "Selected controller", "No controller GUID has been explicitly saved."))
-
-    if wheel.connected:
-        fresh = control_is_fresh(wheel.frame, now=now, stale_after=settings.controller_timeout)
-        items.append(_item("PASS" if fresh else "FAIL", "Controller freshness", "Input stream is fresh." if fresh else "Controller input stream is stale."))
-        items.append(_item("PASS" if wheel.axes else "FAIL", "Controller axes", f"{len(wheel.axes)} live axis value(s)." if wheel.axes else "No live axes available."))
-        items.append(
-            _item(
-                "PASS" if wheel.frame is not None and wheel.frame.neutral else "WARN",
-                "Throttle neutral",
-                f"Drive value {wheel.throttle:+.3f}; neutral required before ARM/PC Control.",
-            )
-        )
-        max_axis = len(wheel.axes) - 1
-        mapped = [settings.steer_axis, settings.throttle_axis]
-        if settings.pedal_mode == "separate":
-            mapped.append(settings.brake_axis)
-        invalid = [axis for axis in mapped if axis > max_axis]
-        items.append(
-            _item(
-                "FAIL" if invalid else "PASS",
-                "Axis mapping",
-                f"Mapped axis index/indices out of range: {invalid}; available 0..{max_axis}." if invalid
-                else f"steer={settings.steer_axis}, throttle={settings.throttle_axis}, "
-                     + (f"brake={settings.brake_axis}." if settings.pedal_mode == "separate" else "combined pedal mode."),
-            )
-        )
-    else:
-        detail = wheel.error or "Selected controller is not producing input."
-        items.append(_item("FAIL", "Controller input", detail))
-
-    same_channel = settings.steering_channel == settings.throttle_channel
-    items.append(
-        _item(
-            "FAIL" if same_channel else "PASS",
-            "RC channel mapping",
-            "Steering and throttle must use different channels." if same_channel
-            else f"Steering CH{settings.steering_channel}; throttle CH{settings.throttle_channel}.",
-        )
-    )
-    items.append(_item("INFO", "Throttle limit", f"{settings.throttle_limit * 100:.0f}% authority."))
-    items.append(
-        _item(
-            "WARN" if mav.failsafe_latched else "PASS",
-            "PC-control fail-safe",
-            "Fail-safe is latched; manual re-enable is required." if mav.failsafe_latched
-            else ("PC Control ACTIVE." if mav.control_enabled else "PC Control is OFF."),
-        )
-    )
+    items = [
+        status.link,
+        status.controller,
+        status.mapping,
+        status.safety,
+        _item("INFO", "Vehicle", f"sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • {mav.mode or '—'}"),
+        _item("INFO", "Traffic", f"RX {mav.rx_messages} • TX {mav.tx_messages} • foreign HB {mav.ignored_heartbeats}"),
+        _item("INFO", "Endpoint", f"{settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}"),
+        _item("INFO", "Axes", f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
+        _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
+        _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),
+        _item("INFO", "Field log", str(log_path())),
+    ]
     if mav.error:
         items.append(_item("FAIL", "MAVLink error", mav.error))
 
@@ -185,14 +162,10 @@ def build_diagnostic_report(
     }
     lines = [
         f"PC TeleRC Diagnostic Report — v{app_version}",
-        f"Summary: {counts['PASS']} PASS | {counts['WARN']} WARN | {counts['FAIL']} FAIL | {counts['INFO']} INFO",
+        f"Summary: {counts['PASS']} PASS | {counts['WARN']} WARN | {counts['FAIL']} FAIL",
         "",
     ]
     lines.extend(f"[{item.level}] {item.name}: {item.detail}" for item in items)
-    lines.extend(
-        [
-            "",
-            "Safety note: Diagnostics are read-only. They do not arm the vehicle or enable PC Control.",
-        ]
-    )
-    return DiagnosticReport(tuple(items), "\n".join(lines))
+    lines.extend(["", "Diagnostics are read-only and do not alter control state."])
+    return DiagnosticReport(tuple(items), "
+".join(lines))
