@@ -29,3 +29,19 @@ def test_link_state_and_control_freshness():
 def test_combined_pedal_respects_inversion():
     a=combined_pedal_to_throttle(.6,invert=False,deadzone=0); b=combined_pedal_to_throttle(.6,invert=True,deadzone=0)
     assert math.isclose(a,-b)
+
+
+def test_steering_sensitivity_preserves_center_and_endpoints():
+    assert apply_sensitivity(0.0, 0.5) == 0.0
+    assert apply_sensitivity(1.0, 0.5) == 1.0
+    assert apply_sensitivity(-1.0, 0.5) == -1.0
+
+def test_lower_sensitivity_softens_midrange():
+    linear = apply_sensitivity(0.5, 1.0)
+    soft = apply_sensitivity(0.5, 0.5)
+    assert soft < linear
+    assert math.isclose(soft, 0.25)
+
+def test_sensitivity_is_clamped():
+    assert math.isclose(apply_sensitivity(0.5, 5.0), 0.5)
+    assert apply_sensitivity(0.5, 0.0) < 0.5
