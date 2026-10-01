@@ -63,3 +63,21 @@ def can_arm(
     if not decision.allowed:
         return SafetyDecision(False, decision.code, decision.message.replace("enabling PC control", "arming"))
     return SafetyDecision(True, "ok", "Arm prerequisites satisfied.")
+
+
+def can_continue_control(
+    *,
+    settings: AppSettings,
+    link_state: LinkState,
+    frame: ControlFrame | None,
+    axis_count: int | None,
+    now: float | None = None,
+) -> SafetyDecision:
+    mapping = validate_mapping(settings, axis_count)
+    if not mapping.allowed:
+        return mapping
+    if link_state != LinkState.CONNECTED:
+        return SafetyDecision(False, "link_unhealthy", "MAVLink heartbeat is not healthy.")
+    if not control_is_fresh(frame, now=now, stale_after=settings.controller_timeout):
+        return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
+    return SafetyDecision(True, "ok", "Active PC control prerequisites satisfied.")
