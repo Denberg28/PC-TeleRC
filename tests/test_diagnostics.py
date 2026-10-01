@@ -43,8 +43,8 @@ def healthy_report():
 def test_healthy_diagnostics_have_no_failures():
     report = healthy_report()
     assert report.failures == 0
-    assert "[PASS] Vehicle heartbeat" in report.text
-    assert "[PASS] RC channel mapping" in report.text
+    assert "[PASS] Link:" in report.text
+    assert "[PASS] Mapping:" in report.text
 
 
 def test_same_rc_channel_is_failure():
@@ -61,7 +61,7 @@ def test_same_rc_channel_is_failure():
         mav=mav, settings_dirty=False, network_dirty=False, now=now,
     )
     assert report.failures >= 1
-    assert "Steering and throttle must use different channels" in report.text
+    assert "Steer/throttle share one RC channel" in report.text
 
 
 def test_missing_selected_controller_is_failure():
@@ -76,7 +76,7 @@ def test_missing_selected_controller_is_failure():
         now=100.0,
     )
     assert report.failures >= 2
-    assert "Saved controller GUID is not currently present" in report.text
+    assert "Selected controller missing" in report.text
 
 
 def test_targeted_status_is_only_four_operational_checks():
