@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a2 — guided controller calibration + audited UI actions + strict controller identity + alpha safety interlocks.
+0.1.0a3 — guided calibration + read-only diagnostics + audited controls + strict controller identity.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -22,6 +22,11 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 - Combined pedals: capture full forward + full reverse.
 - Infer axis and inversion only when movement exceeds validation thresholds.
 - Calibration modifies mapping only; it never arms or enables MAVLink control.
+
+## Diagnostics
+- Diagnostics must remain read-only: no arm/disarm/control-enable side effects.
+- Copyable report may include controller GUID and local endpoint configuration, but never credentials.
+- Duplicate steering/throttle RC channel mapping is a hard failure for ARM and PC Control.
 
 ## Known limitations
 - Exact PXN behavior still depends on Windows driver/mode.
