@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import (
-    QApplication, QDialog, QHBoxLayout, QLabel, QPushButton, QPlainTextEdit, QVBoxLayout,
-)
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from . import __version__
 from .config import AppSettings
 from .controller import WheelService
-from .diagnostics import build_diagnostic_report
+from .diagnostics import build_diagnostic_report, build_targeted_status
 from .mavlink import MavlinkService
+
+
+def _status_text(item):
+    symbol = {"PASS": "✓", "WARN": "!", "FAIL": "×"}.get(item.level, "•")
+    return f"{symbol} {item.name}: {item.detail}"
 
 
 class DiagnosticsDialog(QDialog):
@@ -19,41 +22,37 @@ class DiagnosticsDialog(QDialog):
         settings: AppSettings,
         wheel: WheelService,
         mav: MavlinkService,
-        settings_dirty: bool,
-        network_dirty: bool,
+        state_provider,
         parent=None,
     ):
         super().__init__(parent)
-        self.setWindowTitle("PC TeleRC Diagnostics")
-        self.resize(760, 600)
+        self.setWindowTitle("Diagnostics")
+        self.setWindowModality(Qt.WindowModality.NonModal)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.setMinimumWidth(470)
         self._settings = settings
         self._wheel = wheel
         self._mav = mav
-        self._settings_dirty = settings_dirty
-        self._network_dirty = network_dirty
+        self._state_provider = state_provider
         self._last_report = ""
 
         layout = QVBoxLayout(self)
-        title = QLabel("Troubleshooting diagnostics")
-        title.setStyleSheet("font-size:15pt;font-weight:700;")
+        title = QLabel("Field diagnostics")
+        title.setStyleSheet("font-size:13pt;font-weight:700;")
         layout.addWidget(title)
 
-        note = QLabel("Read-only checks only — diagnostics do not ARM, DISARM, or enable PC Control.")
-        note.setWordWrap(True)
-        layout.addWidget(note)
-
-        self.summary = QLabel("Running checks…")
-        layout.addWidget(self.summary)
-
-        self.output = QPlainTextEdit()
-        self.output.setReadOnly(True)
-        self.output.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
-        layout.addWidget(self.output, 1)
+        grid = QGridLayout()
+        self.rows = {}
+        for idx, key in enumerate(("link", "controller", "mapping", "safety")):
+            label = QLabel("Checking…")
+            label.setWordWrap(True)
+            self.rows[key] = label
+            grid.addWidget(label, idx, 0)
+        layout.addLayout(grid)
 
         row = QHBoxLayout()
         self.refresh_btn = QPushButton("Refresh")
-        self.copy_btn = QPushButton("Copy Diagnostic Report")
-        self.copy_btn.setObjectName("Primary")
+        self.copy_btn = QPushButton("Copy Report")
         self.close_btn = QPushButton("Close")
         row.addWidget(self.refresh_btn)
         row.addWidget(self.copy_btn)
@@ -61,29 +60,46 @@ class DiagnosticsDialog(QDialog):
         row.addWidget(self.close_btn)
         layout.addLayout(row)
 
-        self.refresh_btn.clicked.connect(self.refresh_report)
+        self.refresh_btn.clicked.connect(self.refresh_status)
         self.copy_btn.clicked.connect(self.copy_report)
-        self.close_btn.clicked.connect(self.accept)
+        self.close_btn.clicked.connect(self.close)
 
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.refresh_report)
-        self.timer.start(1000)
-        self.refresh_report()
+        self.timer.timeout.connect(self.refresh_status)
+        self.timer.start(2000)
+        self.refresh_status()
 
-    def refresh_report(self):
+    def _state(self):
+        settings, settings_dirty, network_dirty = self._state_provider()
+        self._settings = settings
+        return settings_dirty, network_dirty
+
+    def refresh_status(self):
+        settings_dirty, network_dirty = self._state()
+        status = build_targeted_status(
+            settings=self._settings,
+            wheel=self._wheel.snapshot(),
+            devices=self._wheel.devices(),
+            mav=self._mav.snapshot(),
+            settings_dirty=settings_dirty,
+            network_dirty=network_dirty,
+        )
+        for key in ("link", "controller", "mapping", "safety"):
+            item = getattr(status, key)
+            self.rows[key].setText(_status_text(item))
+
+    def copy_report(self):
+        settings_dirty, network_dirty = self._state()
         report = build_diagnostic_report(
             app_version=__version__,
             settings=self._settings,
             wheel=self._wheel.snapshot(),
             devices=self._wheel.devices(),
             mav=self._mav.snapshot(),
-            settings_dirty=self._settings_dirty,
-            network_dirty=self._network_dirty,
+            settings_dirty=settings_dirty,
+            network_dirty=network_dirty,
         )
         self._last_report = report.text
-        self.output.setPlainText(report.text)
-        self.summary.setText(f"{report.failures} failure(s) • {report.warnings} warning(s)")
-
-    def copy_report(self):
-        QApplication.clipboard().setText(self._last_report)
-        self.summary.setText("Diagnostic report copied to clipboard.")
+        QApplication.clipboard().setText(report.text)
+        self.copy_btn.setText("Copied")
+        QTimer.singleShot(1200, lambda: self.copy_btn.setText("Copy Report") if self.copy_btn else None)
