@@ -40,3 +40,10 @@
 - Live diagnostics refresh every 2 seconds from existing snapshots; no network reads, controller reads, or command sends are initiated by diagnostics.
 - Full support-report formatting is generated only on explicit Copy Report.
 - Controller sensitivity applies only to steering and uses a bounded response curve that preserves full-scale endpoints.
+
+
+## 2026-10-01 — full code-review cleanup
+- Steering Expo owns nonlinear response shaping; Steering Sensitivity owns proportional steering gain. Avoid overlapping controls with ambiguous behavior.
+- The main three operator cards use equal grid stretch and minimum widths for deterministic horizontal symmetry.
+- Safety label state colors are applied explicitly because changing Qt objectName at runtime does not guarantee immediate stylesheet repolish.
+- CI includes dependency integrity, headless UI construction, feature-contract tests, version consistency, and Windows packaging.
