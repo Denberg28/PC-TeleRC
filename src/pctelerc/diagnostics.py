@@ -87,10 +87,11 @@ def build_diagnostic_report(
 
     items.append(
         _item(
-            "INFO",
+            "INFO" if settings.target_host else "WARN",
             "MAVLink endpoint",
             f"Listen {settings.bind_host}:{settings.listen_port}; "
-            + (f"target {settings.target_host}:{settings.target_port}." if settings.target_host else "reply path uses the received UDP link."),
+            + (f"fixed target {settings.target_host}:{settings.target_port}." if settings.target_host
+               else "no fixed target IP; reply routing depends on the received UDP peer. A fixed ESP32 target is preferred for field use."),
         )
     )
     items.append(_item("INFO", "MAVLink traffic", f"RX {mav.rx_messages}; TX {mav.tx_messages}."))
