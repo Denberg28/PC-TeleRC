@@ -7,7 +7,7 @@ from typing import Optional
 
 from .config import AppSettings
 from .core import ControlFrame, LinkState, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
-from .field_safety import can_arm, can_enable_control
+from .field_safety import can_arm, can_continue_control, can_enable_control
 
 
 @dataclass(frozen=True)
@@ -288,7 +288,7 @@ class MavlinkService:
         if not enabled:
             return
 
-        decision = can_enable_control(
+        decision = can_continue_control(
             settings=settings,
             link_state=snap.state,
             frame=frame,
