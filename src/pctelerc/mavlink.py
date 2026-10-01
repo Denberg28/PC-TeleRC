@@ -224,7 +224,9 @@ class MavlinkService:
                 src_comp = msg.get_srcComponent()
 
                 # Lock to the first accepted vehicle heartbeat for this session.
-                if snap.vehicle_system is not None and src_sys != snap.vehicle_system:
+                if snap.vehicle_system is not None and (
+                    src_sys != snap.vehicle_system or src_comp != snap.vehicle_component
+                ):
                     self._snapshot = replace(
                         snap,
                         ignored_heartbeats=snap.ignored_heartbeats + 1,
