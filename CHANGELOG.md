@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0a3 — 2026-10-01
+### Added
+- Read-only Diagnostics panel for troubleshooting MAVLink, heartbeat, controller identity/freshness, axes, mapping, settings state, fail-safe state, and traffic counters.
+- Copy Diagnostic Report action for support/troubleshooting.
+- Diagnostic unit tests for healthy state, missing controller, and duplicate RC-channel faults.
+
+### Fixed
+- Steering and throttle can no longer enable PC Control or ARM when mapped to the same RC channel.
+
 ## 0.1.0a2 — 2026-10-01
 ### Added
 - Guided wheel/pedal calibration with movement validation, automatic axis detection and inversion.
