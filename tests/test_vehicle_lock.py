@@ -42,3 +42,14 @@ def test_same_vehicle_refreshes_heartbeat():
     assert snap.vehicle_system == 7
     assert snap.last_heartbeat == 21.0
     assert snap.ignored_heartbeats == 0
+
+
+def test_same_system_different_component_is_ignored():
+    service = MavlinkService()
+    service._handle_message(FakeHeartbeat(9, 1), 30.0)
+    service._handle_message(FakeHeartbeat(9, 191), 31.0)
+    snap = service.snapshot()
+    assert snap.vehicle_system == 9
+    assert snap.vehicle_component == 1
+    assert snap.last_heartbeat == 30.0
+    assert snap.ignored_heartbeats == 1
