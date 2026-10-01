@@ -21,6 +21,7 @@ class AppSettings:
     invert_brake: bool = False
     deadzone: float = 0.04
     expo: float = 0.15
+    steering_sensitivity: float = 1.0
     throttle_limit: float = 0.25
     steering_channel: int = 1
     throttle_channel: int = 3
@@ -31,6 +32,7 @@ class AppSettings:
         self.target_port = int(min(65535, max(1, self.target_port)))
         self.steer_axis = max(0, int(self.steer_axis)); self.throttle_axis = max(0, int(self.throttle_axis)); self.brake_axis = max(0, int(self.brake_axis))
         self.deadzone = min(0.30, max(0.0, float(self.deadzone))); self.expo = min(1.0, max(0.0, float(self.expo)))
+        self.steering_sensitivity = min(1.0, max(0.25, float(self.steering_sensitivity)))
         self.throttle_limit = min(1.0, max(0.05, float(self.throttle_limit)))
         self.steering_channel = min(8, max(1, int(self.steering_channel))); self.throttle_channel = min(8, max(1, int(self.throttle_channel)))
         self.heartbeat_timeout = min(15.0, max(1.0, float(self.heartbeat_timeout))); self.controller_timeout = min(2.0, max(0.1, float(self.controller_timeout)))
