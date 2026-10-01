@@ -4,21 +4,30 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a1 — connectivity + wheel input + bounded RC override + safety interlocks + Windows CI build.
+0.1.0a2 — guided controller calibration + audited UI actions + strict controller identity + alpha safety interlocks.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
-- Never auto-enable control after startup, controller reconnect, or MAVLink reconnect.
+- Never auto-enable control after startup, calibration, controller reconnect, or MAVLink reconnect.
 - Require fresh controller input and neutral throttle before enabling control or ARM.
+- Pending settings must be explicitly applied before ARM/PC Control.
 - On stale controller/MAVLink, latch PC control OFF.
 - On disable/exit, send neutral then release RC override if the link is available.
+- If a selected controller disappears, do not fall back to a different joystick.
 - Configure ArduRover GCS fail-safe independently.
 
+## Calibration design
+- Capture neutral + full steering left/right.
+- Separate pedals: capture full throttle + full brake.
+- Combined pedals: capture full forward + full reverse.
+- Infer axis and inversion only when movement exceeds validation thresholds.
+- Calibration modifies mapping only; it never arms or enables MAVLink control.
+
 ## Known limitations
-- Exact PXN axis mapping is model/driver dependent.
+- Exact PXN behavior still depends on Windows driver/mode.
 - No force feedback or map/mission planner.
 - Unsigned Windows test executable.
-- Hardware fail-safe behavior remains unverified.
+- Hardware fail-safe timing remains unverified.
 
 ## Next milestone
-0.1.0a2 hardware validation: exact PXN GUID/axis layout, ESP32 routing, Rover channel mapping, calibration wizard, measured fail-safe timings.
+Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel mapping, measured controller/Wi-Fi fail-safe timing, then lock a first tagged test release.
