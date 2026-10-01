@@ -432,7 +432,7 @@ class MainWindow(QMainWindow):
     def _refresh(self):
         wheel = self.wheel.snapshot()
         mav = self.mav.snapshot()
-        self.mav.set_control_frame(wheel.frame)
+        self.mav.set_control_frame(wheel.frame, len(wheel.axes) if wheel.connected else None)
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
