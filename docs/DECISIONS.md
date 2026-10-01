@@ -10,6 +10,14 @@
 - Distribution: CI artifact for alpha; tags publish GitHub Releases.
 - Repository was already public when work began.
 
+## 2026-10-01 — calibration and UI audit
+- Calibration is capture-based instead of relying on PXN model-specific hard-coded axis numbers.
+- Axis selection requires significant movement; ambiguous/small movement is rejected.
+- Calibration only changes local controller mapping and never sends arm/control commands.
+- Once a controller GUID is selected, disappearance is treated as a disconnect rather than falling back to another attached joystick.
+- Settings are explicit: Apply Settings updates controller/safety configuration; Apply & Reconnect restarts the MAVLink socket for address/port changes.
+- ARM and PC Control are blocked while edited settings remain unapplied.
+
 ## Hardware assumptions to validate
 - PXN appears to SDL as a joystick/game controller.
 - ESP32-S3 bridge is bidirectional UDP MAVLink on 14550.
