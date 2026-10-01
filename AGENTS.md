@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a4 — field-hardening simulation baseline with centralized fail-closed safety rules.
+0.1.0a5 — modeless targeted diagnostics + persisted steering sensitivity on the field-hardening baseline.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -24,9 +24,17 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 - Calibration modifies mapping only; it never arms or enables MAVLink control.
 
 ## Diagnostics
-- Diagnostics must remain read-only: no arm/disarm/control-enable side effects.
+- Diagnostics must remain read-only and modeless: no ARM/DISARM/control-enable side effects and no blocking of the main operator window.
+- Live diagnostics are limited to Link, Controller, Mapping, Safety at 2-second refresh.
+- Build the detailed report only on Copy Report.
 - Copyable report may include controller GUID and local endpoint configuration, but never credentials.
 - Duplicate steering/throttle RC channel mapping is a hard failure for ARM and PC Control.
+
+## Controller sensitivity
+- Range 25–100%; default 100%.
+- Applies only to steering after deadzone/expo shaping.
+- Preserve 0 and ±1 endpoints; lower values soften midrange response.
+- Throttle limit remains independent.
 
 ## Field-hardening rules
 - First accepted vehicle system ID is locked for the session; foreign heartbeat sources are ignored.
