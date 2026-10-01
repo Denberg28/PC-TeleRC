@@ -1,7 +1,7 @@
 from pctelerc.config import AppSettings
 from pctelerc.controller import ControllerDevice, ControllerSnapshot
 from pctelerc.core import ControlFrame, LinkState
-from pctelerc.diagnostics import build_diagnostic_report
+from pctelerc.diagnostics import build_diagnostic_report, build_targeted_status
 from pctelerc.mavlink import MavlinkSnapshot
 
 
@@ -77,3 +77,39 @@ def test_missing_selected_controller_is_failure():
     )
     assert report.failures >= 2
     assert "Saved controller GUID is not currently present" in report.text
+
+
+def test_targeted_status_is_only_four_operational_checks():
+    now = 100.0
+    settings = AppSettings(wheel_guid="wheel", steering_channel=1, throttle_channel=3)
+    wheel = ControllerSnapshot(
+        connected=True, name="PXN", guid="wheel", axes=(0.0, 1.0, 1.0),
+        frame=ControlFrame(0.0, 0.0, now),
+    )
+    devices = [ControllerDevice(0, "PXN", "wheel", 3, 10)]
+    mav = MavlinkSnapshot(running=True, state=LinkState.CONNECTED, heartbeat_age=.1)
+    status = build_targeted_status(
+        settings=settings, wheel=wheel, devices=devices, mav=mav,
+        settings_dirty=False, network_dirty=False, now=now,
+    )
+    assert [status.link.name, status.controller.name, status.mapping.name, status.safety.name] == [
+        "Link", "Controller", "Mapping", "Safety"
+    ]
+    assert status.link.level == "PASS"
+    assert status.controller.level == "PASS"
+    assert status.mapping.level == "PASS"
+
+def test_targeted_status_flags_only_relevant_faults():
+    status = build_targeted_status(
+        settings=AppSettings(wheel_guid="missing", steering_channel=2, throttle_channel=2),
+        wheel=ControllerSnapshot(error="Selected controller is not connected."),
+        devices=[],
+        mav=MavlinkSnapshot(running=True, state=LinkState.STALE, heartbeat_age=4.0),
+        settings_dirty=True,
+        network_dirty=False,
+        now=100.0,
+    )
+    assert status.link.level == "FAIL"
+    assert status.controller.level == "FAIL"
+    assert status.mapping.level == "FAIL"
+    assert status.safety.level == "WARN"
