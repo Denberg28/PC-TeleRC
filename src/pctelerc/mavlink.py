@@ -149,7 +149,7 @@ class MavlinkService:
             )
             with self._lock:
                 self._snapshot = replace(self._snapshot, tx_messages=self._snapshot.tx_messages + 1)
-            return True, "Arm command sent." if arm else "Disarm command sent."
+            return True, "Arm request sent; wait for heartbeat to confirm ARMED." if arm else "Disarm request sent; wait for heartbeat to confirm disarmed."
         except Exception as exc:
             with self._lock:
                 self._snapshot = replace(self._snapshot, error=f"Arm/disarm send failed: {exc}")
