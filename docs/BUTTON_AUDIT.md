@@ -8,7 +8,7 @@
 | Apply Settings | `_apply_settings` | none | Persists controller/safety settings. Network edits remain marked pending restart. |
 | ARM | `_vehicle_command(mav.arm)` | link connected, disarmed, no pending settings; MAVLink layer also requires fresh controller + neutral throttle | Sends explicit MAV_CMD_COMPONENT_ARM_DISARM arm request. |
 | DISARM | `_vehicle_command(mav.disarm)` | link connected, armed, no pending settings | Sends explicit disarm request. |
-| Diagnostics | `_open_diagnostics` | none | Opens read-only diagnostics; sends no ARM/DISARM/control commands. |\n| Enable PC Control | `_toggle_control` | link + controller healthy, no pending settings; MAVLink layer also checks freshness + neutral throttle | Enables 20 Hz RC override. Never automatic. |
+| Diagnostics | `_open_diagnostics` | none | Opens/raises a modeless read-only four-check window; sends no ARM/DISARM/control commands and does not block the main UI. |\n| Enable PC Control | `_toggle_control` | link + controller healthy, no pending settings; MAVLink layer also checks freshness + neutral throttle | Enables 20 Hz RC override. Never automatic. |
 | Disable PC Control | `_toggle_control` | currently enabled | Sends neutral then releases steering/throttle override where link permits. |
 
 ## Review findings
