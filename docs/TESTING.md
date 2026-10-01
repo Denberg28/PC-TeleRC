@@ -17,7 +17,9 @@ Automated coverage includes:
 - combined-pedal calibration,
 - rejection of insufficient steering movement,
 - diagnostics healthy/failure states,
-- duplicate RC-channel detection.
+- duplicate RC-channel detection,
+- end-to-end field workflow state simulation,
+- first-vehicle MAVLink system-ID lock and foreign-heartbeat rejection.
 
 ## UI/button review
 See `docs/BUTTON_AUDIT.md`.
@@ -35,4 +37,7 @@ See `docs/BUTTON_AUDIT.md`.
 10. Reconnect does not resume drive automatically.
 11. Diagnostics correctly identifies heartbeat/controller/mapping faults without sending commands.
 12. Copy Diagnostic Report copies the displayed report.
-13. Exit sends neutral/release while link is available.
+13. Foreign MAVLink heartbeat does not switch vehicle identity.
+14. Editing/applying settings while control is active forces PC Control OFF.
+15. Override transport failure latches PC Control OFF.
+16. Exit sends repeated neutral/release attempts while link is available.
