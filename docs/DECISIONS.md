@@ -32,3 +32,11 @@
 - RC override send failure is treated as a control-path failure and latches control OFF.
 - Shutdown/fail-safe neutral/release is retried three times when a transport object remains available.
 - A fixed ESP32 target IP is preferred in the field to avoid relying on last-peer UDP reply routing.
+
+
+## 2026-10-01 — minimal diagnostics and sensitivity
+- Diagnostics is modeless and kept off the control path.
+- The live diagnostic surface is intentionally limited to four checks: Link, Controller, Mapping, Safety.
+- Live diagnostics refresh every 2 seconds from existing snapshots; no network reads, controller reads, or command sends are initiated by diagnostics.
+- Full support-report formatting is generated only on explicit Copy Report.
+- Controller sensitivity applies only to steering and uses a bounded response curve that preserves full-scale endpoints.
