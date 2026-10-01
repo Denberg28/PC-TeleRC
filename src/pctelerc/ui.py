@@ -12,6 +12,7 @@ from .calibration_dialog import CalibrationDialog
 from .config import AppSettings, load_settings, save_settings
 from .controller import WheelService
 from .core import LinkState
+from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
 
 STYLE = """
@@ -220,6 +221,10 @@ class MainWindow(QMainWindow):
         self.control_btn.setToolTip("Enable RC override only with healthy MAVLink, a fresh wheel, and neutral throttle.")
         safety.addWidget(self.control_btn)
 
+        self.diagnostics_btn = QPushButton("Diagnostics")
+        self.diagnostics_btn.setToolTip("Run read-only troubleshooting checks and copy a diagnostic report.")
+        safety.addWidget(self.diagnostics_btn)
+
         note = QLabel("Never auto-arms or auto-resumes control. Link/controller loss latches PC control OFF.")
         note.setWordWrap(True)
         safety.addWidget(note)
@@ -248,6 +253,7 @@ class MainWindow(QMainWindow):
         self.calibrate_btn.clicked.connect(self._calibrate_controller)
         self.apply_btn.clicked.connect(self._apply_settings)
         self.control_btn.clicked.connect(self._toggle_control)
+        self.diagnostics_btn.clicked.connect(self._open_diagnostics)
         self.arm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.arm))
         self.disarm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.disarm))
 
@@ -387,6 +393,17 @@ class MainWindow(QMainWindow):
             f"throttle axis {result.throttle_axis}, brake axis {result.brake_axis}. "
             "Verify the live Steer/Drive values before enabling PC control."
         )
+
+    def _open_diagnostics(self):
+        dialog = DiagnosticsDialog(
+            settings=self.settings,
+            wheel=self.wheel,
+            mav=self.mav,
+            settings_dirty=self._settings_dirty,
+            network_dirty=self._network_dirty,
+            parent=self,
+        )
+        dialog.exec()
 
     def _toggle_control(self):
         if self._settings_dirty:
