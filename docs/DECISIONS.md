@@ -22,3 +22,13 @@
 - PXN appears to SDL as a joystick/game controller.
 - ESP32-S3 bridge is bidirectional UDP MAVLink on 14550.
 - Rover uses 1500 us neutral and accepts RC overrides on configured channels.
+
+
+## 2026-10-01 — field hardening simulation
+- Runtime ARM/control decisions use the same deterministic safety module as automated workflow simulations.
+- The first accepted MAVLink vehicle system ID is locked until the MAVLink service is restarted.
+- Missing/out-of-range controller axes are safety faults, not neutral defaults.
+- Live configuration changes force PC Control OFF and require explicit manual recovery.
+- RC override send failure is treated as a control-path failure and latches control OFF.
+- Shutdown/fail-safe neutral/release is retried three times when a transport object remains available.
+- A fixed ESP32 target IP is preferred in the field to avoid relying on last-peer UDP reply routing.
