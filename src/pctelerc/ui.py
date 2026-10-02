@@ -360,10 +360,24 @@ class MainWindow(QMainWindow):
     def _apply_and_reconnect(self):
         self.mav.disable_control()
         self._persist_and_configure()
-        self.mav.stop()
+        if not self.mav.stop():
+            QApplication.beep()
+            self.message.setText(
+                "MAVLink worker did not stop cleanly. Close PC TeleRC and reopen it before reconnecting."
+            )
+            return
+
+        self.reconnect_btn.setEnabled(False)
+        self.settings_state.setText("Settings applied • restarting MAVLink…")
+        self.message.setText("Waiting for UDP socket release…")
+
+        QTimer.singleShot(250, self._restart_mavlink_after_release)
+
+    def _restart_mavlink_after_release(self):
         self.mav.configure(self.settings)
         self.mav.start()
         self._network_dirty = False
+        self.reconnect_btn.setEnabled(True)
         self.settings_state.setText("Settings applied • MAVLink restarted")
         self.message.setText("MAVLink restarted. PC control remains OFF until manually enabled.")
 
