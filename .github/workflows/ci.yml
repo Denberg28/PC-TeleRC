@@ -33,9 +33,9 @@ jobs:
       - name: Package portable onedir build
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.0a8.zip -Force
-          $hash = (Get-FileHash dist\PC-TeleRC-portable-v0.1.0a8.zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  PC-TeleRC-portable-v0.1.0a8.zip" | Set-Content -Encoding ascii dist\SHA256.txt
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.0a9.zip -Force
+          $hash = (Get-FileHash dist\PC-TeleRC-portable-v0.1.0a9.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  PC-TeleRC-portable-v0.1.0a9.zip" | Set-Content -Encoding ascii dist\SHA256.txt
 
       - name: Install Inno Setup
         shell: pwsh
@@ -58,7 +58,7 @@ jobs:
         with:
           name: PC-TeleRC-windows-x64-${{ github.sha }}
           path: |
-            dist/PC-TeleRC-portable-v0.1.0a8.zip
+            dist/PC-TeleRC-portable-v0.1.0a9.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
@@ -71,22 +71,22 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}
           generate_release_notes: true
           files: |
-            dist/PC-TeleRC-portable-v0.1.0a8.zip
+            dist/PC-TeleRC-portable-v0.1.0a9.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
 
       - name: Publish first prerelease
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a8')
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a9')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v0.1.0a8
+          tag_name: v0.1.0a9
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.0a8
+          name: PC TeleRC v0.1.0a9
           prerelease: true
-          body_path: docs/releases/v0.1.0a8.md
+          body_path: docs/releases/v0.1.0a9.md
           files: |
-            dist/PC-TeleRC-portable-v0.1.0a8.zip
+            dist/PC-TeleRC-portable-v0.1.0a9.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
