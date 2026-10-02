@@ -59,7 +59,7 @@ def build_targeted_status(
     devices = tuple(devices)
 
     if not mav.running:
-        link = _item("FAIL", "Link", "MAVLink worker stopped.")
+        link = _item("FAIL", "Link", mav.error or "MAVLink worker stopped.")
     elif mav.state == LinkState.CONNECTED:
         age = 0.0 if mav.heartbeat_age is None else mav.heartbeat_age
         link = _item("PASS", "Link", f"Connected • HB {age:.1f}s")
