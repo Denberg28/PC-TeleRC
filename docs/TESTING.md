@@ -61,3 +61,11 @@ See `docs/BUTTON_AUDIT.md`.
 - WinError 10013 must produce a targeted Windows permission/excluded-port operator message.
 - Diagnostics Link row must surface the targeted socket failure.
 - Apply & Reconnect must stop the previous worker before starting a new listener.
+
+
+## 0.1.0a8 persistent listener
+- Exactly one UDP MAVLink socket is bound per app session.
+- Target IP/port changes must not require a listener restart.
+- Listen address/port changes must require a controlled restart.
+- Duplicate start calls must be idempotent.
+- Installed onedir build must launch one normal application process.
