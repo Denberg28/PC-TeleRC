@@ -113,3 +113,17 @@ def test_targeted_status_flags_only_relevant_faults():
     assert status.controller.level == "FAIL"
     assert status.mapping.level == "FAIL"
     assert status.safety.level == "WARN"
+
+
+def test_link_diagnostic_surfaces_socket_error():
+    status = build_targeted_status(
+        settings=AppSettings(),
+        wheel=ControllerSnapshot(),
+        devices=[],
+        mav=MavlinkSnapshot(running=False, error="UDP 14550 is already in use."),
+        settings_dirty=False,
+        network_dirty=False,
+        now=100.0,
+    )
+    assert status.link.level == "FAIL"
+    assert "UDP 14550 is already in use" in status.link.detail
