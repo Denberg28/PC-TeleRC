@@ -36,7 +36,7 @@ ChangesAssociations=no
 ChangesEnvironment=no
 
 [Files]
-Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\PC-TeleRC\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\PC TeleRC"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
