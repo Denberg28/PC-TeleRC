@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
 
         self.reconnect_btn = QPushButton("Apply & Reconnect")
         self.reconnect_btn.setObjectName("Primary")
-        self.reconnect_btn.setToolTip("Save all settings, restart the MAVLink socket, and require manual PC-control re-enable.")
+        self.reconnect_btn.setToolTip("Apply network settings. The UDP listener restarts only if the listen address or port changed.")
         connection.addWidget(self.reconnect_btn)
 
         self.link_label = QLabel("No heartbeat")
@@ -360,6 +360,16 @@ class MainWindow(QMainWindow):
     def _apply_and_reconnect(self):
         self.mav.disable_control()
         self._persist_and_configure()
+
+        if not self.mav.listener_restart_required():
+            self._network_dirty = False
+            self.settings_state.setText("Network settings applied")
+            self.message.setText(
+                "ESP32 target settings applied to the existing MAVLink socket. "
+                "PC control remains OFF until manually enabled."
+            )
+            return
+
         if not self.mav.stop():
             QApplication.beep()
             self.message.setText(
@@ -368,8 +378,8 @@ class MainWindow(QMainWindow):
             return
 
         self.reconnect_btn.setEnabled(False)
-        self.settings_state.setText("Settings applied • restarting MAVLink…")
-        self.message.setText("Waiting for UDP socket release…")
+        self.settings_state.setText("Settings applied • restarting listener…")
+        self.message.setText("Restarting MAVLink listener after bind-address/port change…")
 
         QTimer.singleShot(250, self._restart_mavlink_after_release)
 
