@@ -7,7 +7,7 @@ Do not depend on the Windows app's neutral packet for Wi-Fi-loss safety. Configu
 
 ## Defaults
 - Steering RC channel 1
-- Throttle RC channel 3
+- Drive/throttle RC channel 2
 - Neutral 1500 us
 - Nominal 1000–2000 us
 - Alpha throttle authority 25% => 1375–1625 us
