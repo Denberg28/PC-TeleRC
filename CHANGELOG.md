@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a10 — 2026-10-02
+### Android-aligned rover channel mapping
+- Changed the default rover mapping from CH1 steering / CH3 throttle to CH1 steering / CH2 drive, matching Android TeleRC.
+- Added a settings schema version and one-time migration for the untouched legacy CH1/CH3 default.
+- Existing custom mappings are preserved.
+- Explicit current CH1/CH3 mappings remain valid after migration.
+- Added regression tests for default and migration behavior.
+
 ## 0.1.0a9 — 2026-10-02
 ### ESP32 bridge control compatibility
 - Fixed a bench-confirmed mismatch where pymavlink automatically switched PC TeleRC's outbound control packets to MAVLink 2 after receiving MAVLink 2 telemetry from ArduRover.
