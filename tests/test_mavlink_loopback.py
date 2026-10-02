@@ -64,7 +64,7 @@ def test_real_udp_worker_acquires_vehicle_and_stops_cleanly():
         assert snap.vehicle_component == 1
         assert snap.rx_messages >= 1
     finally:
-        service.stop()
+        assert service.stop()
         rover.close()
 
     stopped = service.snapshot()
