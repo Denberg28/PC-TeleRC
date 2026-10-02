@@ -71,7 +71,7 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') }}
           generate_release_notes: true
           files: |
-            dist/PC-TeleRC.exe
+            dist/PC-TeleRC-portable-v0.1.0a8.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
@@ -86,7 +86,7 @@ jobs:
           prerelease: true
           body_path: docs/releases/v0.1.0a8.md
           files: |
-            dist/PC-TeleRC.exe
+            dist/PC-TeleRC-portable-v0.1.0a8.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
