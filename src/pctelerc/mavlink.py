@@ -60,6 +60,7 @@ class MavlinkService:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._link = None
+        self._control_mav = None
         self._bound_host: str | None = None
         self._bound_port: int | None = None
 
@@ -172,6 +173,7 @@ class MavlinkService:
             axis_count = self._axis_count
             settings = AppSettings(**vars(self._settings)).validate()
             conn = self._link
+            control_mav = self._control_mav
         decision = can_arm(
             settings=settings,
             link_state=snap.state,
@@ -180,7 +182,7 @@ class MavlinkService:
         )
         if not decision.allowed:
             return False, decision.message
-        if conn is None:
+        if conn is None or control_mav is None:
             return False, "Vehicle link is not connected."
         return self._send_arm_command(True)
 
@@ -191,17 +193,18 @@ class MavlinkService:
         with self._lock:
             snap = self._snapshot
             conn = self._link
+            control_mav = self._control_mav
             sysid = snap.vehicle_system
             compid = snap.vehicle_component
-        if snap.state != LinkState.CONNECTED or conn is None or sysid is None:
+        if snap.state != LinkState.CONNECTED or conn is None or control_mav is None or sysid is None:
             return False, "Vehicle link is not connected."
         try:
-            from pymavlink import mavutil
+            from pymavlink.dialects.v10 import ardupilotmega as mavlink1
             with self._send_lock:
-                conn.mav.command_long_send(
+                control_mav.command_long_send(
                     sysid,
                     compid or 1,
-                    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                    mavlink1.MAV_CMD_COMPONENT_ARM_DISARM,
                     0,
                     1.0 if arm else 0.0,
                     0, 0, 0, 0, 0, 0,
@@ -259,8 +262,20 @@ class MavlinkService:
             )
             self._configure_link_target(link, settings)
 
+            # Keep receive auto-detection intact (MAVLink 1/2), but deliberately
+            # encode all bridge-facing control traffic as MAVLink 1. The ESP32
+            # command filter and Android TeleRC compatibility contract use
+            # sysid 255 / compid 190 MAVLink 1 control frames.
+            from pymavlink.dialects.v10 import ardupilotmega as mavlink1
+            control_mav = mavlink1.MAVLink(
+                link,
+                srcSystem=255,
+                srcComponent=190,
+            )
+
             with self._lock:
                 self._link = link
+                self._control_mav = control_mav
                 self._bound_host = settings.bind_host
                 self._bound_port = settings.listen_port
                 self._snapshot = MavlinkSnapshot(
@@ -312,6 +327,7 @@ class MavlinkService:
             with self._lock:
                 link = self._link
                 self._link = None
+                self._control_mav = None
                 self._bound_host = None
                 self._bound_port = None
             try:
@@ -485,14 +501,15 @@ class MavlinkService:
     def _send_gcs_heartbeat(self):
         with self._lock:
             conn = self._link
-        if conn is None or not self._has_send_destination(conn):
+            control_mav = self._control_mav
+        if conn is None or control_mav is None or not self._has_send_destination(conn):
             return
         try:
-            from pymavlink import mavutil
+            from pymavlink.dialects.v10 import ardupilotmega as mavlink1
             with self._send_lock:
-                conn.mav.heartbeat_send(
-                    mavutil.mavlink.MAV_TYPE_GCS,
-                    mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+                control_mav.heartbeat_send(
+                    mavlink1.MAV_TYPE_GCS,
+                    mavlink1.MAV_AUTOPILOT_INVALID,
                     0,
                     0,
                     mavutil.mavlink.MAV_STATE_ACTIVE,
@@ -513,12 +530,13 @@ class MavlinkService:
     def _send_override(self, steer_pwm: int, throttle_pwm: int) -> bool:
         with self._lock:
             conn = self._link
+            control_mav = self._control_mav
             snap = self._snapshot
             settings = self._settings
             sysid = snap.vehicle_system
             compid = snap.vehicle_component
 
-        if conn is None or sysid is None:
+        if conn is None or control_mav is None or sysid is None:
             return False
 
         channels = [65535] * 8
@@ -527,7 +545,7 @@ class MavlinkService:
 
         try:
             with self._send_lock:
-                conn.mav.rc_channels_override_send(
+                control_mav.rc_channels_override_send(
                     sysid,
                     compid or 1,
                     *channels,
@@ -539,7 +557,8 @@ class MavlinkService:
     def _send_neutral_then_release(self):
         with self._lock:
             conn = self._link
-        if conn is None:
+            control_mav = self._control_mav
+        if conn is None or control_mav is None:
             return
 
         for _ in range(self.RELEASE_RETRIES):
@@ -561,7 +580,7 @@ class MavlinkService:
                 channels[settings.throttle_channel - 1] = 0
 
                 with self._send_lock:
-                    conn.mav.rc_channels_override_send(
+                    control_mav.rc_channels_override_send(
                         sysid,
                         compid or 1,
                         *channels,
