@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a9 — 2026-10-02
+### ESP32 bridge control compatibility
+- Fixed a bench-confirmed mismatch where pymavlink automatically switched PC TeleRC's outbound control packets to MAVLink 2 after receiving MAVLink 2 telemetry from ArduRover.
+- PC TeleRC now keeps MAVLink 1/2 receive auto-detection but explicitly encodes bridge-facing GCS heartbeat, ARM/DISARM, RC override, neutral and release packets as MAVLink 1.
+- Preserves source system 255 / component 190 required by the TeleRC ESP32 command filter.
+- Added explicit wire-format regression tests for sparse RC override and sparse release packets.
+
 ## 0.1.0a8 — 2026-10-02
 ### MAVLink transport architecture
 - Replaced separate receive/transmit MAVLink connections with one persistent bidirectional UDP socket.
