@@ -30,11 +30,12 @@ jobs:
         run: python -m pytest -q
       - name: Build Windows executable
         run: pyinstaller --noconfirm --clean PC-TeleRC.spec
-      - name: Create portable checksum
+      - name: Package portable onedir build
         shell: pwsh
         run: |
-          $hash = (Get-FileHash dist\PC-TeleRC.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  PC-TeleRC.exe" | Set-Content -Encoding ascii dist\SHA256.txt
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.0a8.zip -Force
+          $hash = (Get-FileHash dist\PC-TeleRC-portable-v0.1.0a8.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  PC-TeleRC-portable-v0.1.0a8.zip" | Set-Content -Encoding ascii dist\SHA256.txt
 
       - name: Install Inno Setup
         shell: pwsh
@@ -57,7 +58,7 @@ jobs:
         with:
           name: PC-TeleRC-windows-x64-${{ github.sha }}
           path: |
-            dist/PC-TeleRC.exe
+            dist/PC-TeleRC-portable-v0.1.0a8.zip
             dist/SHA256.txt
             installer-dist/PC-TeleRC-Setup-*.exe
             installer-dist/SHA256-installer.txt
@@ -76,14 +77,14 @@ jobs:
             installer-dist/SHA256-installer.txt
 
       - name: Publish first prerelease
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a7')
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a8')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v0.1.0a7
+          tag_name: v0.1.0a8
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.0a7
+          name: PC TeleRC v0.1.0a8
           prerelease: true
-          body_path: docs/releases/v0.1.0a7.md
+          body_path: docs/releases/v0.1.0a8.md
           files: |
             dist/PC-TeleRC.exe
             dist/SHA256.txt
