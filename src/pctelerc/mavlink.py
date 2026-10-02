@@ -9,6 +9,7 @@ from typing import Optional
 from .config import AppSettings
 from .core import ControlFrame, LinkState, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
 from .field_safety import can_arm, can_continue_control, can_enable_control
+from .network_errors import describe_mavlink_start_error
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +63,17 @@ class MavlinkService:
         self._thread = threading.Thread(target=self._run, daemon=True, name="pctelerc-mavlink")
         self._thread.start()
 
-    def stop(self):
+    def stop(self) -> bool:
         self.disable_control()
         self._stop.set()
-        if self._thread:
-            self._thread.join(timeout=2.0)
+        thread = self._thread
+        if thread:
+            thread.join(timeout=2.0)
+            if thread.is_alive():
+                logger.error("MAVLink worker did not stop within timeout")
+                return False
+        self._thread = None
+        return True
 
     def snapshot(self) -> MavlinkSnapshot:
         with self._lock:
@@ -198,13 +205,14 @@ class MavlinkService:
                 time.sleep(0.005)
         except Exception as exc:
             with self._lock:
+                settings = AppSettings(**vars(self._settings)).validate()
                 self._control_enabled = False
                 self._snapshot = replace(
                     self._snapshot,
                     running=False,
                     state=LinkState.DISCONNECTED,
                     control_enabled=False,
-                    error=f"MAVLink worker stopped: {exc}",
+                    error=describe_mavlink_start_error(exc, settings.listen_port),
                 )
         finally:
             self._send_neutral_then_release()
