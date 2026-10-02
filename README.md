@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a8` — persistent single-socket MAVLink architecture.
+**Current version:** `0.1.0a9` — MAVLink bridge-control compatibility maintenance.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -105,3 +105,7 @@ The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev 
 PC TeleRC now keeps one bound UDP socket for the application session and uses that same socket for MAVLink receive/transmit. Changing only the ESP32 target IP/port updates the live socket without rebinding UDP 14550. The listener restarts only when the listen address or listen port actually changes.
 
 The installed build now uses PyInstaller **onedir** inside the Inno Setup installer instead of one-file extraction. This removes the normal PyInstaller parent/child process pair from the installed application and gives a cleaner field deployment.
+
+
+## Bridge control wire format
+PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing control traffic (GCS heartbeat, ARM/DISARM, RC override, neutral and release) is deliberately encoded as MAVLink 1 from system 255 / component 190 so it remains compatible with the TeleRC ESP32-S3 command filter and Android TeleRC control envelope.
