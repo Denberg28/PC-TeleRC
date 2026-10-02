@@ -229,11 +229,12 @@ class MavlinkService:
         """Configure outbound writes on the already-bound receive socket."""
         try:
             target_host = settings.target_host.strip()
-            if target_host:
-                link.destination_addr = (target_host, settings.target_port)
-                link.udp_server = False
-            else:
-                link.udp_server = True
+            with self._send_lock:
+                if target_host:
+                    link.destination_addr = (target_host, settings.target_port)
+                    link.udp_server = False
+                else:
+                    link.udp_server = True
         except Exception as exc:
             logger.warning("Could not update MAVLink UDP target: %s", exc)
 
