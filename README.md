@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a6` — full code-review and UI-consistency milestone.
+**Current version:** `0.1.0a7` — Windows UDP reliability maintenance release.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -32,7 +32,10 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - Any live configuration edit disables PC Control and requires manual re-enable.
 - 25% default throttle authority for first tests.
 - Atomic local settings at `%LOCALAPPDATA%\PC-TeleRC\settings.json`.
-- Windows CI, PyInstaller portable EXE and SHA-256 artifact.
+- Windows CI, PyInstaller portable EXE, Inno Setup installer, and SHA-256 artifacts.
+- Single-instance application guard to prevent duplicate UDP listeners.
+- Targeted Windows socket diagnostics for UDP bind errors 10048 and 10013.
+- Reconnect waits briefly for the previous UDP listener to release before rebinding.
 
 ## Database decision
 No cloud/server database is used in the control path. Configuration is local JSON. If session history is added later, local SQLite is the recommended first persistence layer.
@@ -90,3 +93,9 @@ See `AGENTS.md`, `docs/DECISIONS.md`, `docs/BUTTON_AUDIT.md`, and `docs/TESTING.
 
 ## Code-review baseline
 The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev dependency pins, `pip check`, version consistency, headless Qt UI construction, equal main-card column geometry, modeless diagnostics, unit/integration tests, and the Windows PyInstaller build.
+
+
+## Windows UDP troubleshooting
+- **WinError 10048** is shown as: UDP port already in use. Close Mission Planner, another PC TeleRC instance, MAVProxy/QGroundControl, or another MAVLink listener.
+- **WinError 10013** is shown as: Windows denied access to the UDP port. Check excluded UDP port ranges or security/network software.
+- PC TeleRC now prevents a second application instance from starting.
