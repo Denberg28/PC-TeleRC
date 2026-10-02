@@ -26,7 +26,6 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 SetupLogging=yes
-LicenseFile=..\LICENSE
 UninstallDisplayName=PC TeleRC
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
