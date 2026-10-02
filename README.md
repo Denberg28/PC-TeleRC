@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a9` — MAVLink bridge-control compatibility maintenance.
+**Current version:** `0.1.0a10` — Android-aligned CH1 steering / CH2 drive mapping.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -22,7 +22,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - Minimal, modeless read-only diagnostics with four live checks and a copyable support report.
 - Separate/combined pedal modes, steering deadzone/expo, adjustable steering sensitivity, and throttle limiting.
 - Explicit Apply Settings vs. Apply & Reconnect workflow.
-- Configurable CH1 steering / CH3 throttle defaults.
+- Configurable CH1 steering / CH2 drive defaults, matching Android TeleRC.
 - Explicit ARM/DISARM; never auto-arm.
 - 20 Hz RC override only while control is explicitly enabled.
 - 350 ms controller watchdog and 3 s heartbeat watchdog.
