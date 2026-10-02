@@ -76,14 +76,14 @@ jobs:
             installer-dist/SHA256-installer.txt
 
       - name: Publish first prerelease
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a6')
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(github.event.head_commit.message, 'publish-v0.1.0a7')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v0.1.0a6
+          tag_name: v0.1.0a7
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.0a6
+          name: PC TeleRC v0.1.0a7
           prerelease: true
-          body_path: docs/releases/v0.1.0a6.md
+          body_path: docs/releases/v0.1.0a7.md
           files: |
             dist/PC-TeleRC.exe
             dist/SHA256.txt
