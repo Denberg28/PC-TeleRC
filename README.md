@@ -2,7 +2,7 @@
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a7` — Windows UDP reliability maintenance release.
+**Current version:** `0.1.0a8` — persistent single-socket MAVLink architecture.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -99,3 +99,9 @@ The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev 
 - **WinError 10048** is shown as: UDP port already in use. Close Mission Planner, another PC TeleRC instance, MAVProxy/QGroundControl, or another MAVLink listener.
 - **WinError 10013** is shown as: Windows denied access to the UDP port. Check excluded UDP port ranges or security/network software.
 - PC TeleRC now prevents a second application instance from starting.
+
+
+## v0.1.0a8 networking architecture
+PC TeleRC now keeps one bound UDP socket for the application session and uses that same socket for MAVLink receive/transmit. Changing only the ESP32 target IP/port updates the live socket without rebinding UDP 14550. The listener restarts only when the listen address or listen port actually changes.
+
+The installed build now uses PyInstaller **onedir** inside the Inno Setup installer instead of one-file extraction. This removes the normal PyInstaller parent/child process pair from the installed application and gives a cleaner field deployment.
