@@ -3,3 +3,5 @@ PC TeleRC v0.1.0a6 first prerelease publication marker.
 This file exists only to trigger the verified CI release path.
 
 Trigger token: publish-v0.1.0a6
+
+Retry after installer dependency cleanup.
