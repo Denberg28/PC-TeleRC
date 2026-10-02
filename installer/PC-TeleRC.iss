@@ -1,5 +1,5 @@
 #define MyAppName "PC TeleRC"
-#define MyAppVersion "0.1.0a9"
+#define MyAppVersion "0.1.0a10"
 #define MyAppPublisher "Denberg28"
 #define MyAppExeName "PC-TeleRC.exe"
 
@@ -8,11 +8,11 @@ AppId={{0A14B133-FEC1-5E89-97E2-D08281951913}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-VersionInfoVersion=0.1.0.9
+VersionInfoVersion=0.1.0.10
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=PC TeleRC Windows rover control bridge
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=0.1.0.9
+VersionInfoProductVersion=0.1.0.10
 DefaultDirName={localappdata}\Programs\PC TeleRC
 DefaultGroupName=PC TeleRC
 DisableProgramGroupPage=yes
@@ -21,7 +21,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\installer-dist
-OutputBaseFilename=PC-TeleRC-Setup-v0.1.0a9
+OutputBaseFilename=PC-TeleRC-Setup-v0.1.0a10
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
