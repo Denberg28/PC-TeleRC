@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a6 — full code-review baseline: feature-contract cleanup, dependency integrity checks, UI symmetry smoke testing, and steering-gain semantics.
+0.1.0a7 — Windows UDP reliability maintenance: single-instance guard, targeted 10048/10013 diagnostics, and safer reconnect sequencing.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
