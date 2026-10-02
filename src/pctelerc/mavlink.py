@@ -512,7 +512,7 @@ class MavlinkService:
                     mavlink1.MAV_AUTOPILOT_INVALID,
                     0,
                     0,
-                    mavutil.mavlink.MAV_STATE_ACTIVE,
+                    mavlink1.MAV_STATE_ACTIVE,
                 )
             with self._lock:
                 self._snapshot = replace(
