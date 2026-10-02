@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0a7 — 2026-10-02
+### Windows UDP reliability
+- Added a process-wide single-instance lock so two PC TeleRC windows cannot compete for UDP 14550.
+- Added targeted operator messages for WinError 10048 (UDP port already in use) and WinError 10013 (Windows denied access / excluded port range).
+- Diagnostics Link status now shows the targeted socket failure directly.
+- Apply & Reconnect now waits for the previous MAVLink worker to stop and adds a short socket-release delay before rebinding.
+- MAVLink stop now reports failure if the worker thread does not terminate within the shutdown timeout.
+- Added regression tests for Windows UDP error translation and targeted diagnostics.
+
 ## 0.1.0a6 — 2026-10-01
 ### Full code review
 - Fixed a diagnostics report syntax regression introduced during the minimal-diagnostics refactor.
