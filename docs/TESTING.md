@@ -53,3 +53,11 @@ See `docs/BUTTON_AUDIT.md`.
 - Main three-card layout must retain equal column stretch/minimum widths.
 - Diagnostics must instantiate as non-modal.
 - Package version must match `pyproject.toml`.
+
+
+## 0.1.0a7 Windows UDP reliability
+- Duplicate application instance must be rejected before creating another MAVLink listener.
+- WinError 10048 must produce a targeted "UDP port already in use" operator message.
+- WinError 10013 must produce a targeted Windows permission/excluded-port operator message.
+- Diagnostics Link row must surface the targeted socket failure.
+- Apply & Reconnect must stop the previous worker before starting a new listener.
