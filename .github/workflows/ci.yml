@@ -30,17 +30,37 @@ jobs:
         run: python -m pytest -q
       - name: Build Windows executable
         run: pyinstaller --noconfirm --clean PC-TeleRC.spec
-      - name: Create checksum
+      - name: Create portable checksum
         shell: pwsh
         run: |
           $hash = (Get-FileHash dist\PC-TeleRC.exe -Algorithm SHA256).Hash.ToLower()
           "$hash  PC-TeleRC.exe" | Set-Content -Encoding ascii dist\SHA256.txt
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
+
+      - name: Create installer checksum
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem installer-dist\PC-TeleRC-Setup-*.exe | Select-Object -First 1
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($installer.Name)" | Set-Content -Encoding ascii installer-dist\SHA256-installer.txt
+
       - uses: actions/upload-artifact@v7
         with:
           name: PC-TeleRC-windows-x64-${{ github.sha }}
           path: |
             dist/PC-TeleRC.exe
             dist/SHA256.txt
+            installer-dist/PC-TeleRC-Setup-*.exe
+            installer-dist/SHA256-installer.txt
           if-no-files-found: error
           retention-days: 30
       - name: Publish tagged release
@@ -52,3 +72,5 @@ jobs:
           files: |
             dist/PC-TeleRC.exe
             dist/SHA256.txt
+            installer-dist/PC-TeleRC-Setup-*.exe
+            installer-dist/SHA256-installer.txt
