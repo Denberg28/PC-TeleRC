@@ -87,3 +87,22 @@ def test_bound_port_cannot_be_shared_by_a_second_listener():
             VehicleUDP('127.0.0.1', link.port.getsockname()[1])
     finally:
         link.close()
+
+
+def test_fixed_target_rejects_other_source_ports_before_parsing():
+    link = VehicleUDP('127.0.0.1', 0)
+    expected = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    unrelated = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    expected.bind(('127.0.0.1', 0))
+    unrelated.bind(('127.0.0.1', 0))
+    link.configure_target(*expected.getsockname())
+    try:
+        unrelated.sendto(heartbeat(99), link.port.getsockname())
+        assert read_message(link, .05) is None
+        assert link.received_peer is None
+        expected.sendto(heartbeat(42), link.port.getsockname())
+        assert read_message(link).get_srcSystem() == 42
+    finally:
+        link.close()
+        expected.close()
+        unrelated.close()

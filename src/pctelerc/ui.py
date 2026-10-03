@@ -227,6 +227,8 @@ class MainWindow(QMainWindow):
         self.throttle_channel = QSpinBox()
         self.steer_channel.setRange(1, 8)
         self.throttle_channel.setRange(1, 8)
+        self.steer_channel.setToolTip("TeleRC bridge supports channels 1–4. Channels 5–8 block ARM/PC Control.")
+        self.throttle_channel.setToolTip("TeleRC bridge supports channels 1–4. Channels 5–8 block ARM/PC Control.")
         safety_form.addRow("Throttle limit", self.throttle_limit)
         safety_form.addRow("Steering RC channel", self.steer_channel)
         safety_form.addRow("Throttle RC channel", self.throttle_channel)

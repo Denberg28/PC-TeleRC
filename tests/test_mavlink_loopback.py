@@ -158,3 +158,62 @@ def test_bridge_discovery_bootstraps_telemetry_and_refreshes_pairing():
     finally:
         service.stop()
         bridge.close()
+
+
+def test_repeated_connect_disconnect_releases_bridge_lease_and_never_resumes():
+    port = free_udp_port()
+    bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    bridge.bind(('127.0.0.1', 0))
+    bridge.settimeout(2)
+    service = MavlinkService()
+    service.configure(AppSettings(bind_host='127.0.0.1', listen_port=port,
+                                  target_host='127.0.0.1', target_port=bridge.getsockname()[1]))
+    encoder = mavutil.mavlink.MAVLink(None, srcSystem=42, srcComponent=1)
+    packet = encoder.heartbeat_encode(10, 3, 0, 0, 4).pack(encoder)
+    try:
+        for _ in range(3):
+            assert service.start()
+            data, peer = bridge.recvfrom(2048)
+            assert data == b'TELERC_DISCOVER_V1'
+            assert peer[1] == port
+            bridge.sendto(packet, peer)
+            assert wait_until(lambda: service.snapshot().state == LinkState.CONNECTED)
+            assert not service.snapshot().control_enabled
+            assert service.stop()
+            disconnects = 0
+            while disconnects < service.RELEASE_RETRIES:
+                data, source = bridge.recvfrom(2048)
+                assert source == peer
+                disconnects += data == b'TELERC_DISCONNECT_V1'
+            assert not service.snapshot().running
+            assert service.snapshot().vehicle_system is None
+            assert not service.enable_control()[0]
+    finally:
+        service.stop()
+        bridge.close()
+
+
+def test_malformed_traffic_does_not_stop_worker_or_prevent_heartbeat_recovery():
+    port = free_udp_port()
+    bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    bridge.bind(('127.0.0.1', 0))
+    service = MavlinkService()
+    service.configure(AppSettings(bind_host='127.0.0.1', listen_port=port,
+                                  target_host='127.0.0.1', target_port=bridge.getsockname()[1], heartbeat_timeout=1))
+    encoder = mavutil.mavlink.MAVLink(None, srcSystem=42, srcComponent=1)
+    packet = encoder.heartbeat_encode(10, 3, 0, 0, 4).pack(encoder)
+    try:
+        service.start()
+        assert wait_until(lambda: service.snapshot().running)
+        for _ in range(20):
+            bridge.sendto(b'TELERC_STATUS_V1,junk\x00\xff', ('127.0.0.1', port))
+        bridge.sendto(packet, ('127.0.0.1', port))
+        assert wait_until(lambda: service.snapshot().state == LinkState.CONNECTED)
+        assert wait_until(lambda: service.snapshot().state == LinkState.STALE, 2)
+        assert service.snapshot().running
+        bridge.sendto(packet, ('127.0.0.1', port))
+        assert wait_until(lambda: service.snapshot().state == LinkState.CONNECTED)
+        assert not service.snapshot().control_enabled
+    finally:
+        service.stop()
+        bridge.close()

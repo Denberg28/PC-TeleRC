@@ -52,8 +52,8 @@ class VehicleUDP(mavutil.mavudp):
             raise
         # Filter before parsing: unrelated peers cannot refresh the heartbeat or
         # inherit the outbound command stream. Fixed targets identify the bridge
-        # by IP; the first accepted autopilot heartbeat also locks its source port.
-        if self.fixed_destination and address[0] != self.fixed_destination[0]:
+        # by IP and port; dynamic routing locks the first accepted autopilot peer.
+        if self.fixed_destination and address != self.fixed_destination:
             return b""
         if self.vehicle_peer and address != self.vehicle_peer:
             return b""

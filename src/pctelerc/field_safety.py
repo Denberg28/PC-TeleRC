@@ -13,6 +13,8 @@ class SafetyDecision:
 
 
 def validate_mapping(settings: AppSettings, axis_count: int | None = None) -> SafetyDecision:
+    if settings.steering_channel > 4 or settings.throttle_channel > 4:
+        return SafetyDecision(False, "bridge_channel_unsupported", "TeleRC bridge control supports RC channels 1–4 only; channels 5–8 must remain ignored.")
     if settings.steering_channel == settings.throttle_channel:
         return SafetyDecision(False, "duplicate_rc_channel", "Steering and throttle must use different RC channels.")
     mapped = [settings.steer_axis, settings.throttle_axis]
