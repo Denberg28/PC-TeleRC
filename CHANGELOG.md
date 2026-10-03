@@ -1,4 +1,4 @@
-# Unreleased
+# 0.1.0a11 — 2026-10-03
 
 - Add explicit Disconnect and Connect/Reconnect workflows; close the old socket before applying network changes and require fresh heartbeat/input after reconnect.
 - Serialize control ticks and Disable/configuration transitions, release old channel mapping before applying edits, and stop overrides before DISARM.
@@ -11,7 +11,7 @@
 
 # Changelog
 
-## 0.1.0a10 — 2026-10-02
+## 0.1.0a11 — 2026-10-02
 ### Android-aligned rover channel mapping
 - Changed the default rover mapping from CH1 steering / CH3 throttle to CH1 steering / CH2 drive, matching Android TeleRC.
 - Added a settings schema version and one-time migration for the untouched legacy CH1/CH3 default.
