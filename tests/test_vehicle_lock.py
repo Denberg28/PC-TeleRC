@@ -53,3 +53,24 @@ def test_same_system_different_component_is_ignored():
     assert snap.vehicle_component == 1
     assert snap.last_heartbeat == 30.0
     assert snap.ignored_heartbeats == 1
+
+
+def test_generic_boat_and_nonstandard_component_autopilot_heartbeats():
+    for vehicle_type in (0, 10, 11):
+        service = MavlinkService()
+        message = FakeHeartbeat(42, 2)
+        message.type = vehicle_type
+        message.autopilot = 3
+        service._handle_message(message, 10.0)
+        assert service.snapshot().state == LinkState.CONNECTED
+        assert service.snapshot().vehicle_component == 2
+
+
+def test_gcs_and_non_autopilot_heartbeats_cannot_acquire_vehicle():
+    for vehicle_type, autopilot, system in ((6, 3, 42), (10, 8, 42), (10, 3, 255), (10, 3, 0)):
+        service = MavlinkService()
+        message = FakeHeartbeat(system)
+        message.type = vehicle_type
+        message.autopilot = autopilot
+        service._handle_message(message, 10.0)
+        assert service.snapshot().vehicle_system is None

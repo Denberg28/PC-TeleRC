@@ -129,3 +129,32 @@ def test_actual_ch1_ch2_drive_disable_disconnect_and_reconnect():
     finally:
         service.stop()
         rover.close()
+
+
+def test_bridge_discovery_bootstraps_telemetry_and_refreshes_pairing():
+    # The ESP32 sends unicast telemetry only to the client registered by discovery.
+    port = free_udp_port()
+    bridge = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    bridge.bind(('127.0.0.1', 0))
+    bridge.settimeout(2)
+    service = MavlinkService()
+    service.configure(AppSettings(bind_host='127.0.0.1', listen_port=port,
+                                  target_host='127.0.0.1', target_port=bridge.getsockname()[1]))
+    encoder = mavutil.mavlink.MAVLink(None, srcSystem=42, srcComponent=1)
+    packet = encoder.heartbeat_encode(11, 3, 0, 0, 4).pack(encoder)
+    try:
+        assert service.start()
+        for _ in range(2):
+            deadline = time.monotonic() + 2
+            while True:
+                data, peer = bridge.recvfrom(2048)
+                if data == b'TELERC_DISCOVER_V1':
+                    assert peer == ('127.0.0.1', port)
+                    bridge.sendto(packet, peer)
+                    break
+                assert time.monotonic() < deadline
+            assert wait_until(lambda: service.snapshot().state == LinkState.CONNECTED)
+        assert service.snapshot().vehicle_system == 42
+    finally:
+        service.stop()
+        bridge.close()
