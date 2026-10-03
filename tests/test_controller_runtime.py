@@ -1,3 +1,6 @@
+import pytest
+from pctelerc.config import AppSettings
+from pctelerc.core import apply_sensitivity, shape_axis, AxisConfig
 import sys
 import time
 from types import SimpleNamespace
@@ -14,7 +17,7 @@ def test_pygame_ce_controller_stays_connected_and_handles_removal(monkeypatch):
         def get_guid(self): return 'wheel-guid'
         def get_numaxes(self): return 3
         def get_numbuttons(self): return 2
-        def get_axis(self, index): return 0.0
+        def get_axis(self, index): return (.8, .6, 1)[index]
 
     devices = [Joystick()]
     events = []
@@ -31,6 +34,7 @@ def test_pygame_ce_controller_stays_connected_and_handles_removal(monkeypatch):
     )
     monkeypatch.setitem(sys.modules, 'pygame', pygame)
     service = WheelService()
+    service.configure(AppSettings(steering_sensitivity=.75, drive_sensitivity=.4))
     service.start()
     try:
         deadline = time.monotonic() + 2
@@ -38,6 +42,9 @@ def test_pygame_ce_controller_stays_connected_and_handles_removal(monkeypatch):
             time.sleep(.01)
         first = service.snapshot()
         assert first.connected, first.error
+        assert first.steering == pytest.approx(apply_sensitivity(shape_axis(.8, AxisConfig(.04, .15)), .75))
+        assert first.throttle == pytest.approx(.08)
+        assert first.frame.unscaled_throttle == pytest.approx(.2)
         time.sleep(.15)  # Exercise multiple polls after acquisition.
         next_frame = service.snapshot()
         assert next_frame.connected, next_frame.error

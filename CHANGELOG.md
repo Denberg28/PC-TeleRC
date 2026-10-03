@@ -1,3 +1,11 @@
+# 0.1.0a13 — 2026-10-03
+
+- Separate saved steering and drive sensitivity sliders (25–100%); drive gain applies before the throttle limit.
+- Retain raw pedal neutral checks so lowered drive sensitivity cannot bypass ARM/control prerequisites.
+- Add experimental external ELRS TX USB MAVLink connection (460800 baud, DTR/RTS low, bounded serial I/O, 5 Hz RC override).
+- Retain manual-enable/watchdog/identity protections and exclude TeleRC bridge ASCII from serial links.
+- Document HGLRC T ONE + GEPRC PA500 hardware verification and unresolved Pocket/PC arbitration.
+
 # 0.1.0a12 — 2026-10-03
 
 - Fix repeated wheel disconnects caused by an unavailable pygame-ce method; use instance-matched removal events.

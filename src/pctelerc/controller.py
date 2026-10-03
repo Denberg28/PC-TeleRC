@@ -208,7 +208,9 @@ class WheelService:
                     if abs(throttle) <= settings.deadzone:
                         throttle = 0.0
 
-                frame = ControlFrame(steer, throttle, now)
+                unscaled_throttle = throttle
+                throttle = apply_sensitivity(throttle, settings.drive_sensitivity)
+                frame = ControlFrame(steer, throttle, now, unscaled_throttle=unscaled_throttle)
                 with self._lock:
                     if generation != self._generation:
                         continue

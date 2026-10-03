@@ -91,3 +91,15 @@ def test_target_rejects_hostnames_and_nonunicast_addresses():
     for address in ('evil.example', '0.0.0.0', '255.255.255.255', '224.0.0.1', '127.0.0.1:80'):
         with pytest.raises(ValueError):
             AppSettings(target_host=address).validate()
+
+
+def test_drive_sensitivity_saved_independently_and_legacy_default(tmp_path):
+    path = tmp_path / 'settings.json'
+    save_settings(AppSettings(steering_sensitivity=.75, drive_sensitivity=.4), path)
+    settings = load_settings(path)
+    assert settings.drive_sensitivity == .4
+    assert settings.steering_sensitivity == .75
+    assert settings.throttle_limit == .25
+    assert AppSettings(drive_sensitivity=0).validate().drive_sensitivity == .25
+    path.write_text('{"settings_version":2,"steering_sensitivity":0.5}')
+    assert load_settings(path).drive_sensitivity == 1

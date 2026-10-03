@@ -147,13 +147,13 @@ def build_diagnostic_report(
         status.safety,
         _item("INFO", "Vehicle", f"sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • {mav.mode or '—'}"),
         _item("INFO", "Traffic", f"RX {mav.rx_messages} • TX {mav.tx_messages} • foreign HB {mav.ignored_heartbeats}"),
-        _item("INFO", "Endpoint", f"{settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}"),
+        _item("INFO", "Endpoint", settings.serial_port + " @460800 (ELRS MAVLink)" if settings.link_mode == "elrs_serial" else f"{settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}"),
         _item("INFO", "Axes", f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
-        _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
+        _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • drive {settings.drive_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
         _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),
         _item("INFO", "Field log", str(log_path())),
     ]
-    if not settings.target_host:
+    if settings.link_mode == "telerc_udp" and not settings.target_host:
         items.append(_item("WARN", "UDP peer", "Dynamic peer locks to the first accepted rover heartbeat; use a fixed ESP32 IP for field operation."))
     items.append(_item("WARN", "Transport security", "MAVLink 1 is unsigned and unencrypted; peer pinning does not authenticate a device."))
     if mav.error:

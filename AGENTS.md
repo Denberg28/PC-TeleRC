@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a12 — bridge discovery/disconnect and a11 regression corrections.
+0.1.0a13 — independent sensitivities and experimental ELRS USB MAVLink.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -32,7 +32,7 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Controller sensitivity
 - Range 25–100%; default 100%.
-- Applies only to steering after deadzone/expo shaping.
+- Steering and drive gains are separate; drive is applied before the independent throttle limit. Neutral prerequisites use unscaled drive input.
 - Acts as steering gain: lower values proportionally reduce steering authority.
 - Steering expo remains the independent nonlinear response control.
 - Throttle limit remains independent.
@@ -57,3 +57,5 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Next milestone
 Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel mapping, measured controller/Wi-Fi fail-safe timing, then lock a first tagged test release.
+
+ELRS mode is USB MAVLink only, 460800 baud, DTR/RTS low, 5 Hz PC overrides. No raw CRSF bay input or verified Pocket/PC arbitration. Named T ONE/GEPRC hardware requires physical validation.

@@ -92,3 +92,63 @@ class VehicleUDP(mavutil.mavudp):
         if message is not None:
             self.post_message(message)
         return message
+
+
+class VehicleSerial(mavutil.mavfile):
+    """Bounded USB MAVLink transport for ELRS; no implicit reopen or port scan."""
+
+    def __init__(self, port_name: str, baud: int = 460800):
+        import serial
+        # Configure control signals before opening to avoid ESP reset on Windows.
+        self.port = serial.Serial(port=None, baudrate=baud, timeout=0, write_timeout=.1)
+        self.port.dtr = False
+        self.port.rts = False
+        self.port.port = port_name
+        try:
+            self.port.open()
+            super().__init__(None, port_name, source_system=255, source_component=190, input=True)
+        except Exception:
+            self.port.close()
+            raise
+
+    @property
+    def destination(self):
+        return self.port.port if self.port.is_open else None
+
+    def configure_target(self, host, port):
+        pass  # Serial routing is established only when opening the selected port.
+
+    def lock_vehicle_peer(self):
+        pass  # One physical serial endpoint; the service locks MAVLink identity.
+
+    def recv(self, n=None):
+        return self.port.read(min(self.port.in_waiting, 4096))
+
+    def write(self, buf):
+        # Never add drive commands behind a backed-up local serial queue.
+        if self.port.out_waiting > 128:
+            raise OSError("ELRS serial output is backed up; control disabled.")
+        sent = self.port.write(buf)
+        if sent != len(buf):
+            raise OSError("Incomplete ELRS serial send.")
+        return sent
+
+    def recv_msg(self):
+        self.pre_message()
+        message = self.mav.parse_char(b"")
+        if message is None:
+            data = self.recv()
+            if data and self.first_byte:
+                self.auto_mavlink_version(data)
+            message = self.mav.parse_char(data)
+        if message is not None:
+            self.post_message(message)
+        return message
+
+    def close(self):
+        # A closed link must not replay queued commands when USB is reconnected.
+        try:
+            if self.port.is_open:
+                self.port.reset_output_buffer()
+        finally:
+            self.port.close()

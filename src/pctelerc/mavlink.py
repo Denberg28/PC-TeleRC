@@ -77,7 +77,7 @@ class MavlinkService:
             self.disable_control()
             with self._lock:
                 network_changed = any(getattr(validated, key) != getattr(self._settings, key)
-                                      for key in ("bind_host", "listen_port", "target_host", "target_port"))
+                                      for key in ("bind_host", "listen_port", "target_host", "target_port", "link_mode", "serial_port"))
                 if self._link is not None and network_changed:
                     raise ValueError("Disconnect before changing MAVLink network settings.")
         with self._lock:
@@ -288,7 +288,13 @@ class MavlinkService:
                 settings = AppSettings(**vars(self._settings)).validate()
 
             from .transport import VehicleUDP
-            link = VehicleUDP(settings.bind_host, settings.listen_port)
+            if settings.link_mode == "elrs_serial":
+                from .transport import VehicleSerial
+                if not settings.serial_port:
+                    raise ValueError("Select the ELRS module COM port before connecting.")
+                link = VehicleSerial(settings.serial_port)
+            else:
+                link = VehicleUDP(settings.bind_host, settings.listen_port)
             self._configure_link_target(link, settings)
 
             # Keep receive auto-detection intact (MAVLink 1/2), but deliberately
@@ -319,9 +325,9 @@ class MavlinkService:
                 )
 
             logger.info(
-                "MAVLink UDP listener bound to %s:%s using one shared socket",
-                settings.bind_host,
-                settings.listen_port,
+                "MAVLink link %s opened (%s)",
+                settings.link_mode,
+                settings.serial_port if settings.link_mode == "elrs_serial" else f"{settings.bind_host}:{settings.listen_port}",
             )
 
             next_hb = 0.0
@@ -343,7 +349,7 @@ class MavlinkService:
 
                 if now >= next_control:
                     self._control_tick(now)
-                    next_control = now + 1.0 / self.SEND_HZ
+                    next_control = now + 1.0 / (5.0 if settings.link_mode == "elrs_serial" else self.SEND_HZ)
 
                 time.sleep(0.005)
 
@@ -546,7 +552,7 @@ class MavlinkService:
             axis_count=axis_count,
             now=now,
         )
-        if previous_tick is not None and now - previous_tick > settings.controller_timeout:
+        if previous_tick is not None and now - previous_tick > max(settings.controller_timeout, .4 if settings.link_mode == "elrs_serial" else 0):
             decision = SafetyDecision(False, "worker_delayed", "Control worker missed its watchdog deadline.")
         if not decision.allowed:
             with self._lock:
@@ -601,7 +607,7 @@ class MavlinkService:
             with self._lock:
                 link = self._link
                 settings = self._settings
-            if link is None or self._stop.is_set():
+            if link is None or self._stop.is_set() or settings.link_mode != "telerc_udp":
                 return
             destination = link.destination or ("192.168.4.1", settings.target_port)
             try:
