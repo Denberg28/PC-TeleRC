@@ -44,7 +44,7 @@ No cloud/server database is used in the control path. Configuration is local JSO
 Use **Diagnostics** for four live field checks only: **Link, Controller, Mapping, Safety**. The window is modeless and refreshes every 2 seconds, so it does not block ARM/DISARM or PC Control. Detailed technical context is generated only when **Copy Report** is pressed.
 
 ## Controller sensitivity
-**Steering sensitivity** adjusts steering authority from 25–100%. At 100% the configured deadzone/expo curve can command full steering; lower values proportionally reduce maximum steering command. **Steering expo** remains the independent control for center-response curvature. Throttle authority remains controlled separately by **Throttle limit**.
+**Steering sensitivity** uses a horizontal slider with the percentage below the bar, like Android TeleRC, to adjust steering authority from 25–100%. At 100% the configured deadzone/expo curve can command full steering; lower values proportionally reduce maximum steering command. **Steering expo** remains the independent control for center-response curvature. Throttle authority remains controlled separately by **Throttle limit**. Moving the slider disables active PC control; click **Apply Settings**, then manually enable PC control with neutral pedals. The applied percentage is saved for the next launch.
 
 ## Safety
 The PC cannot guarantee a final neutral packet after Wi-Fi disappears. Configure ArduRover's independent GCS/telemetry fail-safe before powered testing. See `docs/ARDUPILOT.md`.

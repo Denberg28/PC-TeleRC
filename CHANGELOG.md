@@ -1,3 +1,7 @@
+# Unreleased
+
+- Replace the steering sensitivity numeric field with a TeleRC-style horizontal slider and percentage label below the bar. Preserve the 25–100% range, saved settings, and explicit apply/manual control re-enable behavior.
+
 # Changelog
 
 ## 0.1.0a10 — 2026-10-02

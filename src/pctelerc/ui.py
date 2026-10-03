@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSpinBox, QSizePolicy, QVBoxLayout, QWidget,
+    QSlider, QSpinBox, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from . import __version__
@@ -172,14 +172,27 @@ class MainWindow(QMainWindow):
         self.expo = QDoubleSpinBox()
         self.expo.setRange(0, 1)
         self.expo.setSingleStep(.05)
-        self.steering_sensitivity = QSpinBox()
+        self.steering_sensitivity = QSlider(Qt.Orientation.Horizontal)
         self.steering_sensitivity.setRange(25, 100)
-        self.steering_sensitivity.setSuffix(" %")
+        self.steering_sensitivity.setSingleStep(1)
+        self.steering_sensitivity.setPageStep(5)
+        self.steering_sensitivity.setAccessibleName("Steering sensitivity percent")
         self.steering_sensitivity.setToolTip("Scale steering authority. 100% = full steering command; lower values reduce steering gain.")
+        sensitivity_widget = QWidget()
+        sensitivity_layout = QVBoxLayout(sensitivity_widget)
+        sensitivity_layout.setContentsMargins(0, 0, 0, 0)
+        sensitivity_layout.setSpacing(4)
+        sensitivity_layout.addWidget(self.steering_sensitivity)
+        self.sensitivity_label = QLabel()
+        self.sensitivity_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        sensitivity_layout.addWidget(self.sensitivity_label)
+        self.steering_sensitivity.valueChanged.connect(
+            lambda value: self.sensitivity_label.setText(f"Steering sensitivity: {value}%")
+        )
         wheel_form.addRow("Deadzone", self.deadzone)
         wheel_form.addRow("Steering expo", self.expo)
-        wheel_form.addRow("Controller sensitivity", self.steering_sensitivity)
         wheel_layout.addLayout(wheel_form)
+        wheel_layout.addWidget(sensitivity_widget)
 
         self.apply_btn = QPushButton("Apply Settings")
         self.apply_btn.setToolTip("Save controller and safety settings without restarting the MAVLink listener.")
