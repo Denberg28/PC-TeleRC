@@ -1,6 +1,8 @@
 from __future__ import annotations
 from dataclasses import asdict, dataclass, fields
 import json, os
+import math
+from ipaddress import IPv4Address
 from pathlib import Path
 
 APP_DIR_NAME = "PC-TeleRC"
@@ -32,6 +34,28 @@ class AppSettings:
     controller_timeout: float = 0.35
 
     def validate(self) -> "AppSettings":
+        for name in ("bind_host", "target_host"):
+            value = getattr(self, name)
+            if not isinstance(value, str):
+                raise ValueError(f"{name} must be an IPv4 address.")
+            value = value.strip()
+            if name == "bind_host" and not value:
+                value = "0.0.0.0"
+            if value:
+                address = IPv4Address(value)
+                if name == "target_host" and (address.is_unspecified or address.is_multicast or value == "255.255.255.255"):
+                    raise ValueError("ESP32 target must be a unicast IPv4 address.")
+            setattr(self, name, value)
+        if not isinstance(self.wheel_guid, str):
+            raise ValueError("Controller GUID must be a string.")
+        for name in ("listen_port", "target_port", "steer_axis", "throttle_axis", "brake_axis",
+                     "deadzone", "expo", "steering_sensitivity", "throttle_limit", "steering_channel",
+                     "throttle_channel", "heartbeat_timeout", "controller_timeout"):
+            if not math.isfinite(float(getattr(self, name))):
+                raise ValueError(f"{name} must be finite.")
+        for name in ("invert_steer", "invert_throttle", "invert_brake"):
+            if not isinstance(getattr(self, name), bool):
+                raise ValueError(f"{name} must be true or false.")
         self.settings_version = CURRENT_SETTINGS_VERSION
         self.listen_port = int(min(65535, max(1, self.listen_port)))
         self.target_port = int(min(65535, max(1, self.target_port)))
@@ -86,7 +110,7 @@ def load_settings(path: Path | None = None) -> AppSettings:
         raw = _migrate_settings(json.loads(target.read_text(encoding="utf-8")))
         allowed = {f.name for f in fields(AppSettings)}
         return AppSettings(**{k: v for k, v in raw.items() if k in allowed}).validate()
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    except (OSError, ValueError, TypeError, OverflowError, json.JSONDecodeError):
         return AppSettings()
 
 
@@ -94,6 +118,6 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> Path:
     target = path or settings_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".tmp")
-    tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True), encoding="utf-8")
+    tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True, allow_nan=False), encoding="utf-8")
     tmp.replace(target)
     return target

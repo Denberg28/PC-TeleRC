@@ -93,6 +93,8 @@ def build_targeted_status(
     invalid = [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped
     if settings.steering_channel == settings.throttle_channel:
         mapping = _item("FAIL", "Mapping", "Steer/throttle share one RC channel.")
+    elif len(set(mapped)) != len(mapped):
+        mapping = _item("FAIL", "Mapping", "Steering/pedals share a controller axis.")
     elif invalid:
         mapping = _item("FAIL", "Mapping", "Mapped controller axis unavailable.")
     else:
@@ -151,6 +153,9 @@ def build_diagnostic_report(
         _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),
         _item("INFO", "Field log", str(log_path())),
     ]
+    if not settings.target_host:
+        items.append(_item("WARN", "UDP peer", "Dynamic peer locks to the first accepted rover heartbeat; use a fixed ESP32 IP for field operation."))
+    items.append(_item("WARN", "Transport security", "MAVLink 1 is unsigned and unencrypted; peer pinning does not authenticate a device."))
     if mav.error:
         items.append(_item("FAIL", "MAVLink error", mav.error))
 

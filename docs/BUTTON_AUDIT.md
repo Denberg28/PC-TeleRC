@@ -1,14 +1,16 @@
-# Button and action audit — 0.1.0a2
+# Button and action audit — reviewed 2026-10-03
 
 | UI control | Handler | Preconditions | Result / safety behavior |
 | --- | --- | --- | --- |
-| Apply & Reconnect | `_apply_and_reconnect` | none | Disables PC control, saves settings, restarts MAVLink, leaves control OFF. |
+| Apply & Connect/Reconnect | `_apply_and_reconnect` | none | Disables PC control, saves settings, restarts MAVLink, leaves control OFF. |
+| Disconnect | `_disconnect` | none | Releases owned overrides, stops heartbeats, joins worker, closes UDP; does not disarm. |
 | Use selected | `_select_controller` | detected controller | Persists exact GUID and selects only that controller. |
 | Calibrate wheel & pedals | `_calibrate_controller` | controller connected | Disables PC control if active, opens capture wizard, changes only mapping. |
 | Apply Settings | `_apply_settings` | none | Persists controller/safety settings. Network edits remain marked pending restart. |
 | ARM | `_vehicle_command(mav.arm)` | link connected, disarmed, no pending settings; MAVLink layer also requires fresh controller + neutral throttle | Sends explicit MAV_CMD_COMPONENT_ARM_DISARM arm request. |
-| DISARM | `_vehicle_command(mav.disarm)` | link connected, armed, no pending settings | Sends explicit disarm request. |
-| Diagnostics | `_open_diagnostics` | none | Opens/raises a modeless read-only four-check window; sends no ARM/DISARM/control commands and does not block the main UI. |\n| Enable PC Control | `_toggle_control` | link + controller healthy, no pending settings; MAVLink layer also checks freshness + neutral throttle | Enables 20 Hz RC override. Never automatic. |
+| DISARM | `_vehicle_command(mav.disarm)` | link connected, armed; pending edits do not block DISARM | Stops owned overrides then sends explicit disarm request. |
+| Diagnostics | `_open_diagnostics` | none | Opens/raises a modeless read-only four-check window; sends no ARM/DISARM/control commands and does not block the main UI. |
+| Enable PC Control | `_toggle_control` | link + controller healthy, no pending settings; MAVLink layer also checks freshness + neutral throttle | Enables 20 Hz RC override. Never automatic. |
 | Disable PC Control | `_toggle_control` | currently enabled | Sends neutral then releases steering/throttle override where link permits. |
 
 ## Review findings

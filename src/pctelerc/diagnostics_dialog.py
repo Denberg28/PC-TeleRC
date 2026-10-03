@@ -64,6 +64,9 @@ class DiagnosticsDialog(QDialog):
         self.copy_btn.clicked.connect(self.copy_report)
         self.close_btn.clicked.connect(self.close)
 
+        self.copy_reset_timer = QTimer(self)
+        self.copy_reset_timer.setSingleShot(True)
+        self.copy_reset_timer.timeout.connect(lambda: self.copy_btn.setText("Copy Report"))
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh_status)
         self.timer.start(2000)
@@ -102,4 +105,4 @@ class DiagnosticsDialog(QDialog):
         self._last_report = report.text
         QApplication.clipboard().setText(report.text)
         self.copy_btn.setText("Copied")
-        QTimer.singleShot(1200, lambda: self.copy_btn.setText("Copy Report") if self.copy_btn else None)
+        self.copy_reset_timer.start(1200)

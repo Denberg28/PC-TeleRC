@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
@@ -11,7 +13,8 @@ from . import __version__
 from .calibration_dialog import CalibrationDialog
 from .config import AppSettings, load_settings, save_settings
 from .controller import WheelService
-from .core import LinkState
+from .core import LinkState, control_is_fresh
+from .field_safety import can_enable_control
 from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
 
@@ -52,6 +55,10 @@ class MainWindow(QMainWindow):
         self._settings_dirty = False
         self._network_dirty = False
         self._diagnostics_window = None
+        self._active_network_settings = replace(self.settings)
+        self._wheel_generation = None
+        self._closing = False
+        self._last_command_status = ""
 
         self.wheel = WheelService()
         self.mav = MavlinkService()
@@ -115,6 +122,9 @@ class MainWindow(QMainWindow):
         self.reconnect_btn.setObjectName("Primary")
         self.reconnect_btn.setToolTip("Apply network settings. The UDP listener restarts only if the listen address or port changed.")
         connection.addWidget(self.reconnect_btn)
+        self.disconnect_btn = QPushButton("Disconnect")
+        self.disconnect_btn.setToolTip("Disable PC control, send neutral/release, stop heartbeats, and close the UDP socket.")
+        connection.addWidget(self.disconnect_btn)
 
         self.link_label = QLabel("No heartbeat")
         self.vehicle_label = QLabel("Vehicle: —")
@@ -255,7 +265,7 @@ class MainWindow(QMainWindow):
         status_card, status = card("Session status")
         self.settings_state = QLabel("Settings applied")
         self.settings_state.setObjectName("Muted")
-        self.message = QLabel("Ready")
+        self.message = QLabel("Connect the rover network and verify wheel input before enabling PC control.")
         self.message.setWordWrap(True)
         guide = QLabel("ArduRover GCS/telemetry fail-safe remains mandatory for true Wi-Fi-loss protection.")
         guide.setWordWrap(True)
@@ -270,6 +280,7 @@ class MainWindow(QMainWindow):
     def _wire_buttons_and_fields(self):
         # Button audit: every operator action has exactly one explicit handler.
         self.reconnect_btn.clicked.connect(self._apply_and_reconnect)
+        self.disconnect_btn.clicked.connect(self._disconnect)
         self.select_btn.clicked.connect(self._select_controller)
         self.calibrate_btn.clicked.connect(self._calibrate_controller)
         self.apply_btn.clicked.connect(self._apply_settings)
@@ -350,59 +361,59 @@ class MainWindow(QMainWindow):
             controller_timeout=self.settings.controller_timeout,
         ).validate()
 
-    def _persist_and_configure(self):
-        self.settings = self._settings_from_widgets()
-        save_settings(self.settings)
-        self.wheel.configure(self.settings)
-        self.mav.configure(self.settings)
+    def _persist_and_configure(self, *, apply_network=False):
+        try:
+            candidate = self._settings_from_widgets()
+            save_settings(candidate)
+        except (OSError, ValueError, TypeError) as exc:
+            QApplication.beep()
+            self.message.setText(f"Settings could not be applied: {exc}")
+            return False
+        self.settings = candidate
+        self.wheel.configure(candidate)
+        if apply_network:
+            live = candidate
+            self._active_network_settings = replace(candidate)
+        else:
+            network = self._active_network_settings
+            live = replace(candidate, bind_host=network.bind_host, listen_port=network.listen_port,
+                           target_host=network.target_host, target_port=network.target_port)
+        self.mav.configure(live)
         self._settings_dirty = False
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Settings applied")
+        return True
 
     def _apply_settings(self):
-        if self.mav.snapshot().control_enabled:
-            self.mav.disable_control()
-        network_pending = self._network_dirty
-        self._persist_and_configure()
-        self._network_dirty = network_pending
-        if network_pending:
+        self.mav.disable_control()
+        if not self._persist_and_configure():
+            return False
+        if self._network_dirty:
             self.settings_state.setText("Network settings saved — click Apply & Reconnect")
-            self.message.setText("Controller/safety settings applied. MAVLink address/port changes need Apply & Reconnect.")
+            self.message.setText("Controller settings applied. Click Apply & Reconnect to activate network changes.")
         else:
-            self.message.setText("Settings applied.")
+            self.message.setText("Settings applied. PC control remains OFF until manually enabled.")
+        return True
 
     def _apply_and_reconnect(self):
-        self.mav.disable_control()
-        self._persist_and_configure()
-
-        if not self.mav.listener_restart_required():
-            self._network_dirty = False
-            self.settings_state.setText("Network settings applied")
-            self.message.setText(
-                "ESP32 target settings applied to the existing MAVLink socket. "
-                "PC control remains OFF until manually enabled."
-            )
-            return
-
+        # Disconnect using the OLD routing/mapping before changing either one.
         if not self.mav.stop():
             QApplication.beep()
-            self.message.setText(
-                "MAVLink worker did not stop cleanly. Close PC TeleRC and reopen it before reconnecting."
-            )
+            self.message.setText("MAVLink worker did not stop cleanly. Close PC TeleRC before reconnecting.")
             return
-
-        self.reconnect_btn.setEnabled(False)
-        self.settings_state.setText("Settings applied • restarting listener…")
-        self.message.setText("Restarting MAVLink listener after bind-address/port change…")
-
-        QTimer.singleShot(250, self._restart_mavlink_after_release)
-
-    def _restart_mavlink_after_release(self):
-        self.mav.configure(self.settings)
+        if not self._persist_and_configure(apply_network=True):
+            return
+        if self._closing:
+            return
         self.mav.start()
         self._network_dirty = False
-        self.reconnect_btn.setEnabled(True)
-        self.settings_state.setText("Settings applied • MAVLink restarted")
-        self.message.setText("MAVLink restarted. PC control remains OFF until manually enabled.")
+        self.settings_state.setText("Settings applied • waiting for heartbeat")
+        self.message.setText("MAVLink listener started. Wait for a new heartbeat, then manually enable PC control.")
+
+    def _disconnect(self):
+        if not self.mav.stop():
+            self.message.setText("Disconnect did not complete. Close PC TeleRC before reconnecting.")
+            return
+        self.message.setText("Disconnected. PC control is OFF; GCS heartbeats stopped and UDP socket closed.")
 
     def _select_controller(self):
         if self.mav.snapshot().control_enabled:
@@ -413,9 +424,15 @@ class MainWindow(QMainWindow):
             QApplication.beep()
             self.message.setText("No controller is available to select.")
             return
-        self.settings.wheel_guid = guid
-        save_settings(self.settings)
+        candidate = replace(self.settings, wheel_guid=guid)
+        try:
+            save_settings(candidate)
+        except (OSError, ValueError, TypeError) as exc:
+            self.message.setText(f"Controller selection could not be saved: {exc}")
+            return
+        self.settings = candidate
         self.wheel.select(guid)
+        self.mav.set_control_frame(None)
         self.message.setText("Controller selection saved.")
 
     def _calibrate_controller(self):
@@ -442,7 +459,8 @@ class MainWindow(QMainWindow):
         self.brake_axis.setValue(result.brake_axis)
         self.invert_brake.setChecked(result.invert_brake)
         self.pedal_mode.setCurrentIndex(self.pedal_mode.findData(result.pedal_mode))
-        self._apply_settings()
+        if not self._apply_settings():
+            return
         self.message.setText(
             f"Calibration applied: steer axis {result.steer_axis}, "
             f"throttle axis {result.throttle_axis}, brake axis {result.brake_axis}. "
@@ -469,13 +487,14 @@ class MainWindow(QMainWindow):
         self._diagnostics_window.show()
 
     def _toggle_control(self):
-        if self._settings_dirty:
+        if self.mav.snapshot().control_enabled:
+            released = self.mav.disable_control()
+            self.message.setText("PC control disabled; neutral/release sent." if released else
+                                 "PC control disabled; neutral/release transmission failed. Verify vehicle failsafe.")
+            return
+        if self._settings_dirty or self._network_dirty:
             QApplication.beep()
             self.message.setText("Apply pending settings before enabling PC control.")
-            return
-        if self.mav.snapshot().control_enabled:
-            self.mav.disable_control()
-            self.message.setText("PC control disabled; neutral sent and overrides released.")
             return
         ok, message = self.mav.enable_control()
         self.message.setText(message)
@@ -483,7 +502,7 @@ class MainWindow(QMainWindow):
             QApplication.beep()
 
     def _vehicle_command(self, command, allow_dirty: bool = False):
-        if self._settings_dirty and not allow_dirty:
+        if (self._settings_dirty or self._network_dirty) and not allow_dirty:
             QApplication.beep()
             self.message.setText("Apply pending settings before ARM.")
             return
@@ -494,8 +513,13 @@ class MainWindow(QMainWindow):
 
     def _refresh(self):
         wheel = self.wheel.snapshot()
+        if self._wheel_generation is not None and wheel.generation != self._wheel_generation:
+            if self.mav.snapshot().control_enabled:
+                self.mav.disable_control()
+                self.message.setText("Controller connection changed. Verify neutral input and manually re-enable control.")
+        self._wheel_generation = wheel.generation
         mav = self.mav.snapshot()
-        self.mav.set_control_frame(wheel.frame, len(wheel.axes) if wheel.connected else None)
+        self.mav.set_control_frame(wheel.frame if wheel.connected else None, len(wheel.axes) if wheel.connected else None)
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
@@ -517,7 +541,9 @@ class MainWindow(QMainWindow):
         axes = ", ".join(f"{i}:{value:+.2f}" for i, value in enumerate(wheel.axes[:10]))
         self.raw_axes.setText("Axes: " + (axes or "—"))
 
-        if mav.state == LinkState.CONNECTED:
+        if not mav.running:
+            self.link_label.setText("Disconnected — UDP listener stopped")
+        elif mav.state == LinkState.CONNECTED:
             self.link_label.setText(f"Connected • heartbeat {(mav.heartbeat_age or 0):.1f}s ago")
         elif mav.state == LinkState.STALE:
             self.link_label.setText("Heartbeat stale — control inhibited")
@@ -547,27 +573,39 @@ class MainWindow(QMainWindow):
             self.safety_label.setStyleSheet("color:#91a0b2;")
             self.control_btn.setText("Enable PC Control")
 
+        if mav.command_status and mav.command_status != self._last_command_status:
+            self.message.setText(mav.command_status)
+        self._last_command_status = mav.command_status
         if mav.error:
             self.message.setText(mav.error)
 
-        link_ok = mav.state == LinkState.CONNECTED
-        wheel_ok = wheel.connected
-        self.global_status.setText("Ready" if link_ok and wheel_ok and not self._settings_dirty else "Setup required")
+        link_ok = mav.running and mav.state == LinkState.CONNECTED
+        wheel_ok = wheel.connected and control_is_fresh(wheel.frame, stale_after=self.settings.controller_timeout)
+        pending = self._settings_dirty or self._network_dirty
+        decision = can_enable_control(settings=self.settings, link_state=mav.state if link_ok else LinkState.DISCONNECTED,
+                                      frame=wheel.frame, axis_count=len(wheel.axes) if wheel.connected else 0)
+        ready = decision.allowed and not pending
+        self.disconnect_btn.setEnabled(mav.running)
+        self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
+        self.global_status.setText("Ready" if ready else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
-        neutral_ok = wheel.frame is not None and wheel.frame.neutral
-        self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty)
+        self.arm_btn.setEnabled(ready and not mav.armed and not mav.command_pending)
         self.disarm_btn.setEnabled(link_ok and mav.armed)
         self.control_btn.setEnabled(
-            mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty)
+            mav.control_enabled or ready
         )
 
     def closeEvent(self, event):
+        self._closing = True
         self.timer.stop()
         self.mav.disable_control()
         self.mav.stop()
         self.wheel.stop()
         if not self._settings_dirty:
-            save_settings(self.settings)
+            try:
+                save_settings(self.settings)
+            except (OSError, ValueError, TypeError):
+                pass
         event.accept()

@@ -33,7 +33,7 @@ See `docs/BUTTON_AUDIT.md`.
 4. ESP32-S3 heartbeat arrives over Wi-Fi.
 5. Apply & Reconnect restarts the listener and does not resume PC control.
 6. ARM/DISARM reaches ArduRover.
-7. CH1/CH3 overrides move intended outputs.
+7. CH1/CH2 overrides move intended outputs.
 8. Wheel unplug causes safe behavior.
 9. Wi-Fi loss triggers independent ArduRover GCS fail-safe.
 10. Reconnect does not resume drive automatically.
@@ -43,7 +43,7 @@ See `docs/BUTTON_AUDIT.md`.
 14. Editing/applying settings while control is active forces PC Control OFF.
 15. Override transport failure latches PC Control OFF.
 16. Diagnostics window remains modeless while ARM/DISARM/control buttons remain available.
-17. Sensitivity changes steering response only and preserves full steering endpoints.
+17. Sensitivity changes steering gain only; 100% retains full authority and lower values reduce maximum steering.
 18. Exit sends repeated neutral/release attempts while link is available.
 
 
@@ -63,9 +63,17 @@ See `docs/BUTTON_AUDIT.md`.
 - Apply & Reconnect must stop the previous worker before starting a new listener.
 
 
-## 0.1.0a8 persistent listener
-- Exactly one UDP MAVLink socket is bound per app session.
-- Target IP/port changes must not require a listener restart.
-- Listen address/port changes must require a controlled restart.
+## Current connection lifecycle
+- Exactly one UDP MAVLink socket is bound per connected session.
+- All network changes require explicit disconnect/reconnect; pending changes cannot reroute the live socket.
+- Disconnect closes the port and reconnect resets vehicle identity/input.
 - Duplicate start calls must be idempotent.
 - Installed onedir build must launch one normal application process.
+
+
+## 2026-10-03 review validation
+- 80 tests passed locally on Linux/Python 3.12; syntax compilation and pip check passed.
+- Real UDP CH1/CH2 output, neutral/release sequence, closed-port reuse, and reconnect tested.
+- Concurrent disable/tick, invalid frames, worker stalls, socket send failure, pending network edits, save failures, and ARM/DISARM feedback tested.
+- Multi-peer routing, multi-message datagram source integrity, and exclusive listener ownership tested.
+- Windows build/installer CI and physical hardware validation remain separate checks. See REVIEW-2026-10-03.md.

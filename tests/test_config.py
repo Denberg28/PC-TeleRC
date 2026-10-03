@@ -74,3 +74,20 @@ def test_settings_clamp_invalid_values():
 def test_sensitivity_clamps_to_safe_ui_range():
     assert AppSettings(steering_sensitivity=5).validate().steering_sensitivity == 1.0
     assert AppSettings(steering_sensitivity=0).validate().steering_sensitivity == 0.25
+
+
+def test_nonfinite_settings_are_rejected_and_corrupt_file_loads_safely(tmp_path):
+    import pytest
+    for value in (float('nan'), float('inf'), float('-inf')):
+        with pytest.raises(ValueError):
+            AppSettings(throttle_limit=value).validate()
+    path = tmp_path / 'bad.json'
+    path.write_text('{"throttle_limit": NaN}')
+    assert load_settings(path).throttle_limit == .25
+
+
+def test_target_rejects_hostnames_and_nonunicast_addresses():
+    import pytest
+    for address in ('evil.example', '0.0.0.0', '255.255.255.255', '224.0.0.1', '127.0.0.1:80'):
+        with pytest.raises(ValueError):
+            AppSettings(target_host=address).validate()

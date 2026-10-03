@@ -8,7 +8,7 @@ from typing import Optional
 
 from .config import AppSettings
 from .core import ControlFrame, LinkState, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
-from .field_safety import can_arm, can_continue_control, can_enable_control
+from .field_safety import SafetyDecision, can_arm, can_continue_control, can_enable_control
 from .network_errors import describe_mavlink_start_error
 
 logger = logging.getLogger(__name__)
@@ -33,16 +33,12 @@ class MavlinkSnapshot:
     tx_messages: int = 0
     ignored_heartbeats: int = 0
     error: str = ""
+    command_status: str = ""
+    command_pending: bool = False
 
 
 class MavlinkService:
-    """Single-socket MAVLink transport for the PC TeleRC session.
-
-    Exactly one UDP socket is bound for both receive and transmit. When a fixed
-    ESP32 target is configured the bound input socket is switched to fixed-target
-    transmit mode; otherwise pymavlink replies to the last UDP peer. This avoids
-    maintaining a second UDP socket and removes avoidable listener lifecycle races.
-    """
+    """One UDP socket and one accepted vehicle peer per operator session."""
 
     SEND_HZ = 20.0
     RELEASE_RETRIES = 3
@@ -50,13 +46,17 @@ class MavlinkService:
     def __init__(self):
         self._lock = threading.Lock()
         self._lifecycle_lock = threading.RLock()
-        self._send_lock = threading.Lock()
+        self._send_lock = threading.RLock()
         self._settings = AppSettings()
         self._snapshot = MavlinkSnapshot()
         self._control_frame: Optional[ControlFrame] = None
         self._axis_count: int | None = None
         self._control_enabled = False
         self._failsafe_latched = False
+        self._owns_override = False
+        self._last_control_tick = None
+        self._pending_arm = None
+        self._command_deadline = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._link = None
@@ -65,9 +65,25 @@ class MavlinkService:
         self._bound_port: int | None = None
 
     def configure(self, settings: AppSettings):
+        with self._send_lock:
+            return self._serialized_configure(settings)
+
+    def _serialized_configure(self, settings: AppSettings):
         validated = AppSettings(**vars(settings)).validate()
         with self._lock:
+            changed = validated != self._settings
+        if changed:
+            self.disable_control()
+            with self._lock:
+                network_changed = any(getattr(validated, key) != getattr(self._settings, key)
+                                      for key in ("bind_host", "listen_port", "target_host", "target_port"))
+                if self._link is not None and network_changed:
+                    raise ValueError("Disconnect before changing MAVLink network settings.")
+        with self._lock:
             self._settings = validated
+            if changed:
+                self._control_frame = None
+                self._axis_count = None
             link = self._link
         if link is not None:
             self._configure_link_target(link, validated)
@@ -99,9 +115,10 @@ class MavlinkService:
             return True
 
     def stop(self) -> bool:
-        self.disable_control()
         with self._lifecycle_lock:
-            self._stop.set()
+            with self._send_lock:
+                self._stop.set()
+                self.disable_control()
             thread = self._thread
             if thread:
                 thread.join(timeout=2.0)
@@ -121,6 +138,10 @@ class MavlinkService:
             self._axis_count = axis_count
 
     def enable_control(self):
+        with self._send_lock:
+            return self._serialized_enable_control()
+
+    def _serialized_enable_control(self):
         with self._lock:
             snap = self._snapshot
             frame = self._control_frame
@@ -128,7 +149,8 @@ class MavlinkService:
             settings = AppSettings(**vars(self._settings)).validate()
         decision = can_enable_control(
             settings=settings,
-            link_state=snap.state,
+            link_state=(heartbeat_link_state(snap.last_heartbeat, stale_after=settings.heartbeat_timeout)
+                        if snap.running and not self._stop.is_set() else LinkState.DISCONNECTED),
             frame=frame,
             axis_count=axis_count,
         )
@@ -137,6 +159,8 @@ class MavlinkService:
         with self._lock:
             self._failsafe_latched = False
             self._control_enabled = True
+            self._owns_override = True
+            self._last_control_tick = time.monotonic()
             self._snapshot = replace(
                 self._snapshot,
                 control_enabled=True,
@@ -151,22 +175,31 @@ class MavlinkService:
         return True, "PC control enabled."
 
     def disable_control(self):
+        with self._send_lock:
+            return self._serialized_disable_control()
+
+    def _serialized_disable_control(self):
         with self._lock:
             was_enabled = self._control_enabled
             self._control_enabled = False
-            link_available = self._link is not None
+            release_needed = self._owns_override
             self._snapshot = replace(
                 self._snapshot,
                 control_enabled=False,
                 steer_pwm=PWM_NEUTRAL,
                 throttle_pwm=PWM_NEUTRAL,
             )
-        if was_enabled or link_available:
+        if was_enabled or release_needed:
             if was_enabled:
                 logger.info("PC control disabled; issuing neutral/release")
-            self._send_neutral_then_release()
+            return self._send_neutral_then_release()
+        return True
 
     def arm(self):
+        with self._send_lock:
+            return self._serialized_arm()
+
+    def _serialized_arm(self):
         with self._lock:
             snap = self._snapshot
             frame = self._control_frame
@@ -176,7 +209,8 @@ class MavlinkService:
             control_mav = self._control_mav
         decision = can_arm(
             settings=settings,
-            link_state=snap.state,
+            link_state=(heartbeat_link_state(snap.last_heartbeat, stale_after=settings.heartbeat_timeout)
+                        if snap.running and not self._stop.is_set() else LinkState.DISCONNECTED),
             frame=frame,
             axis_count=axis_count,
         )
@@ -187,6 +221,11 @@ class MavlinkService:
         return self._send_arm_command(True)
 
     def disarm(self):
+        with self._send_lock:
+            return self._serialized_disarm()
+
+    def _serialized_disarm(self):
+        self.disable_control()
         return self._send_arm_command(False)
 
     def _send_arm_command(self, arm: bool):
@@ -196,7 +235,9 @@ class MavlinkService:
             control_mav = self._control_mav
             sysid = snap.vehicle_system
             compid = snap.vehicle_component
-        if snap.state != LinkState.CONNECTED or conn is None or control_mav is None or sysid is None:
+        if (not snap.running or self._stop.is_set()
+                or heartbeat_link_state(snap.last_heartbeat, stale_after=self._settings.heartbeat_timeout) != LinkState.CONNECTED
+                or conn is None or control_mav is None or sysid is None):
             return False, "Vehicle link is not connected."
         try:
             from pymavlink.dialects.v10 import ardupilotmega as mavlink1
@@ -210,9 +251,13 @@ class MavlinkService:
                     0, 0, 0, 0, 0, 0,
                 )
             with self._lock:
+                self._pending_arm = arm
+                self._command_deadline = time.monotonic() + 5.0
                 self._snapshot = replace(
                     self._snapshot,
                     tx_messages=self._snapshot.tx_messages + 1,
+                    command_status="Arm request sent; awaiting vehicle confirmation." if arm else "Disarm request sent; awaiting vehicle confirmation.",
+                    command_pending=True,
                 )
             return (
                 True,
@@ -229,37 +274,20 @@ class MavlinkService:
             return False, f"Could not send {'arm' if arm else 'disarm'} command: {exc}"
 
     def _configure_link_target(self, link, settings: AppSettings):
-        """Configure outbound writes on the already-bound receive socket."""
-        try:
-            target_host = settings.target_host.strip()
-            with self._send_lock:
-                if target_host:
-                    link.destination_addr = (target_host, settings.target_port)
-                    link.udp_server = False
-                else:
-                    link.udp_server = True
-        except Exception as exc:
-            logger.warning("Could not update MAVLink UDP target: %s", exc)
+        with self._send_lock:
+            link.configure_target(settings.target_host.strip(), settings.target_port)
 
     def _has_send_destination(self, link) -> bool:
-        with self._lock:
-            target_host = self._settings.target_host.strip()
-        if target_host:
-            return True
-        return getattr(link, "last_address", None) is not None
+        return link.destination is not None
 
     def _run(self):
+        link = None
         try:
-            from pymavlink import mavutil
             with self._lock:
                 settings = AppSettings(**vars(self._settings)).validate()
 
-            link = mavutil.mavlink_connection(
-                f"udpin:{settings.bind_host}:{settings.listen_port}",
-                source_system=255,
-                source_component=190,
-                autoreconnect=True,
-            )
+            from .transport import VehicleUDP
+            link = VehicleUDP(settings.bind_host, settings.listen_port)
             self._configure_link_target(link, settings)
 
             # Keep receive auto-detection intact (MAVLink 1/2), but deliberately
@@ -274,6 +302,11 @@ class MavlinkService:
             )
 
             with self._lock:
+                self._control_enabled = False
+                self._owns_override = False
+                self._last_control_tick = None
+                self._control_frame = None
+                self._axis_count = None
                 self._link = link
                 self._control_mav = control_mav
                 self._bound_host = settings.bind_host
@@ -312,9 +345,11 @@ class MavlinkService:
         except Exception as exc:
             with self._lock:
                 settings = AppSettings(**vars(self._settings)).validate()
+                self._failsafe_latched = self._failsafe_latched or self._control_enabled
                 self._control_enabled = False
                 self._snapshot = replace(
                     self._snapshot,
+                    failsafe_latched=self._failsafe_latched,
                     running=False,
                     state=LinkState.DISCONNECTED,
                     control_enabled=False,
@@ -325,7 +360,7 @@ class MavlinkService:
         finally:
             self._send_neutral_then_release()
             with self._lock:
-                link = self._link
+                link = self._link or link
                 self._link = None
                 self._control_mav = None
                 self._bound_host = None
@@ -340,8 +375,21 @@ class MavlinkService:
                 self._snapshot = replace(
                     self._snapshot,
                     running=False,
+                    state=LinkState.DISCONNECTED,
+                    last_heartbeat=None,
+                    heartbeat_age=None,
+                    vehicle_system=None,
+                    vehicle_component=None,
+                    armed=False,
                     control_enabled=False,
+                    steer_pwm=PWM_NEUTRAL,
+                    throttle_pwm=PWM_NEUTRAL,
                 )
+                self._control_frame = None
+                self._axis_count = None
+                self._pending_arm = None
+                self._command_deadline = None
+                self._snapshot = replace(self._snapshot, command_pending=False)
 
     def _handle_message(self, msg, now: float):
         typ = msg.get_type()
@@ -351,7 +399,32 @@ class MavlinkService:
                 rx_messages=self._snapshot.rx_messages + 1,
             )
 
+            if (typ == "COMMAND_ACK" and getattr(msg, "command", None) == 400
+                    and self._pending_arm is not None
+                    and msg.get_srcSystem() == snap.vehicle_system
+                    and msg.get_srcComponent() == snap.vehicle_component):
+                result = getattr(msg, "result", None)
+                if result not in (0, 5):
+                    action = "Arm" if self._pending_arm else "Disarm"
+                    snap = replace(snap, command_status=f"{action} rejected by vehicle (MAV_RESULT {result}).", command_pending=False)
+                    self._pending_arm = None
+                    self._command_deadline = None
+                else:
+                    snap = replace(snap, command_status="Command acknowledged; awaiting heartbeat confirmation.")
+
             if typ == "HEARTBEAT" and getattr(msg, "type", None) != 6:
+                valid_vehicle = (getattr(msg, "type", None) == 10
+                                 and getattr(msg, "autopilot", 3) == 3
+                                 and msg.get_srcSystem() not in (0, 255)
+                                 and msg.get_srcComponent() == 1)
+                if not valid_vehicle:
+                    self._snapshot = replace(snap, ignored_heartbeats=snap.ignored_heartbeats + 1)
+                    return
+
+            if (typ == "HEARTBEAT" and getattr(msg, "type", None) == 10
+                    and getattr(msg, "autopilot", 3) == 3
+                    and msg.get_srcSystem() not in (0, 255)
+                    and msg.get_srcComponent() == 1):
                 src_sys = msg.get_srcSystem()
                 src_comp = msg.get_srcComponent()
 
@@ -362,13 +435,6 @@ class MavlinkService:
                     self._snapshot = replace(
                         snap,
                         ignored_heartbeats=snap.ignored_heartbeats + 1,
-                    )
-                    logger.warning(
-                        "Ignored foreign MAVLink heartbeat sys=%s comp=%s; locked sys=%s comp=%s",
-                        src_sys,
-                        src_comp,
-                        snap.vehicle_system,
-                        snap.vehicle_component,
                     )
                     return
 
@@ -395,7 +461,13 @@ class MavlinkService:
                     armed=armed,
                     error="",
                 )
+                if self._pending_arm is not None and armed == self._pending_arm:
+                    snap = replace(snap, command_status="Vehicle confirmed ARMED." if armed else "Vehicle confirmed disarmed.", command_pending=False)
+                    self._pending_arm = None
+                    self._command_deadline = None
                 if first_lock:
+                    if self._link is not None:
+                        self._link.lock_vehicle_peer()
                     logger.info(
                         "Locked MAVLink vehicle identity sys=%s comp=%s",
                         src_sys,
@@ -409,6 +481,10 @@ class MavlinkService:
         with self._lock:
             settings = self._settings
             snap = self._snapshot
+            if self._command_deadline is not None and now >= self._command_deadline:
+                snap = replace(snap, command_status="Arm/disarm was not confirmed within 5 seconds. Check vehicle state.", command_pending=False)
+                self._pending_arm = None
+                self._command_deadline = None
             state = heartbeat_link_state(
                 snap.last_heartbeat,
                 now=now,
@@ -439,23 +515,36 @@ class MavlinkService:
             self._send_neutral_then_release()
 
     def _control_tick(self, now: float):
+        with self._send_lock:
+            return self._serialized_control_tick(now)
+
+    def _serialized_control_tick(self, now: float):
         with self._lock:
             settings = AppSettings(**vars(self._settings)).validate()
             frame = self._control_frame
             axis_count = self._axis_count
             enabled = self._control_enabled
             snap = self._snapshot
+            # Read time after the frame: the producer may have sampled after
+            # the worker loop started, which must not look like a future frame.
+            now = time.monotonic()
+            previous_tick = self._last_control_tick
+            if enabled:
+                self._last_control_tick = now
 
         if not enabled:
             return
 
         decision = can_continue_control(
             settings=settings,
-            link_state=snap.state,
+            link_state=(heartbeat_link_state(snap.last_heartbeat, stale_after=settings.heartbeat_timeout)
+                        if snap.running and not self._stop.is_set() else LinkState.DISCONNECTED),
             frame=frame,
             axis_count=axis_count,
             now=now,
         )
+        if previous_tick is not None and now - previous_tick > settings.controller_timeout:
+            decision = SafetyDecision(False, "worker_delayed", "Control worker missed its watchdog deadline.")
         if not decision.allowed:
             with self._lock:
                 self._control_enabled = False
@@ -464,6 +553,8 @@ class MavlinkService:
                     self._snapshot,
                     control_enabled=False,
                     failsafe_latched=True,
+                    steer_pwm=PWM_NEUTRAL,
+                    throttle_pwm=PWM_NEUTRAL,
                     error=f"Control disabled by fail-safe: {decision.message}",
                 )
             logger.error("PC control fail-safe: %s", decision.message)
@@ -494,6 +585,8 @@ class MavlinkService:
                     self._snapshot,
                     control_enabled=False,
                     failsafe_latched=True,
+                    steer_pwm=PWM_NEUTRAL,
+                    throttle_pwm=PWM_NEUTRAL,
                     error="Control disabled: RC override transmission failed.",
                 )
             self._send_neutral_then_release()
@@ -555,15 +648,23 @@ class MavlinkService:
             return False
 
     def _send_neutral_then_release(self):
+        with self._send_lock:
+            return self._serialized_send_neutral_then_release()
+
+    def _serialized_send_neutral_then_release(self):
         with self._lock:
             conn = self._link
             control_mav = self._control_mav
+            owned = self._owns_override
+        if not owned:
+            return True
         if conn is None or control_mav is None:
-            return
+            return False
 
+        delivered = False
         for _ in range(self.RELEASE_RETRIES):
             try:
-                self._send_override(PWM_NEUTRAL, PWM_NEUTRAL)
+                neutral_sent = self._send_override(PWM_NEUTRAL, PWM_NEUTRAL)
                 time.sleep(0.02)
 
                 with self._lock:
@@ -573,7 +674,7 @@ class MavlinkService:
                     compid = snap.vehicle_component
 
                 if sysid is None:
-                    return
+                    return False
 
                 channels = [65535] * 8
                 channels[settings.steering_channel - 1] = 0
@@ -585,6 +686,9 @@ class MavlinkService:
                         compid or 1,
                         *channels,
                     )
+                delivered = delivered or neutral_sent
+                with self._lock:
+                    self._snapshot = replace(self._snapshot, tx_messages=self._snapshot.tx_messages + 1 + int(neutral_sent))
                 time.sleep(0.02)
 
             except Exception as exc:
@@ -592,3 +696,10 @@ class MavlinkService:
                     "Neutral/release attempt failed: %s",
                     exc,
                 )
+
+        with self._lock:
+            if delivered:
+                self._owns_override = False
+            else:
+                self._snapshot = replace(self._snapshot, error="Neutral/release could not be sent; verify vehicle failsafe and transmitter handover.")
+        return delivered

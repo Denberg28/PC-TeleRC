@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import math
 from typing import Iterable, Sequence
 
 class CalibrationError(ValueError):
@@ -19,6 +20,8 @@ def _vectors(*samples: Sequence[float]) -> tuple[tuple[float, ...], ...]:
     if not samples:
         raise CalibrationError("No calibration samples were captured.")
     vectors=tuple(tuple(float(v) for v in sample) for sample in samples)
+    if any(not math.isfinite(v) or abs(v) > 1 for vector in vectors for v in vector):
+        raise CalibrationError("Controller samples contain invalid axis values.")
     size=len(vectors[0])
     if size==0 or any(len(v)!=size for v in vectors):
         raise CalibrationError("Controller axis samples are missing or inconsistent.")
@@ -35,6 +38,8 @@ def detect_steering(neutral: Sequence[float], left: Sequence[float], right: Sequ
     axis=_best_axis(((i,abs(r[i]-l[i])) for i in range(len(n))),minimum_span,"Steering")
     if abs(l[axis]-n[axis]) < .15 or abs(r[axis]-n[axis]) < .15:
         raise CalibrationError("Steering samples do not clearly bracket the neutral position.")
+    if (l[axis] - n[axis]) * (r[axis] - n[axis]) >= 0 or abs(n[axis]) > .15:
+        raise CalibrationError("Steering must bracket a centered neutral axis. Check driver mode and retry.")
     invert=r[axis] < l[axis]
     return axis,invert
 
@@ -43,6 +48,10 @@ def detect_pedal(neutral: Sequence[float], pressed: Sequence[float], *, excluded
     axis=_best_axis(((i,abs(p[i]-n[i])) for i in range(len(n)) if i not in excluded),minimum_delta,"Pedal")
     # Separate-pedal conversion expects released ~= +1 and pressed ~= -1.
     invert=p[axis] > n[axis]
+    released = -n[axis] if invert else n[axis]
+    pressed_value = -p[axis] if invert else p[axis]
+    if released < .85 or pressed_value > -.70:
+        raise CalibrationError("Pedal must cover the -1 to +1 axis range. Check driver mode and retry.")
     return axis,invert
 
 def detect_combined_pedal(neutral: Sequence[float], forward: Sequence[float], reverse: Sequence[float], *, excluded: set[int]|None=None, minimum_span: float=.60) -> tuple[int,bool]:
@@ -50,6 +59,8 @@ def detect_combined_pedal(neutral: Sequence[float], forward: Sequence[float], re
     axis=_best_axis(((i,abs(f[i]-r[i])) for i in range(len(n)) if i not in excluded),minimum_span,"Combined pedal")
     if abs(f[axis]-n[axis]) < .15 or abs(r[axis]-n[axis]) < .15:
         raise CalibrationError("Combined-pedal samples do not clearly bracket neutral.")
+    if (f[axis] - n[axis]) * (r[axis] - n[axis]) >= 0 or abs(n[axis]) > .15:
+        raise CalibrationError("Combined pedals must bracket a centered neutral axis. Check driver mode.")
     # Combined conversion expects forward to be positive.
     invert=f[axis] < r[axis]
     return axis,invert

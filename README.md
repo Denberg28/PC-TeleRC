@@ -13,7 +13,9 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 6. Confirm MAVLink heartbeat and neutral pedals.
 7. ARM explicitly if needed, then enable PC control.
 8. Drive. Stale controller data or heartbeat latches PC control OFF.
-9. Disable/exit sends neutral, then releases steering/throttle overrides when the link is still available.
+9. **Disable PC Control** sends neutral, then releases CH1/CH2 for transmitter handover. The telemetry connection stays open.
+10. **Disconnect** sends neutral/release if PC control owns the overrides, stops GCS heartbeats, and closes the UDP socket. Disconnect does not disarm the rover.
+11. **Apply & Connect/Reconnect** stops the old session before applying network settings and opening a new session. Wait for a fresh rover heartbeat, verify neutral pedals, and enable control manually.
 
 ## Included
 - MAVLink UDP receive/transmit with pymavlink.
@@ -35,7 +37,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - Windows CI, PyInstaller portable EXE, Inno Setup installer, and SHA-256 artifacts.
 - Single-instance application guard to prevent duplicate UDP listeners.
 - Targeted Windows socket diagnostics for UDP bind errors 10048 and 10013.
-- Reconnect waits briefly for the previous UDP listener to release before rebinding.
+- Reconnect waits for the previous worker to exit and close its UDP socket before rebinding.
 
 ## Database decision
 No cloud/server database is used in the control path. Configuration is local JSON. If session history is added later, local SQLite is the recommended first persistence layer.
@@ -64,7 +66,7 @@ python -m pctelerc
 ```powershell
 pyinstaller --noconfirm --clean PC-TeleRC.spec
 ```
-Output: `dist\PC-TeleRC.exe`.
+Output: `dist\PC-TeleRC\PC-TeleRC.exe`; ship the complete folder or installer.
 
 Every push to main runs syntax checks, unit tests and the Windows build. The resulting EXE and `SHA256.txt` are uploaded as Actions artifacts. A `v*` tag publishes a GitHub Release, so tags are reserved for deliberate release publication.
 
@@ -101,11 +103,19 @@ The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev 
 - PC TeleRC now prevents a second application instance from starting.
 
 
-## v0.1.0a8 networking architecture
-PC TeleRC now keeps one bound UDP socket for the application session and uses that same socket for MAVLink receive/transmit. Changing only the ESP32 target IP/port updates the live socket without rebinding UDP 14550. The listener restarts only when the listen address or listen port actually changes.
+## Networking architecture
+PC TeleRC keeps one bound UDP socket per connected session for receive/transmit. The first accepted ArduRover autopilot heartbeat locks the vehicle system/component and UDP source endpoint. Fixed ESP32 target IP settings filter received traffic before parsing. Dynamic routing sends only to the accepted vehicle peer and never broadcasts commands to other UDP clients. A changed bridge IP/source port requires explicit reconnect.
+
+**Apply Settings** saves controller settings while leaving pending network changes inactive. Pending network changes block ARM and control enable until **Apply & Connect/Reconnect** starts a new session. A monitor-only session does not send RC neutral/release on disconnect. Use one active controller application at a time; the bridge is not an ownership arbiter.
+
+MAVLink 1 commands remain unsigned and unencrypted. Peer pinning is traffic isolation, not cryptographic authentication. Use the private rover network and a fixed ESP32 IPv4 address. Signing would require a coordinated bridge upgrade; this review does not change the Android app or ESP32 firmware.
 
 The installed build now uses PyInstaller **onedir** inside the Inno Setup installer instead of one-file extraction. This removes the normal PyInstaller parent/child process pair from the installed application and gives a cleaner field deployment.
 
 
 ## Bridge control wire format
 PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing control traffic (GCS heartbeat, ARM/DISARM, RC override, neutral and release) is deliberately encoded as MAVLink 1 from system 255 / component 190 so it remains compatible with the TeleRC ESP32-S3 command filter and Android TeleRC control envelope.
+
+
+## Reliability review (2026-10-03)
+See [docs/REVIEW-2026-10-03.md](docs/REVIEW-2026-10-03.md) for verified defects, fixes, test evidence, compatibility boundaries, and remaining field validation.
