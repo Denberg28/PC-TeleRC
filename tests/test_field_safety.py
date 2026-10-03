@@ -73,3 +73,10 @@ def test_active_drive_still_fails_on_stale_input():
 def test_overlapping_controller_axes_fail_closed():
     result = validate_mapping(AppSettings(steer_axis=0, throttle_axis=0), axis_count=3)
     assert not result.allowed and result.code == 'duplicate_axis'
+
+
+def test_bridge_rejects_channels_that_its_command_filter_ignores():
+    from pctelerc.field_safety import validate_mapping
+    for channel in range(5, 9):
+        assert validate_mapping(AppSettings(throttle_channel=channel), 3).code == 'bridge_channel_unsupported'
+        assert validate_mapping(AppSettings(steering_channel=channel), 3).code == 'bridge_channel_unsupported'

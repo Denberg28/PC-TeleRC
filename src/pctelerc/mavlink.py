@@ -63,6 +63,7 @@ class MavlinkService:
         self._control_mav = None
         self._bound_host: str | None = None
         self._bound_port: int | None = None
+        self._bridge_discovery_sent = False
 
     def configure(self, settings: AppSettings):
         with self._send_lock:
@@ -311,6 +312,7 @@ class MavlinkService:
                 self._control_mav = control_mav
                 self._bound_host = settings.bind_host
                 self._bound_port = settings.listen_port
+                self._bridge_discovery_sent = False
                 self._snapshot = MavlinkSnapshot(
                     running=True,
                     state=LinkState.CONNECTING,
@@ -326,11 +328,14 @@ class MavlinkService:
             next_control = 0.0
             while not self._stop.is_set():
                 now = time.monotonic()
-                msg = link.recv_match(blocking=False)
-                if msg is not None:
+                # Bound receive work to one decoded message per loop, including
+                # malformed data, so noisy traffic cannot starve the watchdog.
+                msg = link.recv_msg()
+                if msg is not None and msg.get_type() != "BAD_DATA":
                     self._handle_message(msg, now)
 
                 if now >= next_hb:
+                    self._send_bridge_discovery()
                     self._send_gcs_heartbeat()
                     next_hb = now + 1.0
 
@@ -359,6 +364,7 @@ class MavlinkService:
 
         finally:
             self._send_neutral_then_release()
+            self._send_bridge_disconnect()
             with self._lock:
                 link = self._link or link
                 self._link = None
@@ -413,18 +419,15 @@ class MavlinkService:
                     snap = replace(snap, command_status="Command acknowledged; awaiting heartbeat confirmation.")
 
             if typ == "HEARTBEAT" and getattr(msg, "type", None) != 6:
-                valid_vehicle = (getattr(msg, "type", None) == 10
-                                 and getattr(msg, "autopilot", 3) == 3
-                                 and msg.get_srcSystem() not in (0, 255)
-                                 and msg.get_srcComponent() == 1)
+                valid_vehicle = (getattr(msg, "autopilot", 3) != 8
+                                 and msg.get_srcSystem() not in (0, 255))
                 if not valid_vehicle:
                     self._snapshot = replace(snap, ignored_heartbeats=snap.ignored_heartbeats + 1)
                     return
 
-            if (typ == "HEARTBEAT" and getattr(msg, "type", None) == 10
-                    and getattr(msg, "autopilot", 3) == 3
-                    and msg.get_srcSystem() not in (0, 255)
-                    and msg.get_srcComponent() == 1):
+            if (typ == "HEARTBEAT" and getattr(msg, "type", None) != 6
+                    and getattr(msg, "autopilot", 3) != 8
+                    and msg.get_srcSystem() not in (0, 255)):
                 src_sys = msg.get_srcSystem()
                 src_comp = msg.get_srcComponent()
 
@@ -590,6 +593,41 @@ class MavlinkService:
                     error="Control disabled: RC override transmission failed.",
                 )
             self._send_neutral_then_release()
+
+    def _send_bridge_discovery(self):
+        # The TeleRC bridge uses this packet to register/refresh the PC peer.
+        # GCS heartbeat alone is not a recognized pairing/keepalive packet.
+        with self._send_lock:
+            with self._lock:
+                link = self._link
+                settings = self._settings
+            if link is None or self._stop.is_set():
+                return
+            destination = link.destination or ("192.168.4.1", settings.target_port)
+            try:
+                packet = b"TELERC_DISCOVER_V1"
+                if link.port.sendto(packet, destination) == len(packet):
+                    self._bridge_discovery_sent = True
+            except OSError as exc:
+                logger.debug("Bridge discovery send failed: %s", exc)
+
+    def _send_bridge_disconnect(self):
+        # After neutral/sparse release, relinquish this session's bridge lease.
+        # Do not send handover packets when we never attempted registration.
+        with self._send_lock:
+            with self._lock:
+                link = self._link
+                settings = self._settings
+            if link is None or not self._bridge_discovery_sent:
+                return
+            destination = link.destination or ("192.168.4.1", settings.target_port)
+            for _ in range(self.RELEASE_RETRIES):
+                try:
+                    link.port.sendto(b"TELERC_DISCONNECT_V1", destination)
+                except OSError as exc:
+                    logger.debug("Bridge disconnect send failed: %s", exc)
+                time.sleep(.02)
+            self._bridge_discovery_sent = False
 
     def _send_gcs_heartbeat(self):
         with self._lock:

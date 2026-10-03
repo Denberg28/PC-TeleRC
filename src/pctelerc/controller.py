@@ -110,8 +110,12 @@ class WheelService:
         while not self._stop.is_set():
             now = time.monotonic()
             try:
-                pygame.event.get()
-                if joystick is not None and not joystick.get_attached():
+                events = pygame.event.get()
+                if joystick is not None and any(
+                    event.type == pygame.JOYDEVICEREMOVED
+                    and getattr(event, "instance_id", None) == joystick.get_instance_id()
+                    for event in events
+                ):
                     raise RuntimeError("Selected controller was disconnected.")
 
                 if now - last_scan >= 1.0:

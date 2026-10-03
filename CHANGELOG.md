@@ -1,3 +1,12 @@
+# 0.1.0a12 — 2026-10-03
+
+- Fix repeated wheel disconnects caused by an unavailable pygame-ce method; use instance-matched removal events.
+- Accept generic/boat autopilot heartbeats while preserving first vehicle identity and UDP endpoint locks.
+- Send TeleRC discovery every second from the shared socket; retry explicit bridge Disconnect after neutral/release and before closing the socket.
+- Reject wrong-port traffic for fixed targets before parsing; bound receive work so malformed traffic cannot starve the control watchdog.
+- Block ARM/PC Control for channels 5–8, which the ESP32 command filter rejects.
+- Add controller-runtime, pairing, repeated reconnect, heartbeat recovery, malformed traffic, endpoint filtering and bridge-channel tests.
+
 # 0.1.0a11 — 2026-10-03
 
 - Add explicit Disconnect and Connect/Reconnect workflows; close the old socket before applying network changes and require fresh heartbeat/input after reconnect.
@@ -11,7 +20,7 @@
 
 # Changelog
 
-## 0.1.0a11 — 2026-10-02
+## 0.1.0a10 — 2026-10-02
 ### Android-aligned rover channel mapping
 - Changed the default rover mapping from CH1 steering / CH3 throttle to CH1 steering / CH2 drive, matching Android TeleRC.
 - Added a settings schema version and one-time migration for the untouched legacy CH1/CH3 default.
