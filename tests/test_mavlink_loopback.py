@@ -6,6 +6,7 @@ from pymavlink import mavutil
 from pctelerc.config import AppSettings
 from pctelerc.core import LinkState
 from pctelerc.mavlink import MavlinkService
+from pctelerc.transport import VehicleUDP
 
 
 def free_udp_port():
@@ -47,11 +48,10 @@ def test_real_udp_worker_acquires_vehicle_and_stops_cleanly():
     )
     service.start()
 
-    rover = mavutil.mavlink_connection(
-        f"udpout:127.0.0.1:{port}",
-        source_system=42,
-        source_component=1,
-    )
+    rover = VehicleUDP("127.0.0.1", 0)
+    rover.configure_target("127.0.0.1", port)
+    rover.mav.srcSystem = 42
+    rover.mav.srcComponent = 1
     try:
         for _ in range(8):
             send_rover_heartbeat(rover)
@@ -77,7 +77,10 @@ def test_actual_ch1_ch2_drive_disable_disconnect_and_reconnect():
     port = free_udp_port()
     service = MavlinkService()
     service.configure(AppSettings(bind_host='127.0.0.1', listen_port=port, heartbeat_timeout=1))
-    rover = mavutil.mavlink_connection(f'udpout:127.0.0.1:{port}', source_system=42, source_component=1)
+    rover = VehicleUDP('127.0.0.1', 0)
+    rover.configure_target('127.0.0.1', port)
+    rover.mav.srcSystem = 42
+    rover.mav.srcComponent = 1
     def acquire():
         for _ in range(10):
             send_rover_heartbeat(rover)
