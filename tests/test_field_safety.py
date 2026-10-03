@@ -68,3 +68,8 @@ def test_active_drive_still_fails_on_stale_input():
     )
     assert not result.allowed
     assert result.code == "controller_stale"
+
+
+def test_overlapping_controller_axes_fail_closed():
+    result = validate_mapping(AppSettings(steer_axis=0, throttle_axis=0), axis_count=3)
+    assert not result.allowed and result.code == 'duplicate_axis'

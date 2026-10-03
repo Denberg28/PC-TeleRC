@@ -1,3 +1,14 @@
+# Unreleased
+
+- Add explicit Disconnect and Connect/Reconnect workflows; close the old socket before applying network changes and require fresh heartbeat/input after reconnect.
+- Serialize control ticks and Disable/configuration transitions, release old channel mapping before applying edits, and stop overrides before DISARM.
+- Restrict UDP to one accepted ArduRover peer, expose send errors, exclusively bind the Windows UDP port, and prevent monitor-only RC release.
+- Block control/ARM on pending network changes; report ARM/DISARM rejection, confirmation, and timeout.
+- Reject nonfinite settings/controller input, overlapping axes, invalid calibration ranges, and stale calibration samples; detect controller reconnect generations and delayed workers.
+- Make settings-write failures recoverable and diagnostics Copy Report timer safe on window close.
+
+- Replace the steering sensitivity numeric field with a TeleRC-style horizontal slider and percentage label below the bar. Preserve the 25–100% range, saved settings, and explicit apply/manual control re-enable behavior.
+
 # Changelog
 
 ## 0.1.0a10 — 2026-10-02

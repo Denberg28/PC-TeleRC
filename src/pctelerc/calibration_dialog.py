@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QMessageBox, QPushBu
 
 from .calibration import CalibrationError, CalibrationResult, build_calibration
 from .controller import WheelService
+from .core import control_is_fresh
 
 STEP_TEXT = {
     "neutral": "Release the wheel and pedals. Center the steering wheel, then capture neutral.",
@@ -25,6 +26,10 @@ class CalibrationDialog(QDialog):
         self.setModal(True)
         self.setMinimumWidth(520)
         self._wheel = wheel
+        initial = wheel.snapshot()
+        self._identity = (initial.guid, initial.generation)
+        self._interrupted = False
+        self._last_sample_time = None
         self._pedal_mode = pedal_mode
         self._steps = ["neutral", "left", "right"]
         self._steps += ["forward", "reverse"] if pedal_mode == "combined" else ["throttle", "brake"]
@@ -72,12 +77,17 @@ class CalibrationDialog(QDialog):
 
     def _poll(self):
         snapshot = self._wheel.snapshot()
-        if not snapshot.connected or not snapshot.axes:
+        if (snapshot.guid, snapshot.generation) != self._identity:
+            self._interrupted = True
+        if (self._interrupted or not snapshot.connected or not snapshot.axes
+                or not control_is_fresh(snapshot.frame)):
             self._samples.clear()
-            self.axes_label.setText("Controller not detected. Reconnect the wheel before continuing.")
+            self.axes_label.setText("Controller changed or input is stale. Cancel and restart calibration.")
             self.capture_btn.setEnabled(False)
             return
-        self._samples.append(snapshot.axes)
+        if snapshot.frame.timestamp != self._last_sample_time:
+            self._samples.append(snapshot.axes)
+            self._last_sample_time = snapshot.frame.timestamp
         self.capture_btn.setEnabled(True)
         self.axes_label.setText("Live axes: " + ", ".join(f"{i}:{v:+.2f}" for i, v in enumerate(snapshot.axes[:10])))
 
@@ -92,6 +102,9 @@ class CalibrationDialog(QDialog):
 
     def _capture(self):
         try:
+            self._poll()
+            if not self.capture_btn.isEnabled():
+                raise CalibrationError("Controller is unavailable. Restart calibration.")
             self._captures[self._steps[self._index]] = self._averaged_axes()
             if self._index < len(self._steps) - 1:
                 self._index += 1

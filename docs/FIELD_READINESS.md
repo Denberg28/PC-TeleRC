@@ -35,7 +35,7 @@ These cannot be proven by software simulation alone:
 2. Configure a fixed ESP32 target IP where possible.
 3. Run Diagnostics and resolve all FAIL items.
 4. Calibrate the PXN and verify live direction.
-5. Confirm CH1/CH3 mapping (or actual chosen channels) in ArduRover.
+5. Confirm CH1/CH2 mapping (or actual chosen channels) in ArduRover.
 6. Set and test ArduRover GCS failsafe independently.
 7. Enable PC Control at 25% throttle authority.
 8. Test: wheel unplug, Wi-Fi off, ESP32 power loss, app close, app forced termination, FC reboot.
@@ -44,3 +44,6 @@ These cannot be proven by software simulation alone:
 
 ## Release gate
 Do not call the module field-ready until every physical failure test above has a recorded pass/fail result and the worst-case stop behavior is acceptable for the vehicle.
+
+
+The 2026-10-03 software review adds explicit disconnect, pinned UDP peer routing, worker deadline checks, and regression tests. Physical field acceptance remains required; see REVIEW-2026-10-03.md.

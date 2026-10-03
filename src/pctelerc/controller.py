@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import math
 import threading
 import time
 from typing import Optional
@@ -38,6 +39,7 @@ class ControllerSnapshot:
     throttle: float = 0.0
     frame: Optional[ControlFrame] = None
     error: str = ""
+    generation: int = 0
 
 
 class WheelService:
@@ -47,6 +49,7 @@ class WheelService:
         self._devices: list[ControllerDevice] = []
         self._settings = AppSettings()
         self._selected_guid = ""
+        self._generation = 0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -64,12 +67,19 @@ class WheelService:
 
     def configure(self, settings: AppSettings):
         with self._lock:
-            self._settings = AppSettings(**vars(settings)).validate()
-            self._selected_guid = settings.wheel_guid
+            updated = AppSettings(**vars(settings)).validate()
+            if updated != self._settings:
+                self._generation += 1
+                self._snapshot = ControllerSnapshot(generation=self._generation)
+            self._settings = updated
+            if settings.wheel_guid:
+                self._selected_guid = settings.wheel_guid
 
     def select(self, guid: str):
         with self._lock:
             self._selected_guid = guid
+            self._generation += 1
+            self._snapshot = ControllerSnapshot(generation=self._generation)
 
     def devices(self) -> list[ControllerDevice]:
         with self._lock:
@@ -94,12 +104,15 @@ class WheelService:
 
         joystick = None
         active_guid = ""
+        active_generation = -1
         last_scan = 0.0
 
         while not self._stop.is_set():
             now = time.monotonic()
             try:
-                pygame.event.pump()
+                pygame.event.get()
+                if joystick is not None and not joystick.get_attached():
+                    raise RuntimeError("Selected controller was disconnected.")
 
                 if now - last_scan >= 1.0:
                     devices: list[ControllerDevice] = []
@@ -119,16 +132,24 @@ class WheelService:
                     with self._lock:
                         self._devices = devices
                         desired_guid = self._selected_guid
+                        generation = self._generation
 
                     if desired_guid:
                         chosen = next((device for device in devices if device.guid == desired_guid), None)
                     else:
                         chosen = devices[0] if devices else None
 
-                    if chosen and (joystick is None or chosen.guid != active_guid):
+                    if chosen and sum(device.guid == chosen.guid for device in devices) > 1:
+                        raise RuntimeError("Multiple identical controllers detected. Connect only the selected wheel.")
+                    if chosen and (joystick is None or chosen.guid != active_guid or generation != active_generation):
                         joystick = pygame.joystick.Joystick(chosen.index)
                         joystick.init()
                         active_guid = chosen.guid
+                        with self._lock:
+                            if not self._selected_guid:
+                                self._selected_guid = chosen.guid
+                            self._generation += 1
+                            active_generation = self._generation
                     elif not chosen:
                         joystick = None
                         active_guid = ""
@@ -139,13 +160,23 @@ class WheelService:
                     with self._lock:
                         selected = self._selected_guid
                         message = "Selected controller is not connected." if selected else ""
-                        self._snapshot = ControllerSnapshot(error=message)
+                        if self._snapshot.connected:
+                            self._generation += 1
+                        self._snapshot = ControllerSnapshot(error=message, generation=self._generation)
                     time.sleep(0.05)
                     continue
 
                 axes = tuple(float(joystick.get_axis(i)) for i in range(joystick.get_numaxes()))
+                if not all(math.isfinite(v) and -1 <= v <= 1 for v in axes):
+                    raise ValueError("Invalid controller axis reading.")
                 with self._lock:
                     settings = AppSettings(**vars(self._settings)).validate()
+                    generation = self._generation
+                    desired_guid = self._selected_guid
+                if active_guid != desired_guid or active_generation != generation:
+                    last_scan = 0.0
+                    self._stop.wait(.02)
+                    continue
 
                 steer_raw = axes[settings.steer_axis] if settings.steer_axis < len(axes) else 0.0
                 steer = shape_axis(
@@ -175,6 +206,8 @@ class WheelService:
 
                 frame = ControlFrame(steer, throttle, now)
                 with self._lock:
+                    if generation != self._generation:
+                        continue
                     self._snapshot = ControllerSnapshot(
                         connected=True,
                         name=joystick.get_name(),
@@ -183,16 +216,20 @@ class WheelService:
                         steering=steer,
                         throttle=throttle,
                         frame=frame,
+                        generation=self._generation,
                     )
 
             except Exception as exc:
                 joystick = None
                 active_guid = ""
                 with self._lock:
-                    self._snapshot = ControllerSnapshot(error=f"Controller read error: {exc}")
+                    self._generation += 1
+                    self._snapshot = ControllerSnapshot(error=f"Controller read error: {exc}", generation=self._generation)
 
             time.sleep(0.02)
 
+        with self._lock:
+            self._snapshot = ControllerSnapshot(generation=self._generation)
         try:
             pygame.joystick.quit()
             pygame.display.quit()

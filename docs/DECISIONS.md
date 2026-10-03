@@ -47,3 +47,13 @@
 - The main three operator cards use equal grid stretch and minimum widths for deterministic horizontal symmetry.
 - Safety label state colors are applied explicitly because changing Qt objectName at runtime does not guarantee immediate stylesheet repolish.
 - CI includes dependency integrity, headless UI construction, feature-contract tests, version consistency, and Windows packaging.
+
+
+## 2026-10-03 — connection, safety, and security review
+- Current defaults are CH1 steering / CH2 drive. Steering sensitivity is proportional gain (25–100%), reducing authority below 100%; earlier endpoint-preserving language is superseded.
+- Disconnect stops heartbeats and closes the single UDP socket; all network changes require explicit reconnect.
+- One accepted ArduRover autopilot peer is pinned; dynamic commands never fan out to other clients. MAVLink 1 remains unsigned for bridge compatibility.
+- Complete control ticks and transitions share a send lock; monitor-only sessions never send RC release.
+- A worker deadline miss or controller connection generation change requires manual recovery, even if new input is fresh.
+- ARM/DISARM must show vehicle rejection, timeout, or heartbeat confirmation; DISARM disables overrides first.
+- See REVIEW-2026-10-03.md for evidence and unresolved hardware/security limits.

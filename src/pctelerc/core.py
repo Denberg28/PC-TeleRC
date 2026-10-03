@@ -32,6 +32,8 @@ def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 def shape_axis(raw: float, config: AxisConfig) -> float:
+    if not math.isfinite(float(raw)):
+        raise ValueError("Controller axis is not finite.")
     value = clamp(float(raw), -1.0, 1.0)
     if config.invert:
         value = -value
@@ -45,6 +47,8 @@ def shape_axis(raw: float, config: AxisConfig) -> float:
     return math.copysign(curved, value)
 
 def separate_pedals_to_throttle(throttle_axis: float, brake_axis: float, *, throttle_invert: bool = False, brake_invert: bool = False) -> float:
+    if not all(math.isfinite(float(v)) for v in (throttle_axis, brake_axis)):
+        raise ValueError("Pedal axis is not finite.")
     t = clamp(float(throttle_axis), -1.0, 1.0)
     b = clamp(float(brake_axis), -1.0, 1.0)
     if throttle_invert: t = -t
@@ -77,4 +81,8 @@ def control_is_fresh(frame: ControlFrame | None, *, now: float | None = None, st
     if frame is None:
         return False
     now = time.monotonic() if now is None else now
-    return now - frame.timestamp <= stale_after
+    if not all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp, now)):
+        return False
+    if abs(frame.steering) > 1 or abs(frame.throttle) > 1:
+        return False
+    return 0 <= now - frame.timestamp <= stale_after

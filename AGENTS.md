@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a8 — persistent single-socket MAVLink transport + onedir Windows field packaging.
+0.1.0a10 baseline + unreleased 2026-10-03 sensitivity/connection/safety review.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -38,11 +38,15 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 - Throttle limit remains independent.
 
 ## Field-hardening rules
-- First accepted vehicle system ID is locked for the session; foreign heartbeat sources are ignored.
+- First accepted ArduRover autopilot heartbeat locks system/component and UDP source endpoint. Other peers are rejected before parsing. Network changes require disconnect/reconnect.
 - Invalid calibrated axis indices fail closed.
 - Any configuration/controller edit disables PC Control immediately.
 - Override transmission failure latches PC Control OFF.
-- Neutral/release is retried while transport remains available.
+- Neutral/release is retried when PC control owns the overrides. Monitor-only disconnect must not interrupt another controller.
+- Disconnect stops GCS heartbeat and closes UDP; it does not disarm. Reconnect must wait for new heartbeat and fresh input.
+- Preserve the send-lock serialization around tick/disable/configuration transitions; no drive write may occur after completed disable.
+- Control-worker deadline misses must latch OFF even if newly sampled input is fresh.
+- ARM/DISARM reports rejection, timeout, or heartbeat confirmation without automatic retry.
 - A fixed ESP32 target IP is preferred for field deployment; dynamic UDP reply routing is diagnostic WARN.
 
 ## Known limitations

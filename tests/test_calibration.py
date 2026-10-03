@@ -38,3 +38,19 @@ def test_combined_pedal_calibration():
 def test_small_steering_motion_is_rejected():
     with pytest.raises(CalibrationError):
         detect_steering((0.0,0.0),(-.1,0.0),(.1,0.0))
+
+
+def test_samples_on_same_side_of_neutral_are_rejected():
+    with pytest.raises(CalibrationError):
+        detect_steering((0,), (.2,), (.9,))
+
+
+def test_nonfinite_calibration_is_rejected():
+    with pytest.raises(CalibrationError):
+        detect_steering((0,), (float('nan'),), (1,))
+
+
+def test_unsupported_pedal_range_cannot_silently_map_to_half_throttle():
+    from pctelerc.calibration import detect_pedal
+    with pytest.raises(CalibrationError, match='axis range'):
+        detect_pedal((0,), (1,))

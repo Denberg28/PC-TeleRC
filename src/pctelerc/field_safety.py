@@ -15,10 +15,12 @@ class SafetyDecision:
 def validate_mapping(settings: AppSettings, axis_count: int | None = None) -> SafetyDecision:
     if settings.steering_channel == settings.throttle_channel:
         return SafetyDecision(False, "duplicate_rc_channel", "Steering and throttle must use different RC channels.")
+    mapped = [settings.steer_axis, settings.throttle_axis]
+    if settings.pedal_mode == "separate":
+        mapped.append(settings.brake_axis)
+    if len(set(mapped)) != len(mapped):
+        return SafetyDecision(False, "duplicate_axis", "Steering and pedals must use separate controller axes.")
     if axis_count is not None:
-        mapped = [settings.steer_axis, settings.throttle_axis]
-        if settings.pedal_mode == "separate":
-            mapped.append(settings.brake_axis)
         invalid = [axis for axis in mapped if axis < 0 or axis >= axis_count]
         if invalid:
             return SafetyDecision(False, "axis_out_of_range", f"Mapped controller axis is unavailable: {invalid}.")
@@ -38,6 +40,8 @@ def can_enable_control(
         return mapping
     if link_state != LinkState.CONNECTED:
         return SafetyDecision(False, "link_unhealthy", "MAVLink heartbeat is not healthy.")
+    if axis_count is None:
+        return SafetyDecision(False, "axis_unavailable", "Controller axis information is unavailable.")
     if not control_is_fresh(frame, now=now, stale_after=settings.controller_timeout):
         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
     if frame is None or not frame.neutral:
@@ -78,6 +82,8 @@ def can_continue_control(
         return mapping
     if link_state != LinkState.CONNECTED:
         return SafetyDecision(False, "link_unhealthy", "MAVLink heartbeat is not healthy.")
+    if axis_count is None:
+        return SafetyDecision(False, "axis_unavailable", "Controller axis information is unavailable.")
     if not control_is_fresh(frame, now=now, stale_after=settings.controller_timeout):
         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
     return SafetyDecision(True, "ok", "Active PC control prerequisites satisfied.")
