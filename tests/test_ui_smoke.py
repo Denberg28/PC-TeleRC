@@ -137,3 +137,27 @@ def test_disconnect_stops_transport_without_arming_or_enabling(monkeypatch):
     finally:
         window.close()
         app.processEvents()
+
+
+def test_independent_drive_and_steering_sliders_save_and_elrs_route_stays_pending(monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    window = review_window(monkeypatch)
+    try:
+        window.steering_sensitivity.setValue(75)
+        window.drive_sensitivity.setValue(40)
+        assert window._apply_settings()
+        assert window.settings.steering_sensitivity == .75
+        assert window.settings.drive_sensitivity == .4
+        assert window.settings.throttle_limit == .25
+        assert window.drive_sensitivity_label.text() == 'Drive sensitivity: 40%'
+        window.link_mode.setCurrentIndex(window.link_mode.findData('elrs_serial'))
+        window.serial_port.setText('COM5')
+        assert window._apply_settings()
+        assert window._network_dirty
+        assert window.mav._settings.link_mode == 'telerc_udp'
+        window._apply_and_reconnect()
+        assert window.mav._settings.link_mode == 'elrs_serial'
+        assert window.mav._settings.serial_port == 'COM5'
+    finally:
+        window.close()
+        app.processEvents()

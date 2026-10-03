@@ -12,6 +12,8 @@ CURRENT_SETTINGS_VERSION = 2
 @dataclass
 class AppSettings:
     settings_version: int = CURRENT_SETTINGS_VERSION
+    link_mode: str = "telerc_udp"
+    serial_port: str = ""
     bind_host: str = "0.0.0.0"
     listen_port: int = 14550
     target_host: str = ""
@@ -27,6 +29,7 @@ class AppSettings:
     deadzone: float = 0.04
     expo: float = 0.15
     steering_sensitivity: float = 1.0
+    drive_sensitivity: float = 1.0
     throttle_limit: float = 0.25
     steering_channel: int = 1
     throttle_channel: int = 2
@@ -34,6 +37,11 @@ class AppSettings:
     controller_timeout: float = 0.35
 
     def validate(self) -> "AppSettings":
+        if self.link_mode not in ("telerc_udp", "elrs_serial"):
+            raise ValueError("Select TeleRC UDP or ELRS USB MAVLink.")
+        if not isinstance(self.serial_port, str) or any(ord(c) < 32 for c in self.serial_port):
+            raise ValueError("Serial port must be a plain device name.")
+        self.serial_port = self.serial_port.strip()
         for name in ("bind_host", "target_host"):
             value = getattr(self, name)
             if not isinstance(value, str):
@@ -49,7 +57,7 @@ class AppSettings:
         if not isinstance(self.wheel_guid, str):
             raise ValueError("Controller GUID must be a string.")
         for name in ("listen_port", "target_port", "steer_axis", "throttle_axis", "brake_axis",
-                     "deadzone", "expo", "steering_sensitivity", "throttle_limit", "steering_channel",
+                     "deadzone", "expo", "steering_sensitivity", "drive_sensitivity", "throttle_limit", "steering_channel",
                      "throttle_channel", "heartbeat_timeout", "controller_timeout"):
             if not math.isfinite(float(getattr(self, name))):
                 raise ValueError(f"{name} must be finite.")
@@ -65,6 +73,7 @@ class AppSettings:
         self.deadzone = min(0.30, max(0.0, float(self.deadzone)))
         self.expo = min(1.0, max(0.0, float(self.expo)))
         self.steering_sensitivity = min(1.0, max(0.25, float(self.steering_sensitivity)))
+        self.drive_sensitivity = min(1.0, max(0.25, float(self.drive_sensitivity)))
         self.throttle_limit = min(1.0, max(0.05, float(self.throttle_limit)))
         self.steering_channel = min(8, max(1, int(self.steering_channel)))
         self.throttle_channel = min(8, max(1, int(self.throttle_channel)))

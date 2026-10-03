@@ -80,3 +80,13 @@ def test_bridge_rejects_channels_that_its_command_filter_ignores():
     for channel in range(5, 9):
         assert validate_mapping(AppSettings(throttle_channel=channel), 3).code == 'bridge_channel_unsupported'
         assert validate_mapping(AppSettings(steering_channel=channel), 3).code == 'bridge_channel_unsupported'
+
+
+def test_low_drive_gain_does_not_hide_pressed_pedal_during_enable_or_arm():
+    from pctelerc.core import ControlFrame, LinkState
+    from pctelerc.field_safety import can_enable_control, can_arm
+    frame = ControlFrame(0, .04, 10, unscaled_throttle=.16)
+    kwargs = dict(settings=AppSettings(drive_sensitivity=.25), link_state=LinkState.CONNECTED,
+                  frame=frame, axis_count=3, now=10)
+    assert can_enable_control(**kwargs).code == 'throttle_not_neutral'
+    assert can_arm(**kwargs).code == 'throttle_not_neutral'

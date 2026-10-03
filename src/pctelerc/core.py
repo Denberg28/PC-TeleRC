@@ -24,9 +24,10 @@ class ControlFrame:
     steering: float
     throttle: float
     timestamp: float
+    unscaled_throttle: float | None = None
     @property
     def neutral(self) -> bool:
-        return abs(self.throttle) <= 0.05
+        return abs(self.throttle if self.unscaled_throttle is None else self.unscaled_throttle) <= 0.05
 
 def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
@@ -82,6 +83,8 @@ def control_is_fresh(frame: ControlFrame | None, *, now: float | None = None, st
         return False
     now = time.monotonic() if now is None else now
     if not all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp, now)):
+        return False
+    if frame.unscaled_throttle is not None and (not math.isfinite(frame.unscaled_throttle) or abs(frame.unscaled_throttle) > 1):
         return False
     if abs(frame.steering) > 1 or abs(frame.throttle) > 1:
         return False

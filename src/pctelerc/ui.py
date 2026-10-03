@@ -103,8 +103,16 @@ class MainWindow(QMainWindow):
             grid.setColumnMinimumWidth(column, 330)
         main.addLayout(grid, 1)
 
-        connection_card, connection = card("1. MAVLink / ESP32-S3")
+        connection_card, connection = card("1. Rover connection")
         form = QFormLayout()
+        self.link_mode = QComboBox()
+        self.link_mode.addItem("TeleRC ESP32 · Wi-Fi", "telerc_udp")
+        self.link_mode.addItem("ELRS external TX · USB MAVLink (experimental)", "elrs_serial")
+        self.serial_port = QLineEdit()
+        self.serial_port.setPlaceholderText("ELRS module COM port, e.g. COM5")
+        self.serial_port.setToolTip("Requires USB MAVLink firmware and compatible receiver; fixed 460800 baud, DTR/RTS low. Not raw CRSF module-bay input.")
+        form.addRow("Connection", self.link_mode)
+        form.addRow("ELRS COM port", self.serial_port)
         self.bind_host = QLineEdit()
         self.listen_port = QSpinBox()
         self.listen_port.setRange(1, 65535)
@@ -117,6 +125,10 @@ class MainWindow(QMainWindow):
         form.addRow("ESP32 target IP", self.target_host)
         form.addRow("Target port", self.target_port)
         connection.addLayout(form)
+        self.link_mode.currentIndexChanged.connect(self._update_link_fields)
+        self.connection_hint = QLabel("ELRS USB requires a MAVLink-capable TX/receiver. HGLRC T ONE USB compatibility is unverified; a module-bay CRSF adapter is not supported.")
+        self.connection_hint.setWordWrap(True)
+        connection.addWidget(self.connection_hint)
 
         self.reconnect_btn = QPushButton("Apply & Reconnect")
         self.reconnect_btn.setObjectName("Primary")
@@ -203,6 +215,24 @@ class MainWindow(QMainWindow):
         wheel_form.addRow("Steering expo", self.expo)
         wheel_layout.addLayout(wheel_form)
         wheel_layout.addWidget(sensitivity_widget)
+        self.drive_sensitivity = QSlider(Qt.Orientation.Horizontal)
+        self.drive_sensitivity.setRange(25, 100)
+        self.drive_sensitivity.setSingleStep(1)
+        self.drive_sensitivity.setPageStep(5)
+        self.drive_sensitivity.setAccessibleName("Drive sensitivity percent")
+        self.drive_sensitivity.setToolTip("Scale forward/reverse drive input independently of steering. The throttle limit still applies.")
+        drive_widget = QWidget()
+        drive_layout = QVBoxLayout(drive_widget)
+        drive_layout.setContentsMargins(0, 0, 0, 0)
+        drive_layout.setSpacing(4)
+        drive_layout.addWidget(self.drive_sensitivity)
+        self.drive_sensitivity_label = QLabel()
+        self.drive_sensitivity_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        drive_layout.addWidget(self.drive_sensitivity_label)
+        self.drive_sensitivity.valueChanged.connect(
+            lambda value: self.drive_sensitivity_label.setText(f"Drive sensitivity: {value}%")
+        )
+        wheel_layout.addWidget(drive_widget)
 
         self.apply_btn = QPushButton("Apply Settings")
         self.apply_btn.setToolTip("Save controller and safety settings without restarting the MAVLink listener.")
@@ -294,12 +324,12 @@ class MainWindow(QMainWindow):
         non_network = (
             self.pedal_mode, self.steer_axis, self.throttle_axis, self.brake_axis,
             self.invert_steer, self.invert_throttle, self.invert_brake,
-            self.deadzone, self.expo, self.steering_sensitivity, self.throttle_limit,
+            self.deadzone, self.expo, self.steering_sensitivity, self.drive_sensitivity, self.throttle_limit,
             self.steer_channel, self.throttle_channel,
         )
         for widget in non_network:
             self._connect_change(widget, network=False)
-        for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
+        for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port, self.link_mode, self.serial_port):
             self._connect_change(widget, network=True)
 
     def _connect_change(self, widget, *, network: bool):
@@ -319,6 +349,9 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_to_widgets(self):
         s = self.settings
+        self.link_mode.setCurrentIndex(self.link_mode.findData(s.link_mode))
+        self.serial_port.setText(s.serial_port)
+        self._update_link_fields()
         self.bind_host.setText(s.bind_host)
         self.listen_port.setValue(s.listen_port)
         self.target_host.setText(s.target_host)
@@ -333,14 +366,23 @@ class MainWindow(QMainWindow):
         self.deadzone.setValue(s.deadzone)
         self.expo.setValue(s.expo)
         self.steering_sensitivity.setValue(round(s.steering_sensitivity * 100))
+        self.drive_sensitivity.setValue(round(s.drive_sensitivity * 100))
         self.throttle_limit.setValue(round(s.throttle_limit * 100))
         self.steer_channel.setValue(s.steering_channel)
         self.throttle_channel.setValue(s.throttle_channel)
         self._settings_dirty = False
         self._network_dirty = False
 
+    def _update_link_fields(self):
+        serial_mode = self.link_mode.currentData() == "elrs_serial"
+        self.serial_port.setEnabled(serial_mode)
+        for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
+            widget.setEnabled(not serial_mode)
+
     def _settings_from_widgets(self) -> AppSettings:
         return AppSettings(
+            link_mode=self.link_mode.currentData(),
+            serial_port=self.serial_port.text().strip(),
             bind_host=self.bind_host.text().strip() or "0.0.0.0",
             listen_port=self.listen_port.value(),
             target_host=self.target_host.text().strip(),
@@ -356,6 +398,7 @@ class MainWindow(QMainWindow):
             deadzone=self.deadzone.value(),
             expo=self.expo.value(),
             steering_sensitivity=self.steering_sensitivity.value() / 100,
+            drive_sensitivity=self.drive_sensitivity.value() / 100,
             throttle_limit=self.throttle_limit.value() / 100,
             steering_channel=self.steer_channel.value(),
             throttle_channel=self.throttle_channel.value(),
@@ -379,7 +422,8 @@ class MainWindow(QMainWindow):
         else:
             network = self._active_network_settings
             live = replace(candidate, bind_host=network.bind_host, listen_port=network.listen_port,
-                           target_host=network.target_host, target_port=network.target_port)
+                           target_host=network.target_host, target_port=network.target_port,
+                           link_mode=network.link_mode, serial_port=network.serial_port)
         self.mav.configure(live)
         self._settings_dirty = False
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Settings applied")
@@ -409,13 +453,13 @@ class MainWindow(QMainWindow):
         self.mav.start()
         self._network_dirty = False
         self.settings_state.setText("Settings applied • waiting for heartbeat")
-        self.message.setText("MAVLink listener started. Wait for a new heartbeat, then manually enable PC control.")
+        self.message.setText("MAVLink link started. Wait for a new heartbeat, then manually enable PC control.")
 
     def _disconnect(self):
         if not self.mav.stop():
             self.message.setText("Disconnect did not complete. Close PC TeleRC before reconnecting.")
             return
-        self.message.setText("Disconnected. PC control is OFF; GCS heartbeats stopped and UDP socket closed.")
+        self.message.setText("Disconnected. PC control is OFF; GCS heartbeats stopped and link closed.")
 
     def _select_controller(self):
         if self.mav.snapshot().control_enabled:
@@ -544,7 +588,7 @@ class MainWindow(QMainWindow):
         self.raw_axes.setText("Axes: " + (axes or "—"))
 
         if not mav.running:
-            self.link_label.setText("Disconnected — UDP listener stopped")
+            self.link_label.setText("Disconnected — link stopped")
         elif mav.state == LinkState.CONNECTED:
             self.link_label.setText(f"Connected • heartbeat {(mav.heartbeat_age or 0):.1f}s ago")
         elif mav.state == LinkState.STALE:
