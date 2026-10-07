@@ -157,6 +157,8 @@ class MavlinkService:
         )
         if not decision.allowed:
             return False, decision.message
+        if settings.link_mode == "lora_usb" and snap.mode == "AUTOPILOT":
+            return False, "Select DIRECT on the motor controller before enabling LoRa wheel control."
         with self._lock:
             self._failsafe_latched = False
             self._control_enabled = True
@@ -219,6 +221,11 @@ class MavlinkService:
             return False, decision.message
         if conn is None or control_mav is None:
             return False, "Vehicle link is not connected."
+        if settings.link_mode == "lora_usb":
+            if not snap.control_enabled:
+                return False, "Enable PC Control with centered wheel and neutral pedals before LoRa ARM."
+            if snap.mode != "DIRECT":
+                return False, "Wait for the motor controller to report DIRECT before LoRa ARM."
         return self._send_arm_command(True)
 
     def disarm(self):
@@ -243,6 +250,10 @@ class MavlinkService:
         try:
             from pymavlink.dialects.v10 import ardupilotmega as mavlink1
             with self._send_lock:
+                if arm and self._settings.link_mode == "lora_usb":
+                    if not self._send_override(PWM_NEUTRAL, PWM_NEUTRAL):
+                        self.disable_control()
+                        return False, "Neutral send failed; LoRa ARM cancelled."
                 control_mav.command_long_send(
                     sysid,
                     compid or 1,
@@ -288,7 +299,13 @@ class MavlinkService:
                 settings = AppSettings(**vars(self._settings)).validate()
 
             from .transport import VehicleUDP
-            if settings.link_mode == "elrs_serial":
+            if settings.link_mode == "lora_usb":
+                from .transport import VehicleLoRa
+                if not settings.serial_port:
+                    raise ValueError("Select the LoRa BASE COM port before connecting.")
+                link = VehicleLoRa(settings.serial_port)
+                link.require_active_base(self._stop)
+            elif settings.link_mode == "elrs_serial":
                 from .transport import VehicleSerial
                 if not settings.serial_port:
                     raise ValueError("Select the ELRS module COM port before connecting.")
@@ -327,7 +344,7 @@ class MavlinkService:
             logger.info(
                 "MAVLink link %s opened (%s)",
                 settings.link_mode,
-                settings.serial_port if settings.link_mode == "elrs_serial" else f"{settings.bind_host}:{settings.listen_port}",
+                settings.serial_port if settings.link_mode in ("elrs_serial", "lora_usb") else f"{settings.bind_host}:{settings.listen_port}",
             )
 
             next_hb = 0.0
@@ -427,6 +444,8 @@ class MavlinkService:
             if typ == "HEARTBEAT" and getattr(msg, "type", None) != 6:
                 valid_vehicle = (getattr(msg, "autopilot", 3) != 8
                                  and msg.get_srcSystem() not in (0, 255))
+                if self._settings.link_mode == "lora_usb":
+                    valid_vehicle = valid_vehicle and msg.get_srcSystem() == 1 and msg.get_srcComponent() == 1 and getattr(msg, "type", None) == 10
                 if not valid_vehicle:
                     self._snapshot = replace(snap, ignored_heartbeats=snap.ignored_heartbeats + 1)
                     return
@@ -458,6 +477,8 @@ class MavlinkService:
                     mode = ""
                     armed = False
 
+                if self._settings.link_mode == "lora_usb":
+                    mode = {0: "FAILSAFE", 1: "DIRECT", 2: "AUTOPILOT"}.get(getattr(msg, "custom_mode", None), "UNKNOWN")
                 first_lock = snap.vehicle_system is None
                 snap = replace(
                     snap,
@@ -607,12 +628,13 @@ class MavlinkService:
             with self._lock:
                 link = self._link
                 settings = self._settings
-            if link is None or self._stop.is_set() or settings.link_mode != "telerc_udp":
+            if link is None or self._stop.is_set() or settings.link_mode not in ("telerc_udp", "lora_usb"):
                 return
             destination = link.destination or ("192.168.4.1", settings.target_port)
             try:
                 packet = b"TELERC_DISCOVER_V1"
-                if link.port.sendto(packet, destination) == len(packet):
+                sent = link.write(packet) if settings.link_mode == "lora_usb" else link.port.sendto(packet, destination)
+                if sent == len(packet):
                     self._bridge_discovery_sent = True
             except OSError as exc:
                 logger.debug("Bridge discovery send failed: %s", exc)
@@ -629,7 +651,10 @@ class MavlinkService:
             destination = link.destination or ("192.168.4.1", settings.target_port)
             for _ in range(self.RELEASE_RETRIES):
                 try:
-                    link.port.sendto(b"TELERC_DISCONNECT_V1", destination)
+                    if settings.link_mode == "lora_usb":
+                        link.write(b"TELERC_DISCONNECT_V1")
+                    else:
+                        link.port.sendto(b"TELERC_DISCONNECT_V1", destination)
                 except OSError as exc:
                     logger.debug("Bridge disconnect send failed: %s", exc)
                 time.sleep(.02)

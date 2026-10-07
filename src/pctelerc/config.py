@@ -37,8 +37,8 @@ class AppSettings:
     controller_timeout: float = 0.35
 
     def validate(self) -> "AppSettings":
-        if self.link_mode not in ("telerc_udp", "elrs_serial"):
-            raise ValueError("Select TeleRC UDP or ELRS USB MAVLink.")
+        if self.link_mode not in ("telerc_udp", "elrs_serial", "lora_usb"):
+            raise ValueError("Select TeleRC Wi-Fi, LoRa USB, or ELRS USB MAVLink.")
         if not isinstance(self.serial_port, str) or any(ord(c) < 32 for c in self.serial_port):
             raise ValueError("Serial port must be a plain device name.")
         self.serial_port = self.serial_port.strip()

@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.0a13 — independent sensitivities and experimental ELRS USB MAVLink.
+0.1.0a14 — native TeleRC LoRa USB, local board setup, dropdown navigation.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -59,3 +59,12 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel mapping, measured controller/Wi-Fi fail-safe timing, then lock a first tagged test release.
 
 ELRS mode is USB MAVLink only, 460800 baud, DTR/RTS low, 5 Hz PC overrides. No raw CRSF bay input or verified Pocket/PC arbitration. Named T ONE/GEPRC hardware requires physical validation.
+
+## Native LoRa requirements
+- Match TeleRC v0.8.53 framed USB protocol; base role/active radio must be read before driving.
+- Motor identity is system 1/component 1; wheel commands are CH1 steer / CH2 drive only.
+- Native USB 115200, DTR true/RTS false. Bound queue waiting and fail closed on partial/backed-up writes.
+- No auto source switching. Page changes stop control; STOP stays visible on every page.
+- Provisioning closes the driving session; no control packets from the setup page.
+- Key is masked and RAM-only; never save/log/report it. Read inactive board before save, serialize exchanges, require USB reopen after timeout or board restart after successful save.
+- Enable neutral control, wait for DIRECT, then explicit ARM with a preceding neutral packet. Physical HIL remains required.
