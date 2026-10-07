@@ -7,7 +7,7 @@ import pctelerc.ui as ui
 from pctelerc.config import AppSettings
 
 
-def test_main_window_constructs_with_symmetric_columns_and_modeless_diagnostics(monkeypatch):
+def test_main_window_constructs_with_dropdown_pages_and_modeless_diagnostics(monkeypatch):
     app = QApplication.instance() or QApplication([])
 
     monkeypatch.setattr(ui, "load_settings", lambda: AppSettings())
@@ -19,8 +19,9 @@ def test_main_window_constructs_with_symmetric_columns_and_modeless_diagnostics(
 
     window = ui.MainWindow()
     try:
-        assert [window.main_grid.columnStretch(i) for i in range(3)] == [1, 1, 1]
-        assert all(window.main_grid.columnMinimumWidth(i) == 330 for i in range(3))
+        assert [window.page_combo.itemText(i) for i in range(4)] == ["Drive", "Link Setup", "Controller", "LoRa Setup"]
+        assert window.pages.count() == 4
+        assert window.stop_btn.text() == "STOP"
 
         window._open_diagnostics()
         app.processEvents()
@@ -161,3 +162,37 @@ def test_independent_drive_and_steering_sliders_save_and_elrs_route_stays_pendin
     finally:
         window.close()
         app.processEvents()
+
+
+def test_lora_dropdown_hides_udp_fields_and_navigation_stops_control(monkeypatch):
+    from dataclasses import replace
+    app = QApplication.instance() or QApplication([])
+    window = review_window(monkeypatch)
+    try:
+        window.link_mode.setCurrentIndex(window.link_mode.findData('lora_usb'))
+        window.serial_port.setText('COM7')
+        window.page_combo.setCurrentIndex(1)
+        window.show(); app.processEvents()
+        assert window.bind_host.isHidden()
+        assert window.serial_row.isVisible()
+        disabled = []
+        snapshot = replace(window.mav.snapshot(), control_enabled=True)
+        monkeypatch.setattr(window.mav, 'snapshot', lambda: snapshot)
+        monkeypatch.setattr(window.mav, 'disable_control', lambda: disabled.append(True))
+        window.page_combo.setCurrentIndex(3)
+        assert disabled
+        assert window.pages.currentIndex() == 3
+        window._refresh()
+        assert not window.arm_btn.isEnabled()
+        window.stop_btn.click()
+        assert len(disabled) == 2
+        assert window.lora_setup.key.echoMode() == window.lora_setup.key.EchoMode.Password
+        window.lora_setup.generate.click()
+        assert len(window.lora_setup.key.text()) == 64
+        window.lora_setup.show_key.click()
+        assert window.lora_setup.show_key.text() == 'Hide'
+        window.page_combo.setCurrentIndex(0)
+        assert window.lora_setup.show_key.text() == 'Show'
+    finally:
+        window.close(); app.processEvents()
+    assert window.lora_setup.key.text() == ''
