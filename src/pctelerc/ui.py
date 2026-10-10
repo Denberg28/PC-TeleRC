@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSpinBox, QSizePolicy, QVBoxLayout, QWidget,
+    QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog,
 )
 
 from . import __version__
@@ -14,6 +16,7 @@ from .controller import WheelService
 from .core import LinkState
 from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
+from .lora_setup_widget import LoRaSetupWidget, refresh_ports
 
 STYLE = """
 QWidget { background:#11161d; color:#e7edf5; font-family:'Segoe UI'; font-size:10pt; }
@@ -28,6 +31,7 @@ QPushButton:hover { border-color:#5c7392; }
 QPushButton:disabled { color:#677587; background:#1a222d; border-color:#273342; }
 QPushButton#Primary { background:#1677ff; font-weight:700; }
 QPushButton#Danger { background:#7a2831; }
+QComboBox QAbstractItemView { background:#18202a; color:#e7edf5; selection-background-color:#1677ff; selection-color:#ffffff; }
 QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox { background:#0f141a; border:1px solid #344458; border-radius:6px; padding:5px; }
 """
 
@@ -52,6 +56,9 @@ class MainWindow(QMainWindow):
         self._settings_dirty = False
         self._network_dirty = False
         self._diagnostics_window = None
+        self._lora_dialog = None
+        self._restart_pending = False
+        self._connected_settings = replace(self.settings)
 
         self.wheel = WheelService()
         self.mav = MavlinkService()
@@ -96,8 +103,15 @@ class MainWindow(QMainWindow):
             grid.setColumnMinimumWidth(column, 330)
         main.addLayout(grid, 1)
 
-        connection_card, connection = card("1. MAVLink / ESP32-S3")
+        connection_card, connection = card("1. Connection")
         form = QFormLayout()
+        self.connection_form = form
+        self.link_mode = QComboBox()
+        self.link_mode.addItem("ESP32-S3 · Wi-Fi", "telerc_udp")
+        self.link_mode.addItem("LilyGO T3S3 SX1262 · LoRa", "lora_usb")
+        self.link_mode.addItem("HGLRC T ONE 900 MHz · ELRS", "elrs_serial")
+        self.link_mode.setAccessibleName("Radio connection")
+        form.addRow("Link", self.link_mode)
         self.bind_host = QLineEdit()
         self.listen_port = QSpinBox()
         self.listen_port.setRange(1, 65535)
@@ -109,12 +123,32 @@ class MainWindow(QMainWindow):
         form.addRow("UDP port", self.listen_port)
         form.addRow("ESP32 target IP", self.target_host)
         form.addRow("Target port", self.target_port)
+        self.lora_port = QComboBox()
+        self.elrs_port = QComboBox()
+        for port in (self.lora_port, self.elrs_port):
+            port.setEditable(True)
+            port.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+            port.lineEdit().setPlaceholderText("Select COM port")
+        form.addRow("LoRa BASE port", self.lora_port)
+        form.addRow("ELRS module port", self.elrs_port)
         connection.addLayout(form)
+        self.link_hint = QLabel()
+        self.link_hint.setWordWrap(True)
+        self.link_hint.setObjectName("Muted")
+        connection.addWidget(self.link_hint)
+        radio_buttons = QHBoxLayout()
+        self.refresh_ports_btn = QPushButton("Refresh ports")
+        self.lora_setup_btn = QPushButton("LoRa setup…")
+        radio_buttons.addWidget(self.refresh_ports_btn)
+        radio_buttons.addWidget(self.lora_setup_btn)
+        connection.addLayout(radio_buttons)
 
         self.reconnect_btn = QPushButton("Apply & Reconnect")
         self.reconnect_btn.setObjectName("Primary")
-        self.reconnect_btn.setToolTip("Apply network settings. The UDP listener restarts only if the listen address or port changed.")
+        self.reconnect_btn.setToolTip("Release the old link, apply the selected radio, and wait for a fresh heartbeat.")
+        self.disconnect_btn = QPushButton("Disconnect")
         connection.addWidget(self.reconnect_btn)
+        connection.addWidget(self.disconnect_btn)
 
         self.link_label = QLabel("No heartbeat")
         self.vehicle_label = QLabel("Vehicle: —")
@@ -245,6 +279,7 @@ class MainWindow(QMainWindow):
         self.message = QLabel("Ready")
         self.message.setWordWrap(True)
         guide = QLabel("ArduRover GCS/telemetry fail-safe remains mandatory for true Wi-Fi-loss protection.")
+        self.guide = guide
         guide.setWordWrap(True)
         guide.setObjectName("Muted")
         status.addWidget(self.settings_state)
@@ -257,6 +292,12 @@ class MainWindow(QMainWindow):
     def _wire_buttons_and_fields(self):
         # Button audit: every operator action has exactly one explicit handler.
         self.reconnect_btn.clicked.connect(self._apply_and_reconnect)
+        self.disconnect_btn.clicked.connect(self._disconnect_link)
+        self.refresh_ports_btn.clicked.connect(self._refresh_radio_ports)
+        self.lora_setup_btn.clicked.connect(self._open_lora_setup)
+        self.link_mode.currentIndexChanged.connect(self._update_link_fields)
+        self.lora_port.currentTextChanged.connect(lambda *_: self._mark_dirty(True))
+        self.elrs_port.currentTextChanged.connect(lambda *_: self._mark_dirty(True))
         self.select_btn.clicked.connect(self._select_controller)
         self.calibrate_btn.clicked.connect(self._calibrate_controller)
         self.apply_btn.clicked.connect(self._apply_settings)
@@ -273,7 +314,7 @@ class MainWindow(QMainWindow):
         )
         for widget in non_network:
             self._connect_change(widget, network=False)
-        for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
+        for widget in (self.link_mode, self.bind_host, self.listen_port, self.target_host, self.target_port):
             self._connect_change(widget, network=True)
 
     def _connect_change(self, widget, *, network: bool):
@@ -293,6 +334,10 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_to_widgets(self):
         s = self.settings
+        self.link_mode.setCurrentIndex(max(0, self.link_mode.findData(s.link_mode)))
+        self.lora_port.setCurrentText(s.lora_port)
+        self.elrs_port.setCurrentText(s.elrs_port)
+        self._update_link_fields()
         self.bind_host.setText(s.bind_host)
         self.listen_port.setValue(s.listen_port)
         self.target_host.setText(s.target_host)
@@ -315,6 +360,9 @@ class MainWindow(QMainWindow):
 
     def _settings_from_widgets(self) -> AppSettings:
         return AppSettings(
+            link_mode=self.link_mode.currentData(),
+            lora_port=self.lora_port.currentText().strip(),
+            elrs_port=self.elrs_port.currentText().strip(),
             bind_host=self.bind_host.text().strip() or "0.0.0.0",
             listen_port=self.listen_port.value(),
             target_host=self.target_host.text().strip(),
@@ -341,7 +389,12 @@ class MainWindow(QMainWindow):
         self.settings = self._settings_from_widgets()
         save_settings(self.settings)
         self.wheel.configure(self.settings)
-        self.mav.configure(self.settings)
+        active_settings = self.settings
+        if self._network_dirty:
+            # Save the radio draft without redirecting the live session.
+            fields = ("link_mode", "lora_port", "elrs_port", "bind_host", "listen_port", "target_host", "target_port")
+            active_settings = replace(self.settings, **{name: getattr(self._connected_settings, name) for name in fields})
+        self.mav.configure(active_settings)
         self._settings_dirty = False
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Settings applied")
 
@@ -353,43 +406,78 @@ class MainWindow(QMainWindow):
         self._network_dirty = network_pending
         if network_pending:
             self.settings_state.setText("Network settings saved — click Apply & Reconnect")
-            self.message.setText("Controller/safety settings applied. MAVLink address/port changes need Apply & Reconnect.")
+            self.message.setText("Controller/safety settings applied. Radio changes need Apply & Reconnect.")
         else:
             self.message.setText("Settings applied.")
 
-    def _apply_and_reconnect(self):
+    def _update_link_fields(self, *_):
+        mode = self.link_mode.currentData()
+        for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
+            self.connection_form.setRowVisible(widget, mode == "telerc_udp")
+        self.connection_form.setRowVisible(self.lora_port, mode == "lora_usb")
+        self.connection_form.setRowVisible(self.elrs_port, mode == "elrs_serial")
+        self.refresh_ports_btn.setVisible(mode != "telerc_udp")
+        self.lora_setup_btn.setVisible(mode == "lora_usb")
+        self.guide.setText("Verify the DIRECT motor watchdog and radio-loss stop before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
+        self.link_hint.setText({
+            "telerc_udp": "Join the ESP32 Wi-Fi network. MAVLink UDP uses port 14550.",
+            "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Requires TeleRC LoRa firmware and the DIRECT motor controller.",
+            "elrs_serial": "USB MAVLink at 460800 · 5 Hz control. TX/RX need ELRS 3.5+ MAVLink mode. T ONE hardware validation pending.",
+        }[mode])
+
+    def _refresh_radio_ports(self):
+        refresh_ports(self.lora_port)
+        refresh_ports(self.elrs_port)
+
+    def _disconnect_link(self):
+        self._restart_pending = False
+        self.reconnect_btn.setEnabled(True)
         self.mav.disable_control()
-        self._persist_and_configure()
+        stopped = self.mav.stop()
+        self.message.setText("Disconnected. PC Control is OFF." if stopped else "Link did not stop. Close PC TeleRC before reconnecting.")
+        return stopped
 
-        if not self.mav.listener_restart_required():
-            self._network_dirty = False
-            self.settings_state.setText("Network settings applied")
-            self.message.setText(
-                "ESP32 target settings applied to the existing MAVLink socket. "
-                "PC control remains OFF until manually enabled."
-            )
-            return
+    def _open_lora_setup(self):
+        if self._lora_dialog is None:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("LilyGO SX1262 · LoRa setup")
+            dialog.resize(720, 420)
+            dialog.setModal(False)
+            layout = QVBoxLayout(dialog)
+            dialog.setup = LoRaSetupWidget(self._disconnect_link, dialog)
+            dialog.setup.port.setCurrentText(self.lora_port.currentText())
+            layout.addWidget(dialog.setup)
+            dialog.finished.connect(lambda *_: (dialog.setup.close_usb(), dialog.setup.clear_secret()))
+            self._lora_dialog = dialog
+        self._lora_dialog.show()
+        self._lora_dialog.raise_()
 
-        if not self.mav.stop():
-            QApplication.beep()
-            self.message.setText(
-                "MAVLink worker did not stop cleanly. Close PC TeleRC and reopen it before reconnecting."
-            )
-            return
-
+    def _apply_and_reconnect(self):
         self.reconnect_btn.setEnabled(False)
-        self.settings_state.setText("Settings applied • restarting listener…")
-        self.message.setText("Restarting MAVLink listener after bind-address/port change…")
-
+        if self._lora_dialog is not None:
+            self._lora_dialog.close()
+        # Old settings remain active until neutral/release and port close finish.
+        if not self._disconnect_link():
+            self.reconnect_btn.setEnabled(True)
+            return
+        self.reconnect_btn.setEnabled(False)
+        self._network_dirty = False
+        self._persist_and_configure()
+        self._connected_settings = replace(self.settings)
+        self.settings_state.setText("Connecting selected radio…")
+        self._restart_pending = True
         QTimer.singleShot(250, self._restart_mavlink_after_release)
 
     def _restart_mavlink_after_release(self):
+        if not self._restart_pending:
+            return
+        self._restart_pending = False
         self.mav.configure(self.settings)
         self.mav.start()
         self._network_dirty = False
         self.reconnect_btn.setEnabled(True)
-        self.settings_state.setText("Settings applied • MAVLink restarted")
-        self.message.setText("MAVLink restarted. PC control remains OFF until manually enabled.")
+        self.settings_state.setText("Settings applied")
+        self.message.setText("Waiting for a fresh heartbeat. Enable PC Control manually when ready.")
 
     def _select_controller(self):
         if self.mav.snapshot().control_enabled:
@@ -539,19 +627,22 @@ class MainWindow(QMainWindow):
 
         link_ok = mav.state == LinkState.CONNECTED
         wheel_ok = wheel.connected
-        self.global_status.setText("Ready" if link_ok and wheel_ok and not self._settings_dirty else "Setup required")
+        self.global_status.setText("Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
         neutral_ok = wheel.frame is not None and wheel.frame.neutral
-        self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty)
+        self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty and not self._network_dirty)
         self.disarm_btn.setEnabled(link_ok and mav.armed)
         self.control_btn.setEnabled(
-            mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty)
+            mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty and not self._network_dirty)
         )
 
     def closeEvent(self, event):
         self.timer.stop()
+        self._restart_pending = False
+        if self._lora_dialog is not None:
+            self._lora_dialog.close()
         self.mav.disable_control()
         self.mav.stop()
         self.wheel.stop()

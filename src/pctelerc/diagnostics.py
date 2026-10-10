@@ -145,7 +145,7 @@ def build_diagnostic_report(
         status.safety,
         _item("INFO", "Vehicle", f"sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • {mav.mode or '—'}"),
         _item("INFO", "Traffic", f"RX {mav.rx_messages} • TX {mav.tx_messages} • foreign HB {mav.ignored_heartbeats}"),
-        _item("INFO", "Endpoint", f"{settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}"),
+        _item("INFO", "Endpoint", (f"Wi-Fi {settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}" if settings.link_mode == "telerc_udp" else f"LoRa SX1262 USB {settings.lora_port or 'unselected'} @115200" if settings.link_mode == "lora_usb" else f"ELRS USB {settings.elrs_port or 'unselected'} @460800")),
         _item("INFO", "Axes", f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
         _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
         _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),

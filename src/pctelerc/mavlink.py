@@ -50,7 +50,7 @@ class MavlinkService:
     def __init__(self):
         self._lock = threading.Lock()
         self._lifecycle_lock = threading.RLock()
-        self._send_lock = threading.Lock()
+        self._send_lock = threading.RLock()
         self._settings = AppSettings()
         self._snapshot = MavlinkSnapshot()
         self._control_frame: Optional[ControlFrame] = None
@@ -63,6 +63,10 @@ class MavlinkService:
         self._control_mav = None
         self._bound_host: str | None = None
         self._bound_port: int | None = None
+        self._bound_mode = "telerc_udp"
+        self._bound_serial = ""
+        self._bridge_registered = False
+        self._lora_direct_deadline = None
 
     def configure(self, settings: AppSettings):
         validated = AppSettings(**vars(settings)).validate()
@@ -81,6 +85,10 @@ class MavlinkService:
             bound_port = self._bound_port
         if not thread_alive:
             return True
+        if self._bound_mode != settings.link_mode:
+            return True
+        if settings.link_mode != "telerc_udp":
+            return self._bound_serial != self._serial_port(settings)
         return bound_host != settings.bind_host or bound_port != settings.listen_port
 
     def start(self) -> bool:
@@ -134,7 +142,10 @@ class MavlinkService:
         )
         if not decision.allowed:
             return False, decision.message
+        if settings.link_mode == "lora_usb" and snap.mode not in ("DIRECT", "FAILSAFE"):
+            return False, "Select DIRECT on the motor controller and wait for its heartbeat."
         with self._lock:
+            self._lora_direct_deadline = time.monotonic() + 2.5 if settings.link_mode == "lora_usb" and snap.mode == "FAILSAFE" else None
             self._failsafe_latched = False
             self._control_enabled = True
             self._snapshot = replace(
@@ -151,6 +162,10 @@ class MavlinkService:
         return True, "PC control enabled."
 
     def disable_control(self):
+        with self._send_lock:
+            return self._disable_control()
+
+    def _disable_control(self):
         with self._lock:
             was_enabled = self._control_enabled
             self._control_enabled = False
@@ -184,6 +199,8 @@ class MavlinkService:
             return False, decision.message
         if conn is None or control_mav is None:
             return False, "Vehicle link is not connected."
+        if settings.link_mode == "lora_usb" and (not snap.control_enabled or snap.mode != "DIRECT"):
+            return False, "Enable LoRa PC Control in DIRECT mode before arming."
         return self._send_arm_command(True)
 
     def disarm(self):
@@ -201,6 +218,10 @@ class MavlinkService:
         try:
             from pymavlink.dialects.v10 import ardupilotmega as mavlink1
             with self._send_lock:
+                if arm and self._settings.link_mode == "lora_usb":
+                    if not self._send_override(PWM_NEUTRAL, PWM_NEUTRAL):
+                        self.disable_control()
+                        return False, "Neutral send failed; LoRa ARM cancelled."
                 control_mav.command_long_send(
                     sysid,
                     compid or 1,
@@ -228,8 +249,14 @@ class MavlinkService:
                 )
             return False, f"Could not send {'arm' if arm else 'disarm'} command: {exc}"
 
+    @staticmethod
+    def _serial_port(settings):
+        return settings.lora_port if settings.link_mode == "lora_usb" else settings.elrs_port
+
     def _configure_link_target(self, link, settings: AppSettings):
         """Configure outbound writes on the already-bound receive socket."""
+        if hasattr(link, "destination"):
+            return  # USB routing is fixed when the port opens.
         try:
             target_host = settings.target_host.strip()
             with self._send_lock:
@@ -242,6 +269,8 @@ class MavlinkService:
             logger.warning("Could not update MAVLink UDP target: %s", exc)
 
     def _has_send_destination(self, link) -> bool:
+        if hasattr(link, "destination"):
+            return link.destination is not None
         with self._lock:
             target_host = self._settings.target_host.strip()
         if target_host:
@@ -249,17 +278,31 @@ class MavlinkService:
         return getattr(link, "last_address", None) is not None
 
     def _run(self):
+        link = None
         try:
             from pymavlink import mavutil
             with self._lock:
                 settings = AppSettings(**vars(self._settings)).validate()
 
-            link = mavutil.mavlink_connection(
-                f"udpin:{settings.bind_host}:{settings.listen_port}",
-                source_system=255,
-                source_component=190,
-                autoreconnect=True,
-            )
+            if settings.link_mode == "telerc_udp":
+                link = mavutil.mavlink_connection(
+                    f"udpin:{settings.bind_host}:{settings.listen_port}",
+                    source_system=255, source_component=190, autoreconnect=True,
+                )
+            else:
+                from .transport import VehicleLoRa, VehicleSerial
+                port = self._serial_port(settings)
+                if not port:
+                    raise ValueError("Select the radio COM port before connecting.")
+                if settings.link_mode == "lora_usb":
+                    link = VehicleLoRa(port)
+                    board = link.require_active_base(self._stop)
+                    if board.chip != 1262:
+                        raise ValueError("Select a LilyGO T3S3 SX1262 BASE for this profile.")
+                else:
+                    link = VehicleSerial(port)
+                if self._stop.is_set():
+                    return
             self._configure_link_target(link, settings)
 
             # Keep receive auto-detection intact (MAVLink 1/2), but deliberately
@@ -278,16 +321,16 @@ class MavlinkService:
                 self._control_mav = control_mav
                 self._bound_host = settings.bind_host
                 self._bound_port = settings.listen_port
+                self._bound_mode = settings.link_mode
+                self._bound_serial = self._serial_port(settings)
+                self._control_enabled = False
+                self._bridge_registered = False
                 self._snapshot = MavlinkSnapshot(
                     running=True,
                     state=LinkState.CONNECTING,
                 )
 
-            logger.info(
-                "MAVLink UDP listener bound to %s:%s using one shared socket",
-                settings.bind_host,
-                settings.listen_port,
-            )
+            logger.info("MAVLink %s opened", settings.link_mode)
 
             next_hb = 0.0
             next_control = 0.0
@@ -298,6 +341,7 @@ class MavlinkService:
                     self._handle_message(msg, now)
 
                 if now >= next_hb:
+                    self._send_lora_discovery()
                     self._send_gcs_heartbeat()
                     next_hb = now + 1.0
 
@@ -305,7 +349,7 @@ class MavlinkService:
 
                 if now >= next_control:
                     self._control_tick(now)
-                    next_control = now + 1.0 / self.SEND_HZ
+                    next_control = now + 1.0 / (5.0 if settings.link_mode == "elrs_serial" else 10.0 if settings.link_mode == "lora_usb" else self.SEND_HZ)
 
                 time.sleep(0.005)
 
@@ -324,8 +368,9 @@ class MavlinkService:
 
         finally:
             self._send_neutral_then_release()
+            self._send_lora_disconnect()
             with self._lock:
-                link = self._link
+                link = self._link or link
                 self._link = None
                 self._control_mav = None
                 self._bound_host = None
@@ -340,8 +385,13 @@ class MavlinkService:
                 self._snapshot = replace(
                     self._snapshot,
                     running=False,
+                    state=LinkState.DISCONNECTED,
+                    last_heartbeat=None, heartbeat_age=None,
+                    vehicle_system=None, vehicle_component=None, armed=False,
                     control_enabled=False,
                 )
+                self._control_frame = None
+                self._axis_count = None
 
     def _handle_message(self, msg, now: float):
         typ = msg.get_type()
@@ -351,6 +401,10 @@ class MavlinkService:
                 rx_messages=self._snapshot.rx_messages + 1,
             )
 
+            if (typ == "HEARTBEAT" and self._settings.link_mode == "lora_usb"
+                    and (msg.get_srcSystem(), msg.get_srcComponent()) != (1, 1)):
+                self._snapshot = replace(snap, ignored_heartbeats=snap.ignored_heartbeats + 1)
+                return
             if typ == "HEARTBEAT" and getattr(msg, "type", None) != 6:
                 src_sys = msg.get_srcSystem()
                 src_comp = msg.get_srcComponent()
@@ -383,6 +437,11 @@ class MavlinkService:
                     mode = ""
                     armed = False
 
+                if self._settings.link_mode == "lora_usb":
+                    # Only the TeleRC motor heartbeat defines these custom modes.
+                    mode = {0: "FAILSAFE", 1: "DIRECT", 2: "AUTOPILOT"}.get(getattr(msg, "custom_mode", None), "UNKNOWN") if getattr(msg, "autopilot", None) == 0 and getattr(msg, "type", None) == 10 else "UNKNOWN"
+                    if mode == "DIRECT":
+                        self._lora_direct_deadline = None
                 first_lock = snap.vehicle_system is None
                 snap = replace(
                     snap,
@@ -439,6 +498,10 @@ class MavlinkService:
             self._send_neutral_then_release()
 
     def _control_tick(self, now: float):
+        with self._send_lock:
+            return self._serialized_control_tick(now)
+
+    def _serialized_control_tick(self, now: float):
         with self._lock:
             settings = AppSettings(**vars(self._settings)).validate()
             frame = self._control_frame
@@ -456,6 +519,14 @@ class MavlinkService:
             axis_count=axis_count,
             now=now,
         )
+        initializing_lora = (
+            settings.link_mode == "lora_usb" and snap.mode == "FAILSAFE"
+            and self._lora_direct_deadline is not None and now < self._lora_direct_deadline
+            and frame is not None and frame.neutral and abs(frame.steering) <= .05
+        )
+        if settings.link_mode == "lora_usb" and snap.mode != "DIRECT" and not initializing_lora:
+            from .field_safety import SafetyDecision
+            decision = SafetyDecision(False, "lora_mode", "LoRa motor controller left DIRECT mode.")
         if not decision.allowed:
             with self._lock:
                 self._control_enabled = False
@@ -470,7 +541,7 @@ class MavlinkService:
             self._send_neutral_then_release()
             return
 
-        steer = normalized_to_pwm(frame.steering, 1.0)
+        steer = PWM_NEUTRAL if initializing_lora else normalized_to_pwm(frame.steering, 1.0)
         throttle = normalized_to_pwm(
             frame.throttle,
             settings.throttle_limit,
@@ -497,6 +568,23 @@ class MavlinkService:
                     error="Control disabled: RC override transmission failed.",
                 )
             self._send_neutral_then_release()
+
+    def _send_lora_discovery(self):
+        with self._send_lock:
+            if self._bound_mode == "lora_usb" and self._link and not self._stop.is_set():
+                self._link.write(b"TELERC_DISCOVER_V1")
+                self._bridge_registered = True
+
+    def _send_lora_disconnect(self):
+        with self._send_lock:
+            if self._bound_mode == "lora_usb" and self._link and self._bridge_registered:
+                try:
+                    self._link.write(b"TELERC_DISCONNECT_V1")
+                    # Allow the native USB frame to drain before port close.
+                    time.sleep(.02)
+                except OSError:
+                    logger.warning("LoRa disconnect could not be delivered.")
+                self._bridge_registered = False
 
     def _send_gcs_heartbeat(self):
         with self._lock:
