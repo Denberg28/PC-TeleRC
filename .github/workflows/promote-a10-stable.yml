@@ -1,0 +1,97 @@
+name: Promote PC TeleRC a10 to stable
+on:
+  push:
+    branches: ["release/promote-a10-stable"]
+    paths: [".github/workflows/promote-a10-stable.yml"]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: promote-pctelerc-a10-stable
+  cancel-in-progress: false
+jobs:
+  promote:
+    if: github.repository == 'Denberg28/PC-TeleRC'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify original build and promote existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import os
+          import urllib.request
+          
+          repo = "Denberg28/PC-TeleRC"
+          tag = "v0.1.0a10"
+          commit = "7b84b7882c4010c34f158304cc9c8c8cc4cba77b"
+          api = "https://api.github.com/repos/" + repo
+          headers = {
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          def request(path, data=None):
+              payload = None if data is None else json.dumps(data).encode()
+              req = urllib.request.Request(api + path, data=payload, headers=headers,
+                                           method="GET" if data is None else "PATCH")
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  return json.load(response)
+          
+          ref = request("/git/ref/tags/" + tag)
+          assert ref["object"]["type"] == "commit" and ref["object"]["sha"] == commit, "Tag changed"
+          run = request("/actions/runs/36996516589")
+          assert run["head_sha"] == commit and run["conclusion"] == "success", "Original CI failed"
+          release = request("/releases/tags/" + tag)
+          assert release["id"] == 401732682 and not release["draft"], "Unexpected release"
+          expected = {
+              "PC-TeleRC-Setup-v0.1.0a10.exe": "c393fc07c27f839d362fae33dac596b1af4e0b82e97123a344d2261d56de34e8",
+              "PC-TeleRC-portable-v0.1.0a10.zip": "c76471bbbcdc8584d3b8945331e1d136ec7ce8f383ce6838552cb2df361d40c2",
+              "SHA256-installer.txt": "9e41ed67f566989284569937836819afc6093fefe75ee683100f85e5dbbc8196",
+              "SHA256.txt": "689407aec0b1ac51f7c8add1dd577e4009f38be4cafa50e3d0c31e2826f433a8",
+          }
+          assets = {asset["name"]: asset for asset in release["assets"]}
+          assert set(assets) == set(expected), "Unexpected assets"
+          for name, checksum in expected.items():
+              asset = assets[name]
+              assert asset["state"] == "uploaded" and asset["digest"] == "sha256:" + checksum, name
+              hasher = hashlib.sha256()
+              # Public download uses no token, including on redirects.
+              with urllib.request.urlopen(asset["browser_download_url"], timeout=120) as source:
+                  for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                      hasher.update(chunk)
+              assert hasher.hexdigest() == checksum, "Downloaded checksum mismatch: " + name
+              print("Verified SHA-256: " + name)
+          
+          def asset_identity(value):
+              return sorted((a["id"], a["name"], a["size"], a["digest"], a["browser_download_url"])
+                            for a in value["assets"])
+          
+          body = release["body"]
+          body = body.replace("# PC TeleRC v0.1.0a10 — Android-Aligned Rover Mapping",
+                              "# PC TeleRC v0.1.0a10 — First Stable Release", 1)
+          body = body.replace("This maintenance prerelease aligns the Windows controller channel defaults with Android TeleRC.",
+                              "PC TeleRC's first stable release promotes the existing v0.1.0a10 build selected by the maintainer as the known-working Windows rover baseline. Steering uses CH1 and drive uses CH2, aligned with Android TeleRC.", 1)
+          marker = "## Stable promotion"
+          if marker not in body:
+              body += "\n\n## Stable promotion\n- Promoted on 2026-10-11 (Asia/Manila) at the maintainer's request.\n- The original v0.1.0a10 tag, installer, portable ZIP, and SHA-256 files are preserved. The in-app version and filenames remain v0.1.0a10.\n- Original Windows tests, dependency checks, executable build, installer build, and release publication passed in [CI run 36996516589](https://github.com/Denberg28/PC-TeleRC/actions/runs/36996516589). Promotion rechecked the tag and downloaded asset checksums.\n- Promotion does not add new hardware validation. The existing unsigned Windows build and hardware fail-safe timing limitations remain.\n"
+          updated = request("/releases/" + str(release["id"]), {
+              "name": "PC TeleRC v0.1.0a10 — First Stable Release",
+              "prerelease": False,
+              "make_latest": "true",
+              "body": body,
+          })
+          assert updated["tag_name"] == tag and not updated["prerelease"] and not updated["draft"]
+          assert asset_identity(updated) == asset_identity(release), "Assets changed"
+          assert request("/git/ref/tags/" + tag)["object"]["sha"] == commit, "Tag changed"
+          latest = request("/releases/latest")
+          assert latest["id"] == release["id"], "Latest release mismatch"
+          print("Promoted: " + updated["html_url"])
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as report:
+              report.write("Promoted **PC TeleRC v0.1.0a10** as the first stable and Latest release.\n\n")
+              report.write("Original commit, four release assets, and downloaded SHA-256 checksums verified.\n\n")
+              report.write(updated["html_url"] + "\n")
+          
