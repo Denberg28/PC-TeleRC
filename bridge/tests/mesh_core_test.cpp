@@ -18,8 +18,12 @@ int main(){
  // A three-leg request traverses two relays; TTL cannot reach a fourth leg.
  mesh::Packet forwarded=p;--forwarded.hops;forwarded.sender=3;assert(mesh::seal(forwarded,key,encoded));assert(mesh::open(encoded,n,key,q));assert(q.hops==2);
  --q.hops;q.sender=4;assert(mesh::seal(q,key,encoded));assert(mesh::open(encoded,n,key,forwarded));assert(forwarded.hops==1);
- mesh::Challenge c;c.issue(111,100);assert(!c.consume(112,101));assert(c.consume(111,450));assert(!c.consume(111,451));c.issue(111,100);assert(!c.consume(111,451));
- c.issue(7,UINT32_MAX-100);assert(c.consume(7,50)); // millis rollover
+ assert(mesh::timing(1).pollMs==100&&mesh::timing(1).responseMs==90);
+ assert(mesh::timing(2).pollMs==370&&mesh::timing(3).responseMs==350);
+ mesh::Challenge c;c.issue(111,100,350);assert(!c.consume(112,101));assert(c.consume(111,450));assert(!c.consume(111,451));c.issue(111,100,350);assert(!c.consume(111,451));
+ c.issue(7,UINT32_MAX-100,350);assert(c.consume(7,50)); // millis rollover
+ c.issue(8,UINT32_MAX-50,90);assert(c.pending(39));assert(c.consume(8,39));
+ c.issue(9,100,90);assert(!c.consume(9,191));assert(!c.pending(191));
  uint8_t frame[26];mesh::Safety safe;
  rc(frame,1500,1800);assert(!safe.rc(frame,26,10));assert(!safe.ready);
  rc(frame,1500,1500);assert(safe.rc(frame,26,20));assert(safe.centered(20));

@@ -1,4 +1,4 @@
-# TeleRC Mesh 0.1.0 — LilyGO T3-S3 SX1262
+# TeleRC Mesh 0.1.1 — LilyGO T3-S3 SX1262
 
 A configurable connection sketch for PC TeleRC, with gateway, relay and rover roles. The same firmware runs on every participating T3-S3 SX1262 V1.2/V1.3 board. This is a **bench-test candidate**, not a field-validated release. It does not speak Meshtastic, LoRaWAN, or ELRS.
 
@@ -8,7 +8,7 @@ A configurable connection sketch for PC TeleRC, with gateway, relay and rover ro
 2. Join **TeleRC-Setup-1**, Wi-Fi password **telerc123**.
 3. Open **http://192.168.4.1**. Setup username **admin**, password **telerc**.
 4. Fill in the profile, paste the same random 64-character mesh key on all boards, then Save and restart. Generate a key locally with `python -c "import secrets; print(secrets.token_hex(32))"`. Do not send or commit this private key.
-5. Configure the gateway as node 1, rover as node 2, and relays as nodes 3, 4, etc. Use the same network ID, gateway/rover IDs, maximum radio legs, frequency and key on every board. The maximum allowed path is three radio legs (two relay boards).
+5. For two boards, configure gateway node 1 and rover node 2 with **radio legs = 1 on BOTH boards**. This selects the faster direct profile. New profiles default to one leg; previously saved profiles retain their setting and must be changed explicitly. For relays, use nodes 3, 4, etc., and select two or three legs on every board. Use the same network ID, gateway/rover IDs, maximum radio legs, frequency and key. The maximum allowed path is three radio legs (two relay boards).
 6. To change a configured board later, hold **BOOT**, press/release **RST**, then release BOOT after startup. It enters setup with RF OFF. Never enter setup while the rover is moving.
 7. Join the operational gateway AP **TeleRC-Mesh-1** using **telerc123**. Configure PC TeleRC for its normal **TeleRC UDP** mode, target **192.168.4.1**, local port **14550**, target port **14550**, steering **CH1**, bidirectional drive **CH2**. Connect with controls centered and control disabled; then explicitly enable control and ARM as appropriate.
 
@@ -18,16 +18,14 @@ A configurable connection sketch for PC TeleRC, with gateway, relay and rover ro
 
 | Board | Role | Node ID | Gateway ID | Rover ID | Radio legs | UART backend |
 |---|---|---:|---:|---:|---:|---|
-| Near PC | Gateway | 1 | 1 | 2 | 3 | Ignored |
-| First relay | Relay node | 3 | 1 | 2 | 3 | Ignored |
-| Second relay | Relay node | 4 | 1 | 2 | 3 | Ignored |
-| On rover | Rover | 2 | 1 | 2 | 3 | ArduRover raw MAVLink, or TeleRC motor framed UART |
+| Near PC (direct pair) | Gateway | 1 | 1 | 2 | 1 | Ignored |
+| On rover (direct pair) | Rover | 2 | 1 | 2 | 1 | ArduRover raw MAVLink, or TeleRC motor framed UART |
 
-Select one radio leg for a direct pair, two for one relay, three for up to two relays. All participants must use the same setting. Extra relays can provide alternative coverage, but every extra forwarding node increases airtime and contention; begin with a single relay. There is one gateway and one rover per network. Multi-rover selection is not implemented.
+For a relay deployment, use role Relay node with node 3 for the first relay and node 4 for the second; their UART backend is ignored. Select one radio leg for a direct pair, two for one relay, three for up to two relays. Change the gateway/rover values above to two or three as well: all participants must use the same setting. Extra relays can provide alternative coverage, but every extra forwarding node increases airtime and contention; begin with a single relay. There is one gateway and one rover per network. Multi-rover selection is not implemented.
 
 The mesh uses bounded authenticated flooding: relays forward each poll/response once, decrease its hop budget, and keep a duplicate cache. There is no manually assigned route; a shorter direct path can still work when available. Neighbors heard within ten seconds, RSSI, RX/TX/reject/duplicate/drop counts are printed to USB Serial Monitor at 115200. These are heard-neighbor observations, not a guaranteed end-to-end route or measured distance. Relay boards need power and antenna only; no UART wiring or PC connection in operation.
 
-RF is disabled until a valid installation-specific frequency and nonzero private key are saved. Frequency is entered in **kHz**, with no on-air default. Use the correct 433 or 868/915 MHz front-end and antenna, and a locally permitted operating frequency/power/bandwidth. The hardware bounds in the form are capability checks, not regulatory authorization. Fixed bench profile: **SF7, BW500 kHz, CR4:5, preamble 8, sync 0x12, TCXO 1.6 V**; power range 2–17 dBm, initial value 2 dBm. Attach the matching antenna before configuring/transmitting. Higher spreading factors are intentionally unavailable because their airtime would require a different control timing design.
+RF is disabled until a valid installation-specific frequency and nonzero private key are saved. Frequency is entered in **kHz**, with no on-air default. Use the correct 433 or 868/915 MHz front-end and antenna, and a locally permitted operating frequency/power/bandwidth. The hardware bounds in the form are capability checks, not regulatory authorization. Fixed bench profile: **SF7, BW500 kHz, CR4:5, preamble 8, sync 0x12, TCXO 1.6 V**, with boosted RX gain enabled; power range 2–17 dBm, initial value 2 dBm. Boosted gain uses more receive current; its actual benefit on these boards remains unmeasured. Attach the matching antenna before configuring/transmitting. Higher spreading factors are intentionally unavailable because their airtime would require a different control timing design.
 
 ## Rover wiring — choose exactly one backend
 
@@ -75,16 +73,28 @@ Replace COM7 with your board's port. The merged image is a **factory flash** cov
 
 ## Timing and stopping behavior
 
-- Rover-originated polls carry a random 64-bit challenge. A response is consumed once, only within **350 ms after poll TX completes**. Recovery cannot replay a previously accepted drive or ARM packet.
-- Polls are scheduled **370 ms after previous poll TX completion**; actual delivered update rate is lower than 2.7 Hz. The profile prioritizes bounded multi-hop timing over fast wheel response. Maximum-size frames are about 55 ms on air at SF7/BW500; relay/return airtime matters.
+- Rover-originated polls carry a random 64-bit challenge. A response is consumed once, within **90 ms for one radio leg**, or **350 ms for two/three legs**, after poll TX completes. Recovery cannot replay a previously accepted drive or ARM packet. An outstanding unexpired challenge blocks another poll.
+- Polls wait **100 ms for one radio leg**, or **370 ms for two/three legs**, after previous poll TX completion. The representative direct cycle is approximately 129 ms (7.8 Hz), including a 57-byte telemetry poll and assumed 2 ms CAD. Actual timing depends on payload and channel activity. Maximum-size frames take 56.384 ms at SF7/BW500; relays retain their longer timing budget.
+- On a direct link, a queued reply is dropped if its age plus calculated airtime and a 2 ms processing allowance would exceed the 90 ms reply window. The rover independently rejects late replies. Congestion can still produce deliberate stops.
 - Gateway coalesces fresh commands; each touched axis has a **200 ms mailbox lifetime**, never refreshed by ignored channels. Commands are not periodically regenerated. Queued RF transmissions expire after **100 ms**, use asynchronous channel-activity detection and randomized deferral, and have no delivery retries. Hidden nodes and congestion can still cause collisions/drops.
-- On the rover, each owned steering/drive axis must be updated within **500 ms**. Heartbeats, telemetry, polls, and steering-only packets do not renew stale drive. A missed control cycle may therefore deliberately stop the rover.
+- On the rover, each owned steering/drive axis must be updated within **500 ms**. Heartbeats, telemetry, polls, and steering-only packets do not renew stale drive. Under the representative direct timing, two missed exchanges can be followed by a fresh third exchange before this deadline; longer payloads, contention and burst loss reduce that margin. Relay configurations can still stop on one missed cycle.
 - Boot and a stop latch require a fresh simultaneous neutral CH1/CH2 packet (1475–1525 µs on both) before accepting motion. ARM must follow fresh centered controls. The sketch never creates ARM commands.
 - On owned-axis timeout, explicit release/disconnect, RF failure, or raw-FC heartbeat expiry: one bounded UART write sends neutral then releases CH1/CH2, clearing ownership and latching control OFF. UART congestion retries only this stop sequence; it never retries stale drive/ARM. Release restores receiver authority where FC configuration permits it. This is not a universal disarm or hardware power cutoff.
 - Monitor-only sessions do not generate neutral/release overrides. Real FC or motor telemetry supplies app heartbeat; the mesh does not fabricate vehicle heartbeat. Raw-FC mode forwards commands only while system 1/component 1 ArduRover heartbeat is fresh (2.5 seconds).
 - Setup serves HTTP only with RF disabled. Active operation has no blocking web server. Mesh credentials are stored locally in NVS; setup uses HTTP Basic auth on the local protected AP. Mesh HMAC-SHA256/128 authenticates packets; it does not encrypt traffic or resist jamming. All nodes possessing the shared key are trusted.
 
 Telemetry whitelist: real HEARTBEAT, COMMAND_ACK, SYS_STATUS, GPS_RAW_INT and GLOBAL_POSITION_INT, at most 96 bytes. Accepted control: MAVLink 1 GCS heartbeat, CH1/CH2 RC override, standard ARM/DISARM, TeleRC discovery/disconnect. Target ID 1/1 is fixed. Mission/parameter transfer, force-arm, signed MAVLink, arbitrary servo commands and transparent Mission Planner operation are outside scope.
+
+### Direct-pair simulation comparison
+
+| Modeled quantity | 0.1.0 timing | 0.1.1 direct timing |
+|---|---:|---:|
+| Mean operator-input-to-rover-UART delay | 272 ms | 135 ms |
+| 95th percentile delay | 452 ms | 200 ms |
+| Representative update rate | 2.51 Hz | 7.76 Hz |
+| Sessions stopped in 60 s at 1% independent loss per RF packet | 95.1% | 0.343% |
+
+These are simulation outputs, not field measurements. The comparison uses 500,000 input events and 100,000 sessions per loss setting with a 57-byte poll, PC 20 Hz RC output, assumed clear-channel CAD/Wi-Fi/processing delays, independent losses in both directions, and the unchanged 500 ms deadline. The model does not establish actual range, physical stopping, regulatory suitability or receiver takeover. Faster polling increases representative radio occupancy from 15% to 45%, so crowded channels and many relay transmitters need separate testing. At 5% packet loss, the optimized model still stops in about 32% of one-minute sessions. See `bridge/simulation/README.md` for assumptions, raw data, reproducible script and limits.
 
 ## Bench acceptance (hardware tests still required)
 

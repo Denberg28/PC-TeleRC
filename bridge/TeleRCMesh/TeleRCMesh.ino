@@ -1,4 +1,4 @@
-/* TeleRC Mesh 0.1.0 -- LilyGO T3-S3 SX1262 V1.2/V1.3.
+/* TeleRC Mesh 0.1.1 -- LilyGO T3-S3 SX1262 V1.2/V1.3.
  * Flash the same sketch to every board. Hold BOOT while resetting for setup.
  * Blank boards start in setup, with RF OFF. See README.md before wiring.
  */
@@ -15,7 +15,7 @@
 constexpr uint8_t GATEWAY=1, RELAY=2, ROVER=3, RAW_FC=0, FRAMED_MOTOR=1;
 struct Config {
  uint32_t magic=0x544d0001;uint16_t network=1,node=1,gateway=1,rover=2;
- uint32_t khz=0;int8_t power=2;uint8_t role=GATEWAY,hops=3,backend=RAW_FC;
+ uint32_t khz=0;int8_t power=2;uint8_t role=GATEWAY,hops=1,backend=RAW_FC;
  uint8_t key[32]={};char wifi[64]="telerc123",admin[32]="telerc";
 };
 Config cfg;
@@ -144,6 +144,12 @@ void pumpRadio(){
    if(!s.active||uint32_t(now-s.at)>mesh::QUEUE_MS){s.active=false;++dropCount;restartRx();return;}
    uint8_t out[mesh::MAX];size_t n=mesh::seal(s.p,cfg.key,out);auto p=s.p;s.active=false;
    if(!n){++rejectCount;restartRx();return;}
+   // Do not occupy the direct channel with a response that cannot finish in
+   // its challenge window. The rover independently rejects any late arrival.
+   if(cfg.hops==1&&p.kind==mesh::COMMAND&&
+      uint32_t(millis()-s.at)+(radio.getTimeOnAir(n)+999)/1000+2>mesh::timing(1).responseMs){
+    ++dropCount;restartRx();return;
+   }
    if(radio.startTransmit(out,n)!=RADIOLIB_ERR_NONE){radioFault();return;}
    transmitting=true;txAt=now;pollInFlight=p.kind==mesh::POLL&&p.origin==cfg.rover&&cfg.role==ROVER;inflightToken=p.token;++txCount;
   }else if(uint32_t(now-scanAt)>20)radioFault();
@@ -151,7 +157,7 @@ void pumpRadio(){
  }
  if(transmitting){
   if(radioIRQ){radioIRQ=false;radio.finishTransmit();transmitting=false;
-   if(pollInFlight){challenge.issue(inflightToken,millis());pollAt=millis();}pollInFlight=false;restartRx();
+   if(pollInFlight){challenge.issue(inflightToken,millis(),mesh::timing(cfg.hops).responseMs);pollAt=millis();}pollInFlight=false;restartRx();
   }else if(uint32_t(now-txAt)>100)radioFault();
   return;
  }
@@ -195,7 +201,7 @@ void pumpVehicle(){
  }
 }
 void sendPoll(){
- uint32_t now=millis();if(transmitting||scanning||uint32_t(now-pollAt)<mesh::POLL_MS)return;
+ uint32_t now=millis();if(transmitting||scanning||challenge.pending(now)||uint32_t(now-pollAt)<mesh::timing(cfg.hops).pollMs)return;
  for(auto&s:queue)if(s.active)return;
  uint64_t token=0;while(!token)token=(uint64_t(esp_random())<<32)|esp_random();
  mesh::Packet p=makePacket(mesh::POLL,token);
@@ -219,7 +225,7 @@ void page(){
  for(int i=1;i<=3;++i)s+="<option value="+String(i)+(cfg.hops==i?" selected>":">")+String(i)+"</option>";
  s+="</select></label>";
  s+=numberField("frequency_khz",cfg.khz)+numberField("power_dbm",uint32_t(cfg.power));
- s+="<small>Enter the permitted frequency for your radio and installation. Fixed SF7 / BW500 / CR4:5. 3 legs allows at most 2 relay boards.</small>";
+ s+="<small>Use 1 radio leg for a fast direct pair; 2 or 3 legs for relays. All boards must match. Enter the permitted frequency. Fixed SF7 / BW500 / CR4:5.</small>";
  s+="<label>Rover UART<select name=backend><option value=0"+String(cfg.backend==RAW_FC?" selected>":">")+"ArduRover raw MAVLink</option><option value=1"+String(cfg.backend==FRAMED_MOTOR?" selected>":">")+"TeleRC motor framed UART</option></select></label>";
  s+="<label>Mesh key (64 hexadecimal characters)<input type=password name=key maxlength=64 autocomplete=off placeholder='Blank keeps existing key'></label>";
  s+="<label>Wi-Fi password (8–63 characters)<input type=password name=wifi maxlength=63 autocomplete=new-password placeholder='Blank keeps existing password'></label>";
@@ -272,8 +278,10 @@ void setup(){
  SPI.begin(5,3,6,7);
  int state=radio.begin(cfg.khz/1000.0f,500.0,7,5,0x12,cfg.power,8,1.6);
  if(state!=RADIOLIB_ERR_NONE){Serial.printf("RF init failed %d; reset required.\n",state);return;}
+ state=radio.setRxBoostedGainMode(true,true);
+ if(state!=RADIOLIB_ERR_NONE){Serial.printf("RF RX gain setup failed %d; reset required.\n",state);return;}
  radio.setDio1Action(onRadio);radioOK=true;restartRx();
- Serial.printf("TeleRC Mesh 0.1.0 role=%u node=%u net=%u hops=%u UART=%u; control OFF\n",cfg.role,cfg.node,cfg.network,cfg.hops,cfg.backend);
+ Serial.printf("TeleRC Mesh 0.1.1 role=%u node=%u net=%u hops=%u UART=%u poll=%lu response=%lu ms; control OFF\n",cfg.role,cfg.node,cfg.network,cfg.hops,cfg.backend,(unsigned long)mesh::timing(cfg.hops).pollMs,(unsigned long)mesh::timing(cfg.hops).responseMs);
 }
 void loop(){
  uint32_t now=millis();

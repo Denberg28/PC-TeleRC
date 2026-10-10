@@ -4,7 +4,13 @@
 namespace mesh {
 constexpr uint8_t VERSION=1, POLL=1, COMMAND=2;
 constexpr size_t HEADER=24, TAG=16, MAX=HEADER+telerc::RADIO_MAX+TAG;
-constexpr uint32_t RESPONSE_MS=350, POLL_MS=370, AXIS_MS=500, QUEUE_MS=100;
+constexpr uint32_t AXIS_MS=500, QUEUE_MS=100;
+struct Timing {uint32_t pollMs,responseMs;};
+// Radio legs are shared by all nodes. Only a direct pair uses the fast profile.
+// The reply window closes before another poll can replace its challenge.
+constexpr Timing timing(uint8_t legs){return legs==1?Timing{100,90}:Timing{370,350};}
+static_assert(timing(1).responseMs<timing(1).pollMs,"Direct replies must close before the next poll");
+static_assert(timing(3).responseMs<timing(3).pollMs,"Relay replies must close before the next poll");
 inline uint16_t u16(const uint8_t*p){return uint16_t(p[0])|(uint16_t(p[1])<<8);}
 inline void put16(uint8_t*p,uint16_t v){p[0]=uint8_t(v);p[1]=uint8_t(v>>8);}
 struct Packet {
@@ -37,9 +43,10 @@ struct Seen {
  }
 };
 struct Challenge {
- uint64_t token=0;uint32_t at=0;bool active=false;
- void issue(uint64_t t,uint32_t now){token=t;at=now;active=true;}
- bool consume(uint64_t t,uint32_t now){if(!active||token!=t||uint32_t(now-at)>RESPONSE_MS)return false;active=false;return true;}
+ uint64_t token=0;uint32_t at=0,window=0;bool active=false;
+ void issue(uint64_t t,uint32_t now,uint32_t responseMs){token=t;at=now;window=responseMs;active=true;}
+ bool pending(uint32_t now)const{return active&&uint32_t(now-at)<=window;}
+ bool consume(uint64_t t,uint32_t now){if(!pending(now)||token!=t)return false;active=false;return true;}
 };
 // Fail-closed ownership for CH1/CH2. No telemetry/heartbeat renews either axis.
 struct Safety {

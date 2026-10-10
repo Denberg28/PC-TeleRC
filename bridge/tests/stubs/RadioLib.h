@@ -16,6 +16,8 @@ struct RadioMock {
 struct SX1262:RadioMock {
  using RadioMock::RadioMock;
  int begin(float,float,uint8_t,uint8_t,uint8_t,int8_t,uint16_t,float=1.6,bool=false){return 0;}
+ int setRxBoostedGainMode(bool,bool){return 0;}
+ uint32_t getTimeOnAir(size_t n){return 256*(81+20*((8*n+16+27)/28))/4;}
  void setDio1Action(void(*)()){}
 };
 struct SX1276:RadioMock {
