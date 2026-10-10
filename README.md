@@ -1,5 +1,25 @@
 # PC TeleRC
 
+## Radio dropdown candidate — v0.1.1rc1
+
+Built directly from the stable [v0.1.0a10](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.0a10) commit `7b84b7882c4010c34f158304cc9c8c8cc4cba77b`. The stable release remains the recommended download. This candidate adds three connection profiles without importing later controller or UDP implementations.
+
+| Connection dropdown | PC connection | Required radio path |
+| --- | --- | --- |
+| ESP32-S3 · Wi-Fi | Existing MAVLink UDP, port 14550 | PC Wi-Fi → ESP32-S3 bridge → rover |
+| LilyGO T3S3 SX1262 · LoRa | Native USB CDC, 115200 | PC → paired BASE → LoRa → paired ROVER → TeleRC DIRECT motor controller |
+| HGLRC T ONE 900 MHz · ELRS | USB MAVLink, 460800 | PC → compatible ELRS TX → bound MAVLink RX → flight controller |
+
+Choose a profile, set its endpoint, then **Apply & Reconnect**. Wi-Fi remains the default for existing a10 settings. Each radio has its own saved COM port. Changing a field disables PC Control; Apply Settings saves a connection draft without switching the live link. Disconnect cancels a pending reconnect. Every reopened session requires a fresh vehicle heartbeat and manual control enable.
+
+**LoRa:** Use current [TeleRC paired firmware](https://github.com/Denberg28/TeleRC/tree/67b2cf5137989c1a6a65a4b02af960105d04afa3/bridge), not Meshtastic or transparent serial firmware. The app verifies an active SX1262 BASE before driving. LoRa Setup reads/provisions one board at a time; pairing secrets are masked and kept in memory only. The driving profile requires CH1 steering / CH2 drive and DIRECT motor control; AUTOPILOT driving through this LoRa profile is not implemented. Center the wheel and release pedals before enabling. Initial motor FAILSAFE allows only neutral commands while waiting for DIRECT; ARM remains blocked until DIRECT and PC Control are confirmed.
+
+**ELRS:** This is a USB MAVLink transport, not CRSF output to a module bay. Both radios need compatible ExpressLRS 3.5+ firmware and MAVLink mode; the T ONE's exact USB data path must be verified physically. No RF flashing or transmitter arbitration is performed. Controls run at 5 Hz to reduce 900 MHz traffic. Select a sufficiently fast RF packet mode and keep vehicle telemetry low; a fast USB baud rate does not increase RF capacity. The [official ExpressLRS MAVLink guide](https://www.expresslrs.org/software/mavlink/) documents setup and throughput. Pocket takeover has not been validated.
+
+See [candidate notes](docs/releases/v0.1.1rc1.md) for test evidence and hardware checks.
+
+
+
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
 **Current version:** `0.1.0a10` — Android-aligned CH1 steering / CH2 drive mapping.

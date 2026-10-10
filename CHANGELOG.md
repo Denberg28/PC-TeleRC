@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1rc1 — Radio dropdown candidate from stable a10
+- Add ESP32-S3 Wi-Fi, LilyGO T3S3 SX1262 LoRa USB, and HGLRC T ONE 900 MHz ELRS USB MAVLink profiles.
+- Preserve stable a10 controller and Wi-Fi implementation. Add independent COM ports, LoRa setup, and explicit connection handover.
+- Hardware radio validation pending; stable a10 remains Latest.
+
 ## 0.1.0a10 — 2026-10-02
 ### Android-aligned rover channel mapping
 - Changed the default rover mapping from CH1 steering / CH3 throttle to CH1 steering / CH2 drive, matching Android TeleRC.

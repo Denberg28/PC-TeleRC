@@ -10,6 +10,9 @@ CURRENT_SETTINGS_VERSION = 2
 @dataclass
 class AppSettings:
     settings_version: int = CURRENT_SETTINGS_VERSION
+    link_mode: str = "telerc_udp"
+    lora_port: str = ""
+    elrs_port: str = ""
     bind_host: str = "0.0.0.0"
     listen_port: int = 14550
     target_host: str = ""
@@ -33,6 +36,10 @@ class AppSettings:
 
     def validate(self) -> "AppSettings":
         self.settings_version = CURRENT_SETTINGS_VERSION
+        if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial"}:
+            self.link_mode = "telerc_udp"
+        self.lora_port = str(self.lora_port).strip()
+        self.elrs_port = str(self.elrs_port).strip()
         self.listen_port = int(min(65535, max(1, self.listen_port)))
         self.target_port = int(min(65535, max(1, self.target_port)))
         self.steer_axis = max(0, int(self.steer_axis))
