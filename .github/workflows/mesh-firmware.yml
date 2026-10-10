@@ -1,0 +1,38 @@
+name: LilyGO mesh firmware
+on:
+  push:
+    paths: ['bridge/**', '.github/workflows/mesh-firmware.yml']
+  pull_request:
+    paths: ['bridge/**', '.github/workflows/mesh-firmware.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mesh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host regression tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ libssl-dev
+          bridge/tests/run_mesh.sh
+          ASAN_OPTIONS=detect_leaks=0 SANITIZE=1 bridge/tests/run_mesh.sh
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: 1.3.1
+      - name: Install pinned target dependencies
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.2 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install RadioLib@7.2.1
+      - name: Build LilyGO T3-S3 SX1262
+        run: arduino-cli compile --fqbn esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,Revision=Radio_SX1262,PSRAM=enabled --output-dir build-mesh bridge/TeleRCMesh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TeleRCMesh-SX1262-${{ github.sha }}
+          path: |
+            build-mesh/*.bin
+            bridge/TeleRCMesh/
+          if-no-files-found: error
+          retention-days: 30

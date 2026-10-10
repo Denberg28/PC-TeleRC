@@ -1,0 +1,1 @@
+65927089d9bc51b084d94ff686f2e2b8cedb8f0d6c11c0e223e01349358fc06f  bridge/releases/PC-TeleRC-LilyGO-T3S3-Mesh-v0.1.0.zip
