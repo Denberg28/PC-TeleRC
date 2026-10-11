@@ -1,0 +1,30 @@
+name: Attach PWM glitch filter to stable a10
+on:
+  push:
+    branches: [main]
+    paths:
+      - stable_config/PWM_GlitchFilter_v1.0.1/**
+      - scripts/attach-pwm-glitch-filter.py
+      - .github/workflows/attach-pwm-glitch-filter.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-and-attach:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify package and run host regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/attach-pwm-glitch-filter.py --validate-only
+          cd stable_config/PWM_GlitchFilter_v1.0.1/source
+          for version in 2 3; do
+            g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined -DESP_ARDUINO_VERSION_MAJOR=$version -I tests tests/test_converter.cpp -o /tmp/pwm-tests-$version
+            ASAN_OPTIONS=detect_leaks=0 /tmp/pwm-tests-$version
+          done
+      - name: Attach companion assets and append release note
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/attach-pwm-glitch-filter.py

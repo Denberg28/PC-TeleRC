@@ -1,0 +1,10 @@
+PASS startup without valid input stays stopped
+PASS isolated invalid pulse/unmatched edge retains last valid command
+PASS continuous invalid pulses stop all motors at last-valid timeout
+PASS valid non-neutral signal cannot resume after timeout
+PASS neutral recovery requires full 300 ms dwell
+PASS total signal loss stops all four outputs
+PASS timer rollover preserves timeout
+PASS invalid-only startup cannot enable source
+PASS PWM initialization failure keeps all motors stopped
+PASS diagnostics include rejection/stop/uptime/reset fields
