@@ -1,0 +1,10 @@
+environment,tx_dbm,range_with_10db_reserve_m,path_loss_exponent,extra_loss_db
+"Open, good antenna clearance",2,1129.6705209424877,2.5,0
+"Open, good antenna clearance",10,2360.216248545008,2.5,0
+"Open, good antenna clearance",17,4497.299347501091,2.5,0
+Low antennas / vegetation,2,220.86479502236526,3,6
+Low antennas / vegetation,10,408.12496673979336,3,6
+Low antennas / vegetation,17,698.4358072168939,3,6
+Built-up / obstructions,2,68.83712305386166,3.5,12
+Built-up / obstructions,10,116.51830006852582,3.5,12
+Built-up / obstructions,17,184.66906057574775,3.5,12

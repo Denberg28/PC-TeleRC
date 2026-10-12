@@ -125,3 +125,7 @@ See [docs/REVIEW-2026-10-03.md](docs/REVIEW-2026-10-03.md) for verified defects,
 Steering and drive now have separate 25–100% sliders. Drive gain applies before the throttle limit; ARM/enable still require unscaled neutral pedals.
 
 Experimental ELRS external TX USB MAVLink mode uses a selected COM port at 460800 baud. It requires compatible module/receiver firmware; it is not a raw CRSF module-bay adapter. HGLRC T ONE USB capability and concurrent Pocket/PC control are not hardware verified. See [ELRS setup and limits](docs/ELRS.md).
+
+## LilyGO T3-S3 SX1262 mesh connection sketch
+
+A separate bench-test firmware candidate is available in [bridge/TeleRCMesh](bridge/TeleRCMesh/README.md). The same sketch configures gateway, relay and rover roles, up to two relay boards per path, and a raw ArduRover or framed TeleRC motor UART backend. It retains the normal PC UDP connection at 192.168.4.1:14550, CH1 steering / CH2 drive. Mesh firmware is a paired upgrade for every radio board; it is not Meshtastic or ELRS compatible. Hardware range, stopping time and paired integration remain unverified; see its setup/wiring guide and verification record.

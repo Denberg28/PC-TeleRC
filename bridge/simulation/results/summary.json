@@ -1,0 +1,205 @@
+{
+  "seed": 20261011,
+  "input_events": 500000,
+  "trials_per_loss_setting": 100000,
+  "timing": [
+    {
+      "profile": "Before",
+      "poll_wait_ms": 370,
+      "response_window_ms": 350,
+      "mean_cycle_ms": 398.9439079424224,
+      "update_hz": 2.506618048531086,
+      "mean_delay_ms": 271.9273177015483,
+      "p95_delay_ms": 451.8584102321503,
+      "p99_delay_ms": 476.79490095666483,
+      "modeled_rf_occupancy_pct": 15.107666917600515,
+      "max_packet_cycle_ms": 429.384
+    },
+    {
+      "profile": "Optimized direct",
+      "poll_wait_ms": 100,
+      "response_window_ms": 90,
+      "mean_cycle_ms": 128.94390794242233,
+      "update_hz": 7.755310165149739,
+      "mean_delay_ms": 135.28564550605648,
+      "p95_delay_ms": 199.52345198834678,
+      "p99_delay_ms": 213.78166977210927,
+      "modeled_rf_occupancy_pct": 45.406003381054425,
+      "max_packet_cycle_ms": 159.384
+    }
+  ],
+  "loss": [
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 0,
+      "stopped_within_60s_pct": 0.0,
+      "exact_reference_stop_pct": 0.0,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 0.1,
+      "stopped_within_60s_pct": 26.087,
+      "exact_reference_stop_pct": 25.929296784389756,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 0.5,
+      "stopped_within_60s_pct": 77.742,
+      "exact_reference_stop_pct": 77.77078001592514,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 1.0,
+      "stopped_within_60s_pct": 95.093,
+      "exact_reference_stop_pct": 95.09591059287143,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 5.0,
+      "stopped_within_60s_pct": 100.0,
+      "exact_reference_stop_pct": 99.99997924696652,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Before",
+      "loss_per_packet_pct": 10.0,
+      "stopped_within_60s_pct": 100.0,
+      "exact_reference_stop_pct": 99.99999999999812,
+      "trials": 100000,
+      "exchanges": 150
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 0,
+      "stopped_within_60s_pct": 0.0,
+      "exact_reference_stop_pct": 0.0,
+      "trials": 100000,
+      "exchanges": 465
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 0.1,
+      "stopped_within_60s_pct": 0.0,
+      "exact_reference_stop_pct": 0.00036830908319851474,
+      "trials": 100000,
+      "exchanges": 465
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 0.5,
+      "stopped_within_60s_pct": 0.038,
+      "exact_reference_stop_pct": 0.04538781043804674,
+      "trials": 100000,
+      "exchanges": 465
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 1.0,
+      "stopped_within_60s_pct": 0.34299999999999997,
+      "exact_reference_stop_pct": 0.3562277009181769,
+      "trials": 100000,
+      "exchanges": 465
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 5.0,
+      "stopped_within_60s_pct": 32.233000000000004,
+      "exact_reference_stop_pct": 32.13715622854054,
+      "trials": 100000,
+      "exchanges": 465
+    },
+    {
+      "profile": "Optimized direct",
+      "loss_per_packet_pct": 10.0,
+      "stopped_within_60s_pct": 92.688,
+      "exact_reference_stop_pct": 92.71483325599135,
+      "trials": 100000,
+      "exchanges": 465
+    }
+  ],
+  "range": [
+    {
+      "environment": "Open, good antenna clearance",
+      "tx_dbm": 2,
+      "range_with_10db_reserve_m": 1129.6705209424877,
+      "path_loss_exponent": 2.5,
+      "extra_loss_db": 0
+    },
+    {
+      "environment": "Open, good antenna clearance",
+      "tx_dbm": 10,
+      "range_with_10db_reserve_m": 2360.216248545008,
+      "path_loss_exponent": 2.5,
+      "extra_loss_db": 0
+    },
+    {
+      "environment": "Open, good antenna clearance",
+      "tx_dbm": 17,
+      "range_with_10db_reserve_m": 4497.299347501091,
+      "path_loss_exponent": 2.5,
+      "extra_loss_db": 0
+    },
+    {
+      "environment": "Low antennas / vegetation",
+      "tx_dbm": 2,
+      "range_with_10db_reserve_m": 220.86479502236526,
+      "path_loss_exponent": 3,
+      "extra_loss_db": 6
+    },
+    {
+      "environment": "Low antennas / vegetation",
+      "tx_dbm": 10,
+      "range_with_10db_reserve_m": 408.12496673979336,
+      "path_loss_exponent": 3,
+      "extra_loss_db": 6
+    },
+    {
+      "environment": "Low antennas / vegetation",
+      "tx_dbm": 17,
+      "range_with_10db_reserve_m": 698.4358072168939,
+      "path_loss_exponent": 3,
+      "extra_loss_db": 6
+    },
+    {
+      "environment": "Built-up / obstructions",
+      "tx_dbm": 2,
+      "range_with_10db_reserve_m": 68.83712305386166,
+      "path_loss_exponent": 3.5,
+      "extra_loss_db": 12
+    },
+    {
+      "environment": "Built-up / obstructions",
+      "tx_dbm": 10,
+      "range_with_10db_reserve_m": 116.51830006852582,
+      "path_loss_exponent": 3.5,
+      "extra_loss_db": 12
+    },
+    {
+      "environment": "Built-up / obstructions",
+      "tx_dbm": 17,
+      "range_with_10db_reserve_m": 184.66906057574775,
+      "path_loss_exponent": 3.5,
+      "extra_loss_db": 12
+    }
+  ],
+  "relay_timing": {
+    "poll_ms": 370,
+    "response_ms": 350
+  },
+  "assumptions": {
+    "frequency_mhz": 915,
+    "rx_threshold_dbm": -114,
+    "antenna_gain_each_dbi": 2,
+    "combined_losses_db": 2,
+    "range_reserve_db": 10
+  }
+}
