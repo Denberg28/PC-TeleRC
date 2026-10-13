@@ -13,8 +13,10 @@ class SafetyDecision:
 
 
 def validate_mapping(settings: AppSettings, axis_count: int | None = None) -> SafetyDecision:
-    if settings.link_mode == "telerc_udp" and (settings.steering_channel > 4 or settings.throttle_channel > 4):
+    if settings.link_mode in ("telerc_udp", "lora_usb") and (settings.steering_channel > 4 or settings.throttle_channel > 4):
         return SafetyDecision(False, "bridge_channel_unsupported", "TeleRC bridge control supports RC channels 1–4 only; channels 5–8 must remain ignored.")
+    if settings.link_mode == "lora_usb" and (settings.steering_channel, settings.throttle_channel) != (1, 2):
+        return SafetyDecision(False, "lora_channel_mismatch", "LoRa motor controller requires CH1 steering and CH2 drive.")
     if settings.steering_channel == settings.throttle_channel:
         return SafetyDecision(False, "duplicate_rc_channel", "Steering and throttle must use different RC channels.")
     mapped = [settings.steer_axis, settings.throttle_axis]
@@ -48,6 +50,8 @@ def can_enable_control(
         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
     if frame is None or not frame.neutral:
         return SafetyDecision(False, "throttle_not_neutral", "Release throttle/brake to neutral before enabling PC control.")
+    if settings.link_mode == "lora_usb" and abs(frame.steering) > .05:
+        return SafetyDecision(False, "steering_not_neutral", "Center the wheel before enabling LoRa control or arming.")
     return SafetyDecision(True, "ok", "PC control prerequisites satisfied.")
 
 

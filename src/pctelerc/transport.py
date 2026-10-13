@@ -152,3 +152,76 @@ class VehicleSerial(mavutil.mavfile):
                 self.port.reset_output_buffer()
         finally:
             self.port.close()
+
+
+class VehicleLoRa(VehicleSerial):
+    """Native T3-S3 CDC at 115200, carrying CRC-framed TeleRC datagrams."""
+
+    def __init__(self, port_name: str):
+        import serial
+        from collections import deque
+        from .lora import Parser
+        self.parser = Parser()
+        self.packets = deque()
+        # Native CDC needs DTR asserted for firmware Serial.availableForWrite().
+        # RTS is kept low; select the board's native USB port, not a reset-wired adapter.
+        self.port = serial.Serial(port=None, baudrate=115200, timeout=0, write_timeout=.02)
+        self.port.dtr = True
+        self.port.rts = False
+        self.port.port = port_name
+        try:
+            self.port.open()
+            self.port.reset_input_buffer()
+            mavutil.mavfile.__init__(self, None, port_name, source_system=255, source_component=190, input=True)
+        except Exception:
+            self.port.close()
+            raise
+
+    def read_packet(self):
+        import time
+        data = self.port.read(min(self.port.in_waiting, 512))
+        for packet in self.parser.feed(data, time.monotonic()):
+            if len(self.packets) >= 32:
+                raise OSError('LoRa USB receive backlog; reconnect required.')
+            self.packets.append(packet)
+        return self.packets.popleft() if self.packets else b''
+
+    def recv(self, n=None):
+        packet = self.read_packet()
+        # Never mix local setup/status text with the MAVLink parser. Each USB
+        # datagram contains one complete firmware telemetry frame.
+        if not packet:
+            return b''
+        v1 = packet[0] == 0xfe and len(packet) >= 8 and len(packet) == packet[1] + 8
+        v2 = packet[0] == 0xfd and len(packet) >= 12 and len(packet) == packet[1] + 12 + (13 if packet[2] & 1 else 0)
+        return packet if v1 or v2 else b''
+
+    def write(self, buf):
+        from .lora import encode
+        import time
+        deadline = time.monotonic() + .01
+        while self.port.out_waiting:
+            if time.monotonic() >= deadline:
+                raise OSError('LoRa USB output is backed up; control disabled.')
+            time.sleep(.001)
+        frame = encode(bytes(buf))
+        sent = self.port.write(frame)
+        if sent != len(frame):
+            raise OSError('Incomplete LoRa USB send; reconnect required.')
+        return len(buf)
+
+    def require_active_base(self, stop_event, timeout=2.0):
+        import time
+        from .lora import Board
+        self.write(b'TELERC_LORA_GET_V1')
+        deadline = time.monotonic() + timeout
+        while not stop_event.is_set() and time.monotonic() < deadline:
+            board = Board.parse(self.read_packet())
+            if board:
+                if board.role != 'BASE':
+                    raise ValueError('This is the ROVER board. Connect the LoRa BASE to the PC for driving.')
+                if not board.active:
+                    raise ValueError('LoRa BASE radio is inactive. Provision and restart it in LoRa Setup.')
+                return board
+            stop_event.wait(.005)
+        raise ValueError('No TeleRC LoRa board reply. Check native USB, firmware and COM port.')

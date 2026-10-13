@@ -1,10 +1,12 @@
 # PC TeleRC
 
-PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
+PC TeleRC is a Windows rover controller for PXN or compatible wheels. Choose the ESP32-S3 Wi-Fi bridge, native LilyGO LoRa USB, or experimental ELRS USB MAVLink connection.
 
-**Current version:** `0.1.0a13` — sensitivity slider and reviewed connection/control reliability.
+**Current version:** `0.1.0a14` — native LoRa USB and compact dropdown navigation.
 
-## Operator flow
+For LoRa, follow [the dedicated setup/drive guide](docs/LORA.md): enable neutral PC control, wait for DIRECT, then ARM. The flow below describes the preserved Wi-Fi/ArduRover mode.
+
+## Wi-Fi operator flow
 1. Connect the PC to the ESP32-S3 rover network.
 2. Start PC TeleRC; it listens on UDP 14550 by default.
 3. Select the intended PXN/controller. Once a controller GUID is selected, PC TeleRC will not silently fall back to another joystick.
@@ -94,7 +96,7 @@ See `AGENTS.md`, `docs/DECISIONS.md`, `docs/BUTTON_AUDIT.md`, and `docs/TESTING.
 
 
 ## Code-review baseline
-The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev dependency pins, `pip check`, version consistency, headless Qt UI construction, equal main-card column geometry, modeless diagnostics, unit/integration tests, and the Windows PyInstaller build.
+The v0.1.0a6 review verifies feature/documentation alignment, exact runtime/dev dependency pins, `pip check`, version consistency, headless Qt UI construction, dropdown-page geometry, modeless diagnostics, unit/integration tests, and the Windows PyInstaller build.
 
 
 ## Windows UDP troubleshooting
@@ -108,7 +110,7 @@ PC TeleRC keeps one bound UDP socket per connected session for receive/transmit.
 
 **Apply Settings** saves controller settings while leaving pending network changes inactive. Pending network changes block ARM and control enable until **Apply & Connect/Reconnect** starts a new session. A monitor-only session does not send RC neutral/release on disconnect. Use one active controller application at a time; the bridge is not an ownership arbiter.
 
-MAVLink 1 commands remain unsigned and unencrypted. Peer pinning is traffic isolation, not cryptographic authentication. Use the private rover network and a fixed ESP32 IPv4 address. Signing would require a coordinated bridge upgrade; this review does not change the Android app or ESP32 firmware.
+In Wi-Fi mode, MAVLink 1 commands remain unsigned and unencrypted. Peer pinning is traffic isolation, not cryptographic authentication. Use the private rover network and a fixed ESP32 IPv4 address. Signing would require a coordinated bridge upgrade; this review does not change the Android app or ESP32 firmware.
 
 The installed build now uses PyInstaller **onedir** inside the Inno Setup installer instead of one-file extraction. This removes the normal PyInstaller parent/child process pair from the installed application and gives a cleaner field deployment.
 
@@ -125,3 +127,7 @@ See [docs/REVIEW-2026-10-03.md](docs/REVIEW-2026-10-03.md) for verified defects,
 Steering and drive now have separate 25–100% sliders. Drive gain applies before the throttle limit; ARM/enable still require unscaled neutral pedals.
 
 Experimental ELRS external TX USB MAVLink mode uses a selected COM port at 460800 baud. It requires compatible module/receiver firmware; it is not a raw CRSF module-bay adapter. HGLRC T ONE USB capability and concurrent Pocket/PC control are not hardware verified. See [ELRS setup and limits](docs/ELRS.md).
+
+## Native LoRa and compact navigation — 0.1.0a14
+
+Select Drive, Link Setup, Controller or LoRa Setup from the top dropdown. Native LilyGO USB support uses the TeleRC v0.8.53 BASE/ROVER/motor stack without a relay. See [LoRa setup and driving](docs/LORA.md) for pairing, wiring references, neutral enable/ARM, compatibility and physical acceptance tests. STOP stays visible; leaving Drive stops PC control. Existing Wi-Fi and experimental ELRS modes remain available.

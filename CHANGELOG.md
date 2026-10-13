@@ -1,3 +1,11 @@
+# 0.1.0a14
+
+- Native TeleRC v0.8.53 LoRa USB base-board transport and local board provisioning.
+- Compact centered dropdown pages with persistent STOP and stop on navigation.
+- CH1/CH2 motor compatibility, base role/radio checks, neutral/DIRECT ARM sequencing, pairing timeout isolation and RAM-only keys.
+- Retain independent sensitivities, calibration, Wi-Fi and experimental ELRS.
+- Hardware validation remains pending; see docs/LORA.md.
+
 # 0.1.0a13 — 2026-10-03
 
 - Separate saved steering and drive sensitivity sliders (25–100%); drive gain applies before the throttle limit.

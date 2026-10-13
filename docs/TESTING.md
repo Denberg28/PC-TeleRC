@@ -50,7 +50,7 @@ See `docs/BUTTON_AUDIT.md`.
 ## UI/dependency review gate
 - `pip check` must pass after installation.
 - Headless Qt smoke test must construct MainWindow.
-- Main three-card layout must retain equal column stretch/minimum widths.
+- Dropdown pages must fit the compact window; irrelevant UDP/USB fields must hide for the selected mode. STOP stays visible across pages.
 - Diagnostics must instantiate as non-modal.
 - Package version must match `pyproject.toml`.
 
@@ -77,3 +77,9 @@ See `docs/BUTTON_AUDIT.md`.
 - Concurrent disable/tick, invalid frames, worker stalls, socket send failure, pending network edits, save failures, and ARM/DISARM feedback tested.
 - Multi-peer routing, multi-message datagram source integrity, and exclusive listener ownership tested.
 - Windows build/installer CI and physical hardware validation remain separate checks. See REVIEW-2026-10-03.md.
+
+## 0.1.0a14 LoRa / dropdown verification
+- 110 automated tests pass locally; compileall and pip check pass.
+- Native USB CRC/fragments/corruption/expiry, setup parsing/state/timeouts, wrong/inactive board, no persisted key, wheel drive/ARM/release/disconnect/reconnect and navigation-stop tests pass.
+- UI visually inspected at 800×720 and 640×600.
+- Windows test/build gate is provided by CI; HIL remains NOT TESTED. See [LORA.md](LORA.md).

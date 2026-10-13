@@ -5,8 +5,8 @@ from dataclasses import replace
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
-    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSlider, QSpinBox, QSizePolicy, QVBoxLayout, QWidget,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
+    QSlider, QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QStackedWidget, QScrollArea, QProgressBar,
 )
 
 from . import __version__
@@ -17,9 +17,14 @@ from .core import LinkState, control_is_fresh
 from .field_safety import can_enable_control
 from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
+from .lora_setup_widget import LoRaSetupWidget, refresh_ports
 
 STYLE = """
 QWidget { background:#11161d; color:#e7edf5; font-family:'Segoe UI'; font-size:10pt; }
+QLabel { background:transparent; }
+QProgressBar { background:#0f141a; border:1px solid #344458; border-radius:5px; min-height:22px; text-align:center; }
+QProgressBar::chunk { background:#2879aa; border-radius:4px; }
+QPushButton#Primary:disabled { background:#1a222d; color:#677587; font-weight:400; }
 QFrame#Card { background:#18202a; border:1px solid #2a3645; border-radius:10px; }
 QLabel#Title { font-size:18pt; font-weight:700; }
 QLabel#Muted { color:#91a0b2; }
@@ -50,7 +55,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"PC TeleRC {__version__}")
-        self.resize(1180, 720)
+        self.resize(800, 720)
+        self.setMinimumSize(640, 600)
         self.settings = load_settings()
         self._settings_dirty = False
         self._network_dirty = False
@@ -86,33 +92,46 @@ class MainWindow(QMainWindow):
         title = QLabel("PC TeleRC")
         title.setObjectName("Title")
         top.addWidget(title)
-        subtitle = QLabel("Windows MAVLink rover bridge + wheel controller")
-        subtitle.setObjectName("Muted")
-        top.addWidget(subtitle)
+        self.page_combo = QComboBox()
+        self.page_combo.addItems(["Drive", "Link Setup", "Controller", "LoRa Setup"])
+        self.page_combo.setAccessibleName("Navigation page")
+        self.page_combo.setMinimumWidth(160)
+        top.addWidget(self.page_combo)
         top.addStretch()
         self.global_status = QLabel("Starting…")
+        self.global_status.setMinimumWidth(110)
+        self.global_status.setAlignment(Qt.AlignmentFlag.AlignRight)
         top.addWidget(self.global_status)
         main.addLayout(top)
 
-        grid = QGridLayout()
-        self.main_grid = grid
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
-        for column in range(3):
-            grid.setColumnStretch(column, 1)
-            grid.setColumnMinimumWidth(column, 330)
-        main.addLayout(grid, 1)
+        self.pages = QStackedWidget()
+        main.addWidget(self.pages, 1)
 
-        connection_card, connection = card("1. Rover connection")
+        connection_card, connection = card("Link Setup")
         form = QFormLayout()
+        self.connection_form = form
         self.link_mode = QComboBox()
-        self.link_mode.addItem("TeleRC ESP32 · Wi-Fi", "telerc_udp")
+        self.link_mode.addItem("Wi-Fi · ESP32", "telerc_udp")
+        self.link_mode.addItem("LoRa · LilyGO USB", "lora_usb")
         self.link_mode.addItem("ELRS external TX · USB MAVLink (experimental)", "elrs_serial")
         self.serial_port = QLineEdit()
-        self.serial_port.setPlaceholderText("ELRS module COM port, e.g. COM5")
+        self.serial_port.setPlaceholderText("Selected board COM port, e.g. COM5")
         self.serial_port.setToolTip("Requires USB MAVLink firmware and compatible receiver; fixed 460800 baud, DTR/RTS low. Not raw CRSF module-bay input.")
         form.addRow("Connection", self.link_mode)
-        form.addRow("ELRS COM port", self.serial_port)
+        self.port_choices = QComboBox()
+        self.port_choices.setEditable(True)
+        self.port_choices.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.port_choices.setAccessibleName("Available COM ports")
+        self.port_refresh = QPushButton("Refresh")
+        self.port_choices.activated.connect(lambda *_: self.serial_port.setText(self.port_choices.currentText()))
+        self.port_refresh.clicked.connect(lambda: refresh_ports(self.port_choices))
+        self.serial_row = QWidget()
+        port_layout = QHBoxLayout(self.serial_row)
+        port_layout.setContentsMargins(0, 0, 0, 0)
+        port_layout.addWidget(self.serial_port, 1)
+        port_layout.addWidget(self.port_choices)
+        port_layout.addWidget(self.port_refresh)
+        form.addRow("USB port", self.serial_row)
         self.bind_host = QLineEdit()
         self.listen_port = QSpinBox()
         self.listen_port.setRange(1, 65535)
@@ -145,9 +164,9 @@ class MainWindow(QMainWindow):
         connection.addWidget(self.vehicle_label)
         connection.addWidget(self.traffic_label)
         connection.addStretch()
-        grid.addWidget(connection_card, 0, 0)
 
-        wheel_card, wheel_layout = card("2. PXN / Game Controller")
+
+        wheel_card, wheel_layout = card("Controller")
         device_row = QHBoxLayout()
         self.device_combo = QComboBox()
         self.select_btn = QPushButton("Use selected")
@@ -246,9 +265,9 @@ class MainWindow(QMainWindow):
         wheel_layout.addWidget(self.axis_label)
         wheel_layout.addWidget(self.raw_axes)
         wheel_layout.addStretch()
-        grid.addWidget(wheel_card, 0, 1)
 
-        safety_card, safety = card("3. Safety & Control")
+
+        safety_card, safety = card("Drive")
         safety_form = QFormLayout()
         self.throttle_limit = QSpinBox()
         self.throttle_limit.setRange(5, 100)
@@ -262,27 +281,24 @@ class MainWindow(QMainWindow):
         safety_form.addRow("Throttle limit", self.throttle_limit)
         safety_form.addRow("Steering RC channel", self.steer_channel)
         safety_form.addRow("Throttle RC channel", self.throttle_channel)
-        safety.addLayout(safety_form)
+        wheel_layout.insertLayout(3, safety_form)
 
         self.safety_label = QLabel("Control disabled")
         self.output_label = QLabel("CH steer 1500 • throttle 1500")
         safety.addWidget(self.safety_label)
         safety.addWidget(self.output_label)
 
-        arm_row = QHBoxLayout()
         self.arm_btn = QPushButton("ARM")
         self.arm_btn.setToolTip("Send MAV_CMD_COMPONENT_ARM_DISARM only when link and neutral-controller checks pass.")
         self.disarm_btn = QPushButton("DISARM")
         self.disarm_btn.setObjectName("Danger")
         self.disarm_btn.setToolTip("Send an explicit disarm command to the linked vehicle.")
-        arm_row.addWidget(self.arm_btn)
-        arm_row.addWidget(self.disarm_btn)
-        safety.addLayout(arm_row)
+
 
         self.control_btn = QPushButton("Enable PC Control")
         self.control_btn.setObjectName("Primary")
         self.control_btn.setToolTip("Enable RC override only with healthy MAVLink, a fresh wheel, and neutral throttle.")
-        safety.addWidget(self.control_btn)
+
 
         self.diagnostics_btn = QPushButton("Diagnostics")
         self.diagnostics_btn.setToolTip("Run read-only troubleshooting checks and copy a diagnostic report.")
@@ -292,22 +308,84 @@ class MainWindow(QMainWindow):
         note.setWordWrap(True)
         safety.addWidget(note)
         safety.addStretch()
-        grid.addWidget(safety_card, 0, 2)
 
-        status_card, status = card("Session status")
+
+        # Driving shows only live values and response controls. Configuration
+        # forms live on separate dropdown pages; STOP stays visible everywhere.
+        safety.insertWidget(1, self.vehicle_label)
+        safety.insertWidget(2, self.controller_label)
+        safety.insertWidget(3, self.axis_label)
+        safety.insertWidget(4, self.traffic_label)
+        self.steer_meter = QProgressBar()
+        self.drive_meter = QProgressBar()
+        for meter, name in ((self.steer_meter, "Steering"), (self.drive_meter, "Drive")):
+            meter.setRange(0, 200)
+            meter.setValue(100)
+            meter.setAccessibleName(name + " input")
+            meter.setFormat(name + " 0%")
+            safety.insertWidget(5, meter)
+        wheel_layout.removeWidget(sensitivity_widget)
+        wheel_layout.removeWidget(drive_widget)
+        safety.insertWidget(7, sensitivity_widget)
+        safety.insertWidget(8, drive_widget)
+        self.drive_apply = QPushButton("Apply response settings")
+        self.drive_apply.clicked.connect(self._apply_settings)
+        safety.insertWidget(9, self.drive_apply)
+        self.lora_setup = LoRaSetupWidget(self._stop_for_setup, self)
+        self.lora_setup.setObjectName("Card")
+
+        for panel in (safety_card, connection_card, wheel_card, self.lora_setup):
+            holder = QWidget()
+            centered = QHBoxLayout(holder)
+            centered.setContentsMargins(0, 0, 0, 0)
+            centered.addStretch()
+            panel.setMaximumWidth(680)
+            centered.addWidget(panel, 1)
+            centered.addStretch()
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            scroll.setWidget(holder)
+            self.pages.addWidget(scroll)
+        self.page_combo.currentIndexChanged.connect(self._change_page)
+
+        bottom = QHBoxLayout()
+        bottom.addWidget(self.link_label, 1)
+        bottom.addWidget(self.arm_btn)
+        bottom.addWidget(self.disarm_btn)
+        bottom.addWidget(self.control_btn)
+        self.stop_btn = QPushButton("STOP")
+        self.stop_btn.setObjectName("Danger")
+        self.stop_btn.setToolTip("Disable PC control and send neutral/release. Does not disarm.")
+        self.stop_btn.clicked.connect(self._stop_control)
+        bottom.addWidget(self.stop_btn)
+        main.addLayout(bottom)
         self.settings_state = QLabel("Settings applied")
         self.settings_state.setObjectName("Muted")
-        self.message = QLabel("Connect the rover network and verify wheel input before enabling PC control.")
+        self.message = QLabel("Choose Link Setup to connect, then verify the wheel in Controller.")
         self.message.setWordWrap(True)
-        guide = QLabel("ArduRover GCS/telemetry fail-safe remains mandatory for true Wi-Fi-loss protection.")
-        guide.setWordWrap(True)
-        guide.setObjectName("Muted")
-        status.addWidget(self.settings_state)
-        status.addWidget(self.message)
-        status.addWidget(guide)
-        grid.addWidget(status_card, 1, 0, 1, 3)
+        main.addWidget(self.settings_state)
+        main.addWidget(self.message)
 
         self.setCentralWidget(root)
+
+    def _stop_control(self):
+        released = self.mav.disable_control()
+        self.message.setText("PC control OFF; neutral/release sent." if released else "PC control OFF; stop transmission failed. Verify the rover has stopped.")
+
+    def _stop_for_setup(self):
+        stopped = self.mav.stop()
+        if stopped:
+            self.message.setText("Driving link closed for local USB setup. Reconnect manually when finished.")
+        return stopped
+
+    def _change_page(self, index):
+        if self.mav.snapshot().control_enabled:
+            self.mav.disable_control()
+            self.message.setText("PC control stopped on page change. Return to Drive and enable manually.")
+        if index != 3:
+            self.lora_setup.close_usb()
+        self.pages.setCurrentIndex(index)
 
     def _wire_buttons_and_fields(self):
         # Button audit: every operator action has exactly one explicit handler.
@@ -374,10 +452,18 @@ class MainWindow(QMainWindow):
         self._network_dirty = False
 
     def _update_link_fields(self):
-        serial_mode = self.link_mode.currentData() == "elrs_serial"
+        mode = self.link_mode.currentData()
+        serial_mode = mode != "telerc_udp"
         self.serial_port.setEnabled(serial_mode)
+        self.connection_form.setRowVisible(self.serial_row, serial_mode)
         for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
-            widget.setEnabled(not serial_mode)
+            self.connection_form.setRowVisible(widget, not serial_mode)
+        if mode == "lora_usb":
+            self.connection_hint.setText("Connect the LilyGO BASE native USB. Use LoRa Setup to provision both boards. Driving uses CH1 steer / CH2 drive.")
+        elif mode == "elrs_serial":
+            self.connection_hint.setText("Experimental USB MAVLink, 460800 baud. Requires compatible TX/receiver firmware; hardware compatibility is unverified.")
+        else:
+            self.connection_hint.setText("Join the rover Wi-Fi. Set ESP32 target IP to 192.168.4.1 for a fixed connection.")
 
     def _settings_from_widgets(self) -> AppSettings:
         return AppSettings(
@@ -441,6 +527,7 @@ class MainWindow(QMainWindow):
         return True
 
     def _apply_and_reconnect(self):
+        self.lora_setup.close_usb()
         # Disconnect using the OLD routing/mapping before changing either one.
         if not self.mav.stop():
             QApplication.beep()
@@ -533,6 +620,9 @@ class MainWindow(QMainWindow):
         self._diagnostics_window.show()
 
     def _toggle_control(self):
+        if self.page_combo.currentIndex() != 0:
+            self.message.setText("Return to Drive before enabling PC control.")
+            return
         if self.mav.snapshot().control_enabled:
             released = self.mav.disable_control()
             self.message.setText("PC control disabled; neutral/release sent." if released else
@@ -584,6 +674,9 @@ class MainWindow(QMainWindow):
             f"Controller: {wheel.name}" if wheel.connected else (wheel.error or "Controller: not detected")
         )
         self.axis_label.setText(f"Steer {wheel.steering:+.2f} • Drive {wheel.throttle:+.2f}")
+        for meter, name, value in ((self.steer_meter, "Steering", wheel.steering), (self.drive_meter, "Drive", wheel.throttle)):
+            meter.setValue(round(100 + max(-1, min(1, value)) * 100))
+            meter.setFormat(f"{name} {value * 100:+.0f}%")
         axes = ", ".join(f"{i}:{value:+.2f}" for i, value in enumerate(wheel.axes[:10]))
         self.raw_axes.setText("Axes: " + (axes or "—"))
 
@@ -630,14 +723,17 @@ class MainWindow(QMainWindow):
         pending = self._settings_dirty or self._network_dirty
         decision = can_enable_control(settings=self.settings, link_state=mav.state if link_ok else LinkState.DISCONNECTED,
                                       frame=wheel.frame, axis_count=len(wheel.axes) if wheel.connected else 0)
-        ready = decision.allowed and not pending
+        ready = decision.allowed and not pending and self.page_combo.currentIndex() == 0 and self.lora_setup.link is None
+        if self.settings.link_mode == "lora_usb" and mav.mode in ("AUTOPILOT", "UNKNOWN"):
+            ready = False
         self.disconnect_btn.setEnabled(mav.running)
         self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
         self.global_status.setText("Ready" if ready else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
-        self.arm_btn.setEnabled(ready and not mav.armed and not mav.command_pending)
+        self.arm_btn.setEnabled(ready and not mav.armed and not mav.command_pending
+                                and (self.settings.link_mode != "lora_usb" or (mav.control_enabled and mav.mode == "DIRECT")))
         self.disarm_btn.setEnabled(link_ok and mav.armed)
         self.control_btn.setEnabled(
             mav.control_enabled or ready
@@ -646,6 +742,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._closing = True
         self.timer.stop()
+        self.lora_setup.close_usb()
+        self.lora_setup.clear_secret()
         self.mav.disable_control()
         self.mav.stop()
         self.wheel.stop()
