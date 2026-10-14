@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.1rc1 — radio dropdown candidate built directly on stable v0.1.0a10.
+0.1.1rc2 — ELRS reliability candidate built on the a10 radio dropdown candidate.
 
 Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lora_usb, elrs_serial. Separate saved lora_port/elrs_port; no pairing credentials in AppSettings. Publish candidates as drafts; v0.1.0a10 remains stable/Latest.
 
@@ -61,3 +61,5 @@ Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel ma
 - ELRS uses raw MAVLink USB at 460800, DTR/RTS low, 5 Hz overrides. No ordinary CRSF, automatic firmware flashing, or validated T ONE/Pocket arbitration.
 - Apply Settings must not redirect a live session. Apply & Reconnect releases/closes the old profile before configuring/opening the new profile. Disconnect cancels pending restart callbacks.
 - Physical radio range, failsafe latency, and named hardware are unverified until HIL evidence exists.
+
+ELRS reliability: 20 Hz safety checks separate from 5 Hz drive sends; monitor-only sessions never release RC. Serialize enable/disable/configure/ARM with sends. Fresh ArduRover autopilot heartbeat and input required. Missed watchdog deadlines and USB failures latch OFF. Purge the local output queue before owned neutral/release; USB write success never proves RF delivery. Reconnect timers carry a generation token and frozen applied settings; edits cancel them. Preserve original Wi-Fi/LoRa control rates and protocol frames.

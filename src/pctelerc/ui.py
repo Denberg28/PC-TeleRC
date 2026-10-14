@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import time
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
@@ -58,6 +59,8 @@ class MainWindow(QMainWindow):
         self._diagnostics_window = None
         self._lora_dialog = None
         self._restart_pending = False
+        self._restart_generation = 0
+        self._restart_settings = None
         self._connected_settings = replace(self.settings)
 
         self.wheel = WheelService()
@@ -325,6 +328,11 @@ class MainWindow(QMainWindow):
                 return
 
     def _mark_dirty(self, network: bool):
+        if self._restart_pending:
+            self._restart_pending = False
+            self._restart_generation += 1
+            self.reconnect_btn.setEnabled(True)
+            self.message.setText("Connection cancelled because settings changed. Apply & Connect again.")
         if self.mav.snapshot().control_enabled:
             self.mav.disable_control()
             self.message.setText("PC control disabled because configuration was edited. Apply settings and re-enable manually.")
@@ -386,8 +394,14 @@ class MainWindow(QMainWindow):
         ).validate()
 
     def _persist_and_configure(self):
-        self.settings = self._settings_from_widgets()
-        save_settings(self.settings)
+        try:
+            candidate = self._settings_from_widgets()
+            save_settings(candidate)
+        except (OSError, ValueError, TypeError) as exc:
+            self.message.setText(f"Settings could not be applied: {exc}")
+            QApplication.beep()
+            return False
+        self.settings = candidate
         self.wheel.configure(self.settings)
         active_settings = self.settings
         if self._network_dirty:
@@ -397,18 +411,21 @@ class MainWindow(QMainWindow):
         self.mav.configure(active_settings)
         self._settings_dirty = False
         self.settings_state.setText("Pending network restart" if self._network_dirty else "Settings applied")
+        return True
 
     def _apply_settings(self):
         if self.mav.snapshot().control_enabled:
             self.mav.disable_control()
         network_pending = self._network_dirty
-        self._persist_and_configure()
+        if not self._persist_and_configure():
+            return False
         self._network_dirty = network_pending
         if network_pending:
             self.settings_state.setText("Network settings saved — click Apply & Reconnect")
             self.message.setText("Controller/safety settings applied. Radio changes need Apply & Reconnect.")
         else:
             self.message.setText("Settings applied.")
+        return True
 
     def _update_link_fields(self, *_):
         mode = self.link_mode.currentData()
@@ -422,17 +439,21 @@ class MainWindow(QMainWindow):
         self.link_hint.setText({
             "telerc_udp": "Join the ESP32 Wi-Fi network. MAVLink UDP uses port 14550.",
             "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Requires TeleRC LoRa firmware and the DIRECT motor controller.",
-            "elrs_serial": "USB MAVLink at 460800 · 5 Hz control. TX/RX need ELRS 3.5+ MAVLink mode. T ONE hardware validation pending.",
+            "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
         }[mode])
 
     def _refresh_radio_ports(self):
-        refresh_ports(self.lora_port)
-        refresh_ports(self.elrs_port)
+        try:
+            refresh_ports(self.lora_port)
+            refresh_ports(self.elrs_port)
+            self.message.setText("Ports refreshed. Select the intended module; the active connection is unchanged.")
+        except OSError as exc:
+            self.message.setText(f"Could not list USB ports: {exc}")
 
     def _disconnect_link(self):
         self._restart_pending = False
+        self._restart_generation += 1
         self.reconnect_btn.setEnabled(True)
-        self.mav.disable_control()
         stopped = self.mav.stop()
         self.message.setText("Disconnected. PC Control is OFF." if stopped else "Link did not stop. Close PC TeleRC before reconnecting.")
         return stopped
@@ -461,18 +482,24 @@ class MainWindow(QMainWindow):
             self.reconnect_btn.setEnabled(True)
             return
         self.reconnect_btn.setEnabled(False)
+        network_pending = self._network_dirty
         self._network_dirty = False
-        self._persist_and_configure()
+        if not self._persist_and_configure():
+            self._network_dirty = network_pending
+            self.reconnect_btn.setEnabled(True)
+            return
         self._connected_settings = replace(self.settings)
         self.settings_state.setText("Connecting selected radio…")
         self._restart_pending = True
-        QTimer.singleShot(250, self._restart_mavlink_after_release)
+        self._restart_settings = replace(self.settings)
+        generation = self._restart_generation
+        QTimer.singleShot(250, lambda: self._restart_mavlink_after_release(generation))
 
-    def _restart_mavlink_after_release(self):
-        if not self._restart_pending:
+    def _restart_mavlink_after_release(self, generation=None):
+        if not self._restart_pending or (generation is not None and generation != self._restart_generation):
             return
         self._restart_pending = False
-        self.mav.configure(self.settings)
+        self.mav.configure(self._restart_settings)
         self.mav.start()
         self._network_dirty = False
         self.reconnect_btn.setEnabled(True)
@@ -544,13 +571,14 @@ class MainWindow(QMainWindow):
         self._diagnostics_window.show()
 
     def _toggle_control(self):
-        if self._settings_dirty:
+        if self.mav.snapshot().control_enabled:
+            released = self.mav.disable_control()
+            self.message.setText("PC control disabled; neutral/release written to USB. Verify rover handover." if released is True else
+                                 "PC control disabled; verify rover failsafe and transmitter handover.")
+            return
+        if self._settings_dirty or self._network_dirty or self._restart_pending:
             QApplication.beep()
             self.message.setText("Apply pending settings before enabling PC control.")
-            return
-        if self.mav.snapshot().control_enabled:
-            self.mav.disable_control()
-            self.message.setText("PC control disabled; neutral sent and overrides released.")
             return
         ok, message = self.mav.enable_control()
         self.message.setText(message)
@@ -558,7 +586,7 @@ class MainWindow(QMainWindow):
             QApplication.beep()
 
     def _vehicle_command(self, command, allow_dirty: bool = False):
-        if self._settings_dirty and not allow_dirty:
+        if (self._settings_dirty or self._network_dirty or self._restart_pending) and not allow_dirty:
             QApplication.beep()
             self.message.setText("Apply pending settings before ARM.")
             return
@@ -592,12 +620,19 @@ class MainWindow(QMainWindow):
         axes = ", ".join(f"{i}:{value:+.2f}" for i, value in enumerate(wheel.axes[:10]))
         self.raw_axes.setText("Axes: " + (axes or "—"))
 
-        if mav.state == LinkState.CONNECTED:
+        if not mav.running:
+            self.link_label.setText("Disconnected — click Apply & Connect")
+        elif mav.state == LinkState.CONNECTED:
             self.link_label.setText(f"Connected • heartbeat {(mav.heartbeat_age or 0):.1f}s ago")
         elif mav.state == LinkState.STALE:
             self.link_label.setText("Heartbeat stale — control inhibited")
         else:
-            self.link_label.setText("Waiting for MAVLink heartbeat…")
+            if self._connected_settings.link_mode == "elrs_serial":
+                age = time.monotonic() - (mav.opened_at or time.monotonic())
+                self.link_label.setText("USB open — waiting for rover heartbeat…" if age < 10 else
+                                        "USB open, no rover — check TX/RX MAVLink mode, power and UART")
+            else:
+                self.link_label.setText("Waiting for MAVLink heartbeat…")
 
         self.vehicle_label.setText(
             f"Vehicle: sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • "
@@ -625,13 +660,14 @@ class MainWindow(QMainWindow):
         if mav.error:
             self.message.setText(mav.error)
 
-        link_ok = mav.state == LinkState.CONNECTED
+        link_ok = mav.running and mav.state == LinkState.CONNECTED
         wheel_ok = wheel.connected
         self.global_status.setText("Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
         neutral_ok = wheel.frame is not None and wheel.frame.neutral
+        self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
         self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty and not self._network_dirty)
         self.disarm_btn.setEnabled(link_ok and mav.armed)
         self.control_btn.setEnabled(
@@ -641,6 +677,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.timer.stop()
         self._restart_pending = False
+        self._restart_generation += 1
         if self._lora_dialog is not None:
             self._lora_dialog.close()
         self.mav.disable_control()

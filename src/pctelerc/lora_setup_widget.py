@@ -4,7 +4,7 @@ from __future__ import annotations
 import secrets
 import time
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
 from .lora import SetupExchange, setup_request
@@ -14,12 +14,17 @@ from .transport import VehicleLoRa
 def refresh_ports(combo):
     from serial.tools import list_ports
     selected = combo.currentText().strip()
-    combo.blockSignals(True)
-    combo.clear()
     # Enumerating ports never opens them or switches an active session.
-    combo.addItems([p.device for p in list_ports.comports()])
-    combo.setCurrentText(selected)
-    combo.blockSignals(False)
+    ports = sorted(list_ports.comports(), key=lambda port: port.device)
+    was_blocked = combo.blockSignals(True)
+    try:
+        combo.clear()
+        for port in ports:
+            combo.addItem(port.device)
+            combo.setItemData(combo.count() - 1, getattr(port, "description", ""), Qt.ItemDataRole.ToolTipRole)
+        combo.setCurrentText(selected)
+    finally:
+        combo.blockSignals(was_blocked)
 
 
 class LoRaSetupWidget(QWidget):

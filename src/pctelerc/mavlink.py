@@ -20,6 +20,7 @@ class MavlinkSnapshot:
     state: LinkState = LinkState.DISCONNECTED
     last_heartbeat: float | None = None
     heartbeat_age: float | None = None
+    opened_at: float | None = None
     vehicle_system: int | None = None
     vehicle_component: int | None = None
     vehicle_type: str = ""
@@ -67,9 +68,27 @@ class MavlinkService:
         self._bound_serial = ""
         self._bridge_registered = False
         self._lora_direct_deadline = None
+        self._owns_elrs_override = False
+        self._last_elrs_tick = None
+        self._next_elrs_send = 0.0
 
     def configure(self, settings: AppSettings):
+        with self._send_lock:
+            return self._configure(settings)
+
+    def _configure(self, settings: AppSettings):
         validated = AppSettings(**vars(settings)).validate()
+        with self._lock:
+            old = self._settings
+            link = self._link
+        if validated != old and (old.link_mode == "elrs_serial" or validated.link_mode == "elrs_serial"):
+            self.disable_control()
+            routing = ("link_mode", "elrs_port", "lora_port", "bind_host", "listen_port", "target_host", "target_port")
+            if link is not None and any(getattr(old, key) != getattr(validated, key) for key in routing):
+                raise ValueError("Disconnect before changing the radio connection.")
+            with self._lock:
+                self._control_frame = None
+                self._axis_count = None
         with self._lock:
             self._settings = validated
             link = self._link
@@ -107,9 +126,10 @@ class MavlinkService:
             return True
 
     def stop(self) -> bool:
-        self.disable_control()
         with self._lifecycle_lock:
-            self._stop.set()
+            with self._send_lock:
+                self._stop.set()
+                self.disable_control()
             thread = self._thread
             if thread:
                 thread.join(timeout=2.0)
@@ -129,6 +149,22 @@ class MavlinkService:
             self._axis_count = axis_count
 
     def enable_control(self):
+        with self._send_lock:
+            return self._enable_control()
+
+    def _elrs_link_state(self, snap, settings):
+        if settings.link_mode != "elrs_serial":
+            return snap.state
+        if snap.running and not self._stop.is_set() and self._link is not None:
+            try:
+                self._link.check_health()
+            except OSError:
+                return LinkState.DISCONNECTED
+        return (heartbeat_link_state(snap.last_heartbeat, now=time.monotonic(), stale_after=settings.heartbeat_timeout)
+                if snap.running and not self._stop.is_set() and self._link is not None
+                else LinkState.DISCONNECTED)
+
+    def _enable_control(self):
         with self._lock:
             snap = self._snapshot
             frame = self._control_frame
@@ -136,9 +172,10 @@ class MavlinkService:
             settings = AppSettings(**vars(self._settings)).validate()
         decision = can_enable_control(
             settings=settings,
-            link_state=snap.state,
+            link_state=self._elrs_link_state(snap, settings),
             frame=frame,
             axis_count=axis_count,
+            now=time.monotonic(),
         )
         if not decision.allowed:
             return False, decision.message
@@ -148,6 +185,10 @@ class MavlinkService:
             self._lora_direct_deadline = time.monotonic() + 2.5 if settings.link_mode == "lora_usb" and snap.mode == "FAILSAFE" else None
             self._failsafe_latched = False
             self._control_enabled = True
+            if settings.link_mode == "elrs_serial":
+                self._owns_elrs_override = True
+                self._last_elrs_tick = time.monotonic()
+                self._next_elrs_send = 0.0
             self._snapshot = replace(
                 self._snapshot,
                 control_enabled=True,
@@ -176,12 +217,18 @@ class MavlinkService:
                 steer_pwm=PWM_NEUTRAL,
                 throttle_pwm=PWM_NEUTRAL,
             )
+        if self._settings.link_mode == "elrs_serial":
+            return self._send_neutral_then_release() if self._owns_elrs_override else True
         if was_enabled or link_available:
             if was_enabled:
                 logger.info("PC control disabled; issuing neutral/release")
             self._send_neutral_then_release()
 
     def arm(self):
+        with self._send_lock:
+            return self._arm()
+
+    def _arm(self):
         with self._lock:
             snap = self._snapshot
             frame = self._control_frame
@@ -191,9 +238,10 @@ class MavlinkService:
             control_mav = self._control_mav
         decision = can_arm(
             settings=settings,
-            link_state=snap.state,
+            link_state=self._elrs_link_state(snap, settings),
             frame=frame,
             axis_count=axis_count,
+            now=time.monotonic(),
         )
         if not decision.allowed:
             return False, decision.message
@@ -204,7 +252,10 @@ class MavlinkService:
         return self._send_arm_command(True)
 
     def disarm(self):
-        return self._send_arm_command(False)
+        with self._send_lock:
+            if self._settings.link_mode == "elrs_serial":
+                self.disable_control()
+            return self._send_arm_command(False)
 
     def _send_arm_command(self, arm: bool):
         with self._lock:
@@ -213,7 +264,7 @@ class MavlinkService:
             control_mav = self._control_mav
             sysid = snap.vehicle_system
             compid = snap.vehicle_component
-        if snap.state != LinkState.CONNECTED or conn is None or control_mav is None or sysid is None:
+        if self._elrs_link_state(snap, self._settings) != LinkState.CONNECTED or conn is None or control_mav is None or sysid is None:
             return False, "Vehicle link is not connected."
         try:
             from pymavlink.dialects.v10 import ardupilotmega as mavlink1
@@ -324,10 +375,17 @@ class MavlinkService:
                 self._bound_mode = settings.link_mode
                 self._bound_serial = self._serial_port(settings)
                 self._control_enabled = False
+                self._owns_elrs_override = False
+                self._last_elrs_tick = None
+                self._next_elrs_send = 0.0
+                if settings.link_mode == "elrs_serial":
+                    self._control_frame = None
+                    self._axis_count = None
                 self._bridge_registered = False
                 self._snapshot = MavlinkSnapshot(
                     running=True,
                     state=LinkState.CONNECTING,
+                    opened_at=time.monotonic(),
                 )
 
             logger.info("MAVLink %s opened", settings.link_mode)
@@ -336,8 +394,9 @@ class MavlinkService:
             next_control = 0.0
             while not self._stop.is_set():
                 now = time.monotonic()
-                msg = link.recv_match(blocking=False)
-                if msg is not None:
+                # A continuous malformed USB stream must not starve watchdogs.
+                msg = link.recv_msg() if settings.link_mode == "elrs_serial" else link.recv_match(blocking=False)
+                if msg is not None and msg.get_type() != "BAD_DATA":
                     self._handle_message(msg, now)
 
                 if now >= next_hb:
@@ -349,19 +408,23 @@ class MavlinkService:
 
                 if now >= next_control:
                     self._control_tick(now)
-                    next_control = now + 1.0 / (5.0 if settings.link_mode == "elrs_serial" else 10.0 if settings.link_mode == "lora_usb" else self.SEND_HZ)
+                    # ELRS safety runs at 20 Hz; drive writes remain at 5 Hz.
+                    next_control = now + 1.0 / (10.0 if settings.link_mode == "lora_usb" else self.SEND_HZ)
 
                 time.sleep(0.005)
 
         except Exception as exc:
             with self._lock:
                 settings = AppSettings(**vars(self._settings)).validate()
+                if settings.link_mode == "elrs_serial" and self._control_enabled:
+                    self._failsafe_latched = True
                 self._control_enabled = False
                 self._snapshot = replace(
                     self._snapshot,
                     running=False,
                     state=LinkState.DISCONNECTED,
                     control_enabled=False,
+                    failsafe_latched=self._failsafe_latched,
                     error=describe_mavlink_start_error(exc, settings.listen_port),
                 )
             logger.exception("MAVLink worker stopped")
@@ -389,6 +452,7 @@ class MavlinkService:
                     last_heartbeat=None, heartbeat_age=None,
                     vehicle_system=None, vehicle_component=None, armed=False,
                     control_enabled=False,
+                    steer_pwm=PWM_NEUTRAL, throttle_pwm=PWM_NEUTRAL,
                 )
                 self._control_frame = None
                 self._axis_count = None
@@ -400,6 +464,13 @@ class MavlinkService:
                 self._snapshot,
                 rx_messages=self._snapshot.rx_messages + 1,
             )
+
+            if typ == "HEARTBEAT" and self._settings.link_mode == "elrs_serial":
+                # Only the ArduRover autopilot can claim this rover session.
+                if (getattr(msg, "type", None) != 10 or getattr(msg, "autopilot", None) != 3
+                        or msg.get_srcSystem() in (0, 255) or msg.get_srcComponent() != 1):
+                    self._snapshot = replace(snap, ignored_heartbeats=snap.ignored_heartbeats + 1)
+                    return
 
             if (typ == "HEARTBEAT" and self._settings.link_mode == "lora_usb"
                     and (msg.get_srcSystem(), msg.get_srcComponent()) != (1, 1)):
@@ -452,7 +523,7 @@ class MavlinkService:
                     vehicle_type=str(getattr(msg, "type", "")),
                     mode=mode,
                     armed=armed,
-                    error="",
+                    error=snap.error if self._settings.link_mode == "elrs_serial" and self._failsafe_latched else "",
                 )
                 if first_lock:
                     logger.info(
@@ -464,6 +535,10 @@ class MavlinkService:
             self._snapshot = snap
 
     def _refresh_link_state(self, now: float):
+        with self._send_lock:
+            return self._serialized_refresh_link_state(now)
+
+    def _serialized_refresh_link_state(self, now: float):
         release = False
         with self._lock:
             settings = self._settings
@@ -508,17 +583,26 @@ class MavlinkService:
             axis_count = self._axis_count
             enabled = self._control_enabled
             snap = self._snapshot
+            if settings.link_mode == "elrs_serial":
+                now = time.monotonic()
+            previous_tick = self._last_elrs_tick
+            if enabled and settings.link_mode == "elrs_serial":
+                self._last_elrs_tick = now
 
         if not enabled:
             return
 
         decision = can_continue_control(
             settings=settings,
-            link_state=snap.state,
+            link_state=self._elrs_link_state(snap, settings),
             frame=frame,
             axis_count=axis_count,
             now=now,
         )
+        if (settings.link_mode == "elrs_serial" and previous_tick is not None
+                and now - previous_tick > settings.controller_timeout):
+            from .field_safety import SafetyDecision
+            decision = SafetyDecision(False, "worker_delayed", "Control worker missed its watchdog deadline.")
         initializing_lora = (
             settings.link_mode == "lora_usb" and snap.mode == "FAILSAFE"
             and self._lora_direct_deadline is not None and now < self._lora_direct_deadline
@@ -535,11 +619,18 @@ class MavlinkService:
                     self._snapshot,
                     control_enabled=False,
                     failsafe_latched=True,
+                    steer_pwm=PWM_NEUTRAL, throttle_pwm=PWM_NEUTRAL,
                     error=f"Control disabled by fail-safe: {decision.message}",
                 )
             logger.error("PC control fail-safe: %s", decision.message)
             self._send_neutral_then_release()
             return
+
+        if settings.link_mode == "elrs_serial":
+            if now < self._next_elrs_send:
+                return
+            # Send only the newest input, never catch up a missed command burst.
+            self._next_elrs_send = now + .2
 
         steer = PWM_NEUTRAL if initializing_lora else normalized_to_pwm(frame.steering, 1.0)
         throttle = normalized_to_pwm(
@@ -565,9 +656,12 @@ class MavlinkService:
                     self._snapshot,
                     control_enabled=False,
                     failsafe_latched=True,
+                    steer_pwm=PWM_NEUTRAL, throttle_pwm=PWM_NEUTRAL,
                     error="Control disabled: RC override transmission failed.",
                 )
             self._send_neutral_then_release()
+            if settings.link_mode == "elrs_serial":
+                raise OSError("ELRS RC override USB write failed; reconnect manually.")
 
     def _send_lora_discovery(self):
         with self._send_lock:
@@ -595,6 +689,8 @@ class MavlinkService:
         try:
             from pymavlink.dialects.v10 import ardupilotmega as mavlink1
             with self._send_lock:
+                if self._stop.is_set():
+                    return
                 control_mav.heartbeat_send(
                     mavlink1.MAV_TYPE_GCS,
                     mavlink1.MAV_AUTOPILOT_INVALID,
@@ -609,6 +705,8 @@ class MavlinkService:
                 )
         except Exception as exc:
             logger.warning("GCS heartbeat send failed: %s", exc)
+            if self._settings.link_mode == "elrs_serial":
+                raise OSError(f"ELRS heartbeat send failed: {exc}") from exc
             with self._lock:
                 self._snapshot = replace(
                     self._snapshot,
@@ -643,15 +741,33 @@ class MavlinkService:
             return False
 
     def _send_neutral_then_release(self):
+        with self._send_lock:
+            return self._serialized_send_neutral_then_release()
+
+    def _serialized_send_neutral_then_release(self):
         with self._lock:
             conn = self._link
             control_mav = self._control_mav
+            elrs = self._settings.link_mode == "elrs_serial"
+            owned = self._owns_elrs_override
+        if elrs and not owned:
+            return True
         if conn is None or control_mav is None:
-            return
+            return False
+        if elrs:
+            try:
+                conn.discard_pending_output()
+            except Exception as exc:
+                logger.warning("ELRS queue could not be cleared: %s", exc)
+                with self._lock:
+                    self._snapshot = replace(self._snapshot, error=(self._snapshot.error +
+                        f" ELRS USB queue could not be cleared: {exc}. Verify rover failsafe.").strip())
+                return False
 
+        delivered = False
         for _ in range(self.RELEASE_RETRIES):
             try:
-                self._send_override(PWM_NEUTRAL, PWM_NEUTRAL)
+                neutral_sent = self._send_override(PWM_NEUTRAL, PWM_NEUTRAL)
                 time.sleep(0.02)
 
                 with self._lock:
@@ -661,7 +777,7 @@ class MavlinkService:
                     compid = snap.vehicle_component
 
                 if sysid is None:
-                    return
+                    return False
 
                 channels = [65535] * 8
                 channels[settings.steering_channel - 1] = 0
@@ -673,6 +789,7 @@ class MavlinkService:
                         compid or 1,
                         *channels,
                     )
+                delivered = delivered or neutral_sent
                 time.sleep(0.02)
 
             except Exception as exc:
@@ -680,3 +797,11 @@ class MavlinkService:
                     "Neutral/release attempt failed: %s",
                     exc,
                 )
+        if elrs:
+            with self._lock:
+                if delivered:
+                    self._owns_elrs_override = False
+                else:
+                    reason = "Neutral/release USB writes failed; verify rover failsafe and handover."
+                    self._snapshot = replace(self._snapshot, error=(self._snapshot.error + " " + reason).strip())
+        return delivered

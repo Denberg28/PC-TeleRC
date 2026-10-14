@@ -1,6 +1,6 @@
 # PC TeleRC
 
-## Radio dropdown candidate — v0.1.1rc1
+## ELRS reliability candidate — v0.1.1rc2
 
 Built directly from the stable [v0.1.0a10](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.0a10) commit `7b84b7882c4010c34f158304cc9c8c8cc4cba77b`. The stable release remains the recommended download. This candidate adds three connection profiles without importing later controller or UDP implementations.
 
@@ -16,13 +16,15 @@ Choose a profile, set its endpoint, then **Apply & Reconnect**. Wi-Fi remains th
 
 **ELRS:** This is a USB MAVLink transport, not CRSF output to a module bay. Both radios need compatible ExpressLRS 3.5+ firmware and MAVLink mode; the T ONE's exact USB data path must be verified physically. No RF flashing or transmitter arbitration is performed. Controls run at 5 Hz to reduce 900 MHz traffic. Select a sufficiently fast RF packet mode and keep vehicle telemetry low; a fast USB baud rate does not increase RF capacity. The [official ExpressLRS MAVLink guide](https://www.expresslrs.org/software/mavlink/) documents setup and throughput. Pocket takeover has not been validated.
 
-See [candidate notes](docs/releases/v0.1.1rc1.md) for test evidence and hardware checks.
+ELRS safety checks run at 20 Hz independently of 5 Hz commands. USB queue stalls, excessive receive backlog, write failures, controller loss, stale heartbeat and worker suspension inhibit control. Reconnect edits cancel pending connection attempts. Monitor-only ELRS disconnect does not send RC overrides; active disable clears the local USB output queue before neutral/release. See [ELRS workflow and bench checks](docs/ELRS.md).
+
+See [candidate notes](docs/releases/v0.1.1rc2.md) for test evidence and hardware checks.
 
 
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current version:** `0.1.0a10` — Android-aligned CH1 steering / CH2 drive mapping.
+**Current candidate:** `0.1.1rc2`; stable baseline: `0.1.0a10` — Android-aligned CH1 steering / CH2 drive mapping.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.
@@ -44,7 +46,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 - Explicit Apply Settings vs. Apply & Reconnect workflow.
 - Configurable CH1 steering / CH2 drive defaults, matching Android TeleRC.
 - Explicit ARM/DISARM; never auto-arm.
-- 20 Hz RC override only while control is explicitly enabled.
+- RC override only while explicitly enabled: Wi-Fi 20 Hz, LoRa 10 Hz, ELRS 5 Hz.
 - 350 ms controller watchdog and 3 s heartbeat watchdog.
 - Session vehicle-ID lock: foreign MAVLink vehicle heartbeats are ignored.
 - Fail-closed controller-axis validation and duplicate RC-channel blocking.
@@ -84,7 +86,7 @@ python -m pctelerc
 ```powershell
 pyinstaller --noconfirm --clean PC-TeleRC.spec
 ```
-Output: `dist\PC-TeleRC.exe`.
+Output: `dist\PC-TeleRC\PC-TeleRC.exe`; ship the complete folder or installer.
 
 Every push to main runs syntax checks, unit tests and the Windows build. The resulting EXE and `SHA256.txt` are uploaded as Actions artifacts. A `v*` tag publishes a GitHub Release, so tags are reserved for deliberate release publication.
 

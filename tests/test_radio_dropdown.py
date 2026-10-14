@@ -171,3 +171,73 @@ def test_lora_autopilot_heartbeat_cannot_claim_direct_mode():
     service._handle_message(mavlink1.MAVLink(None).parse_char(encoder.heartbeat_encode(10, 3, 0, 1, 4).pack(encoder)), time.monotonic())
     service.set_control_frame(ControlFrame(0, 0, time.monotonic()), 3)
     assert not service.enable_control()[0]
+
+
+def test_pending_radio_settings_block_handlers_after_apply(window, monkeypatch):
+    window.link_mode.setCurrentIndex(2)
+    window.elrs_port.setCurrentText("COM5")
+    assert window._apply_settings()
+    calls = []
+    monkeypatch.setattr(window.mav, "enable_control", lambda: (calls.append("enable"), "enabled"))
+    window._toggle_control()
+    window._vehicle_command(lambda: (calls.append("arm"), "armed"))
+    assert calls == []
+
+
+def test_settings_edit_cancels_pending_reconnect_and_old_timer_cannot_start_new_session(window, monkeypatch):
+    scheduled, starts = [], []
+    monkeypatch.setattr(QTimer, "singleShot", lambda delay, callback: scheduled.append(callback))
+    monkeypatch.setattr(window.mav, "start", lambda: starts.append(window.mav._settings.elrs_port) or True)
+    window.link_mode.setCurrentIndex(2)
+    window.elrs_port.setCurrentText("COM5")
+    window._apply_and_reconnect()
+    window.elrs_port.setCurrentText("COM6")
+    assert not window._restart_pending and window._network_dirty
+    window._apply_and_reconnect()
+    scheduled[0]()
+    assert not starts
+    scheduled[-1]()
+    assert starts == ["COM6"]
+
+
+def test_failed_save_keeps_previous_settings_and_does_not_schedule_connect(window, monkeypatch):
+    previous = window.settings
+    scheduled = []
+    monkeypatch.setattr(QTimer, "singleShot", lambda delay, callback: scheduled.append(callback))
+    def fail(*args):
+        raise OSError("disk full")
+    monkeypatch.setattr(ui, "save_settings", fail)
+    window.link_mode.setCurrentIndex(2)
+    window.elrs_port.setCurrentText("COM5")
+    window._apply_and_reconnect()
+    assert window.settings == previous and window._network_dirty and window._settings_dirty
+    assert not scheduled and "disk full" in window.message.text()
+    # Restore saving for fixture teardown.
+    monkeypatch.setattr(ui, "save_settings", lambda *args: None)
+
+
+def test_port_refresh_preserves_selection_and_never_opens_or_marks_dirty(window, monkeypatch):
+    import serial
+    from serial.tools import list_ports
+    from types import SimpleNamespace
+    window.link_mode.setCurrentIndex(2)
+    window.elrs_port.setCurrentText("COM5")
+    window._settings_dirty = False
+    window._network_dirty = False
+    monkeypatch.setattr(list_ports, "comports", lambda: [SimpleNamespace(device="COM7", description="Other adapter")])
+    monkeypatch.setattr(serial, "Serial", lambda **kwargs: pytest.fail("port scan opened device"))
+    window._refresh_radio_ports()
+    assert window.elrs_port.currentText() == "COM5"
+    assert not window._settings_dirty and not window._network_dirty
+    assert window.elrs_port.itemText(0) == "COM7"
+
+
+def test_elrs_usb_open_is_distinct_from_rover_connected_status(window):
+    window._connected_settings = AppSettings(link_mode="elrs_serial", elrs_port="COM5")
+    window.mav._snapshot = MavlinkSnapshot(running=True, state=LinkState.CONNECTING, opened_at=time.monotonic() - 11)
+    window._refresh()
+    assert "no rover" in window.link_label.text()
+    assert not window.arm_btn.isEnabled() and not window.control_btn.isEnabled()
+    window.mav._snapshot = MavlinkSnapshot()
+    window._refresh()
+    assert "Disconnected" in window.link_label.text()

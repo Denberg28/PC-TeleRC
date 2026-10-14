@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1rc2 — ELRS reliability candidate
+- Separate 20 Hz ELRS safety checks from 5 Hz drive transmission; newest input only, no catch-up burst.
+- Latch OFF on USB removal/stall/write failure and missed worker deadlines; reject stale/non-rover heartbeat for ARM/enable.
+- Clear the local USB output queue before owned neutral/release; monitor-only ELRS sessions leave RC overrides alone.
+- Serialize control transitions; DISARM releases PC control first.
+- Cancel reconnect on edits and reject old delayed callbacks; settings-save errors remain visible and pending.
+- Preserve COM selection on refresh and distinguish USB open from rover connected.
+- Add ELRS fault injection and operator regression checks; named hardware still requires bench validation.
+
+
 ## 0.1.1rc1 — Radio dropdown candidate from stable a10
 - Add ESP32-S3 Wi-Fi, LilyGO T3S3 SX1262 LoRa USB, and HGLRC T ONE 900 MHz ELRS USB MAVLink profiles.
 - Preserve stable a10 controller and Wi-Fi implementation. Add independent COM ports, LoRa setup, and explicit connection handover.

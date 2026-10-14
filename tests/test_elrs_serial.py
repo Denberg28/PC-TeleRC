@@ -37,6 +37,7 @@ class FakeSerial:
         return len(data)
 
     def reset_output_buffer(self): self.out_waiting = 0
+    def reset_input_buffer(self): self.rx.clear()
     def close(self): self.is_open = False
 
 

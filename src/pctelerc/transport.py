@@ -1,5 +1,6 @@
 """USB radio transports. Stable a10 Wi-Fi remains in MavlinkService."""
 from pymavlink import mavutil
+import time
 
 
 class VehicleSerial(mavutil.mavfile):
@@ -12,8 +13,11 @@ class VehicleSerial(mavutil.mavfile):
         self.port.dtr = False
         self.port.rts = False
         self.port.port = port_name
+        self._pending_since = None
         try:
             self.port.open()
+            self.port.reset_input_buffer()
+            self.port.reset_output_buffer()
             super().__init__(None, port_name, source_system=255, source_component=190, input=True)
         except Exception:
             self.port.close()
@@ -30,20 +34,38 @@ class VehicleSerial(mavutil.mavfile):
         pass  # One physical serial endpoint; the service locks MAVLink identity.
 
     def recv(self, n=None):
-        if not self.port.is_open:
-            raise OSError("Radio USB disconnected; reconnect manually.")
+        self.check_health()
         return self.port.read(min(self.port.in_waiting, 4096))
+
+    def check_health(self, *, check_receive=True):
+        if not self.port.is_open:
+            raise OSError("ELRS USB disconnected; reconnect manually.")
+        if check_receive and self.port.in_waiting > 8192:
+            raise OSError("ELRS receive backlog; reduce vehicle telemetry and reconnect manually.")
+        pending = self.port.out_waiting
+        now = time.monotonic()
+        if not pending:
+            self._pending_since = None
+        elif self._pending_since is None:
+            self._pending_since = now
+        if pending > 64 or (self._pending_since is not None and now - self._pending_since >= .1):
+            raise OSError("ELRS serial output is backed up; reconnect manually.")
+
+    def discard_pending_output(self):
+        # This only cancels the local USB queue, never the module's RF queue.
+        self.port.reset_output_buffer()
+        self._pending_since = None
 
     def write(self, buf):
         # Never add drive commands behind a backed-up local serial queue.
-        if self.port.out_waiting > 128:
-            raise OSError("ELRS serial output is backed up; control disabled.")
+        self.check_health(check_receive=False)
         sent = self.port.write(buf)
         if sent != len(buf):
             raise OSError("Incomplete ELRS serial send.")
         return sent
 
     def recv_msg(self):
+        self.check_health()
         self.pre_message()
         message = self.mav.parse_char(b"")
         if message is None:
@@ -97,6 +119,10 @@ class VehicleLoRa(VehicleSerial):
                 raise OSError('LoRa USB receive backlog; reconnect required.')
             self.packets.append(packet)
         return self.packets.popleft() if self.packets else b''
+
+    def check_health(self):
+        if not self.port.is_open:
+            raise OSError("LoRa USB disconnected; reconnect manually.")
 
     def recv(self, n=None):
         packet = self.read_packet()
