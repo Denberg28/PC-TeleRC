@@ -1,0 +1,70 @@
+name: Publish verified stable v0.1.2
+on:
+  push:
+    branches: [release/publish-v0.1.2]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify tested build provenance and publish Latest
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const crypto=require('crypto');
+            const tested='f3f66b60ac7a61e1c9469cacf6678865edf9629b';
+            const runId=38626957891;
+            const run=await github.rest.actions.getWorkflowRun({...context.repo,run_id:runId});
+            if (run.data.head_sha!==tested || run.data.status!=='completed') throw new Error('Tested build provenance mismatch');
+            const jobs=await github.rest.actions.listJobsForWorkflowRun({...context.repo,run_id:runId});
+            for (const name of ['windows','firmware']) {
+              if (!jobs.data.jobs.some(j=>j.name===name && j.conclusion==='success')) throw new Error('Required build did not pass: '+name);
+            }
+            const release=(await github.rest.repos.getRelease({...context.repo,release_id:413118774})).data;
+            if (!release.draft || release.tag_name!=='v0.1.2') throw new Error('Expected unpublished stable draft');
+            const assets=(await github.rest.repos.listReleaseAssets({...context.repo,release_id:release.id})).data;
+            const expected=['PC-TeleRC-portable-v0.1.2.zip','PC-TeleRC-Setup-v0.1.2.exe','PC-TeleRC-source-v0.1.2.zip','SHA256-windows.txt','frozen-ui-check.json',
+              'TeleRC-Firmware-v0.1.2-LilyGO-BASE-targets.zip','TeleRC-Firmware-v0.1.2-LilyGO-NODE-targets.zip','TeleRC-Firmware-v0.1.2-LilyGO-ROVER-targets.zip',
+              'TeleRC-Firmware-v0.1.2-original-target-builds.zip','TeleRC-Firmware-v0.1.2-sketches.zip','SHA256-firmware.txt','FIRMWARE-PROVENANCE.txt'];
+            for (const name of expected) {
+              const a=assets.find(a=>a.name===name);
+              if (!a || a.size<=0 || a.state!=='uploaded' || !a.digest) throw new Error('Missing uploaded asset: '+name);
+            }
+            async function download(name) {
+              const a=assets.find(a=>a.name===name);
+              const response=await fetch(a.url,{headers:{Authorization:'Bearer '+process.env.RELEASE_TOKEN,Accept:'application/octet-stream'}});
+              if (!response.ok) throw new Error('Asset read failed: '+response.status);
+              const bytes=Buffer.from(await response.arrayBuffer());
+              if (bytes.length!==a.size || 'sha256:'+crypto.createHash('sha256').update(bytes).digest('hex')!==a.digest) throw new Error('Asset SHA256 mismatch: '+name);
+              return bytes;
+            }
+            const archive=await download('PC-TeleRC-source-v0.1.2.zip');
+            const eocd=archive.lastIndexOf(Buffer.from([0x50,0x4b,0x05,0x06]));
+            if (eocd<0 || eocd+22+archive.readUInt16LE(eocd+20)!==archive.length || archive.subarray(eocd+22).toString()!==tested) throw new Error('Source ZIP does not contain the tested git archive commit');
+            for (const name of ['SHA256-windows.txt','SHA256-firmware.txt']) {
+              const lines=(await download(name)).toString().trim().split(/\r?\n/);
+              for (const line of lines) {
+                const match=line.match(/^([0-9a-f]{64})\s+(.+)$/);
+                const a=match && assets.find(a=>a.name===match[2]);
+                if (!a || a.digest!=='sha256:'+match[1]) throw new Error('Manifest mismatch: '+line);
+              }
+            }
+            const check=JSON.parse((await download('frozen-ui-check.json')).toString());
+            if (!check.passed || !Object.values(check.checks).every(v=>v===true)) throw new Error('Frozen camera/UI report failed');
+            let ref=null;
+            try { ref=(await github.rest.git.getRef({...context.repo,ref:'tags/v0.1.2'})).data; }
+            catch (e) { if (e.status!==404) throw e; }
+            if (!ref) await github.rest.git.createRef({...context.repo,ref:'refs/tags/v0.1.2',sha:tested});
+            else if (ref.object.sha!==tested) {
+              if (ref.object.sha!=='3ec1e007d39006f3feab38dc0e8ceffdae2552f3') throw new Error('Unexpected draft tag target');
+              await github.rest.git.updateRef({...context.repo,ref:'tags/v0.1.2',sha:tested,force:true});
+            }
+            const doc=(await github.rest.repos.getContent({...context.repo,path:'docs/releases/v0.1.2.md',ref:tested})).data;
+            const published=await github.rest.repos.updateRelease({...context.repo,release_id:release.id,tag_name:'v0.1.2',
+              name:'PC TeleRC v0.1.2 — Live camera desktop',target_commitish:tested,
+              body:Buffer.from(doc.content,'base64').toString(),draft:false,prerelease:false,make_latest:'true'});
+            core.info('Published tested stable release: '+published.data.html_url);
