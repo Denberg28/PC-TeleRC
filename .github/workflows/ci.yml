@@ -1,4 +1,4 @@
-name: Stable v0.1.1 Windows and firmware build
+name: Candidate v0.1.2rc1 Windows and firmware build
 on:
   push:
     branches: [main, "dev/**"]
@@ -12,17 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reserve stable release as a draft until all checks pass
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/stable-v0.1.1'
+      - name: Prepare test candidate draft
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-runtime-v0.1.2rc1'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1
+          tag_name: v0.1.2rc1
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.1 — Stable Wi-Fi/LoRa and PWM update
+          name: PC TeleRC v0.1.2rc1 — LilyGO runtime setup
           draft: true
-          prerelease: false
+          prerelease: true
           make_latest: false
-          body_path: docs/releases/v0.1.1.md
+          body_path: docs/releases/v0.1.2rc1.md
   firmware:
     needs: prepare
     runs-on: ubuntu-latest
@@ -35,6 +35,7 @@ jobs:
           python3 firmware/tests/run_tests.py
           python3 firmware/lora-tests/run_tests.py
           python3 firmware/lilygo-tests/run_host_tests.py
+          python3 firmware/runtime-tests/run_tests.py
       - uses: arduino/setup-arduino-cli@v2
         with:
           version: 1.3.1
@@ -59,23 +60,23 @@ jobs:
           mkdir -p firmware-build-input/TeleRCBridge_ELRS
           sed 's/#define TELERC_LINK_MODE 0/#define TELERC_LINK_MODE 1/' firmware/TeleRCBridge/TeleRCBridge.ino > firmware-build-input/TeleRCBridge_ELRS/TeleRCBridge_ELRS.ino
           arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc --output-dir firmware-build/ELRS firmware-build-input/TeleRCBridge_ELRS
-      - name: Package stable source, sketches, target builds and checksums
+      - name: Package candidate source, sketches, target builds and checksums
         run: |
           python3 scripts/package_candidate.py
-          cp docs/STABLE-v0.1.1.md firmware-build/READ-ME-FIRST.md
+          cp docs/LILYGO-RUNTIME-SETUP.md firmware-build/READ-ME-FIRST.md
           cp docs/LILYGO-WIFI-LORA.md firmware-build/LILYGO-WIFI-LORA.md
           cd firmware-build
-          zip -r ../release-dist/TeleRC-Firmware-v0.1.1-target-builds.zip .
+          zip -r ../release-dist/TeleRC-Firmware-v0.1.2rc1-target-builds.zip .
           cd ../release-dist
           sha256sum *.zip > SHA256-firmware-source.txt
-      - name: Attach firmware directly to stable draft
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/stable-v0.1.1'
+      - name: Attach firmware directly to candidate draft
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-runtime-v0.1.2rc1'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1
+          tag_name: v0.1.2rc1
           target_commitish: ${{ github.sha }}
           draft: true
-          prerelease: false
+          prerelease: true
           make_latest: false
           files: release-dist/*
   windows:
@@ -100,10 +101,10 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
-          Copy-Item docs\STABLE-v0.1.1.md dist\PC-TeleRC\STABLE-v0.1.1.md
+          Copy-Item docs\LILYGO-RUNTIME-SETUP.md dist\PC-TeleRC\LILYGO-RUNTIME-SETUP.md
           Copy-Item docs\LILYGO-WIFI-LORA.md dist\PC-TeleRC\LILYGO-WIFI-LORA.md
           Copy-Item docs\FIRMWARE-RECOVERY-rc7.md dist\PC-TeleRC\FIRMWARE-RECOVERY-rc7.md
-          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.1.zip -Force
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.2rc1.zip -Force
       - name: Build Windows installer
         shell: pwsh
         run: |
@@ -114,41 +115,41 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force windows-release | Out-Null
-          Copy-Item dist\PC-TeleRC-portable-v0.1.1.zip windows-release\
-          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.1.exe windows-release\
+          Copy-Item dist\PC-TeleRC-portable-v0.1.2rc1.zip windows-release\
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.2rc1.exe windows-release\
           Get-ChildItem windows-release\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii windows-release\SHA256-windows.txt
-      - name: Attach Windows builds directly to stable draft
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/stable-v0.1.1'
+      - name: Attach Windows builds directly to candidate draft
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-runtime-v0.1.2rc1'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1
+          tag_name: v0.1.2rc1
           target_commitish: ${{ github.sha }}
           draft: true
-          prerelease: false
+          prerelease: true
           make_latest: false
           files: windows-release/*
   release:
     needs: [firmware, windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/stable-v0.1.1'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-runtime-v0.1.2rc1'
     runs-on: ubuntu-latest
     steps:
-      - name: Verify downloads then publish stable and mark Latest
+      - name: Verify complete candidate assets and retain draft
         uses: actions/github-script@v7
         with:
           script: |
             const releases = await github.rest.repos.listReleases({...context.repo});
-            const release = releases.data.find(r => r.tag_name === 'v0.1.1');
-            if (!release) throw new Error('Stable draft release missing');
+            const release = releases.data.find(r => r.tag_name === 'v0.1.2rc1');
+            if (!release) throw new Error('Candidate draft release missing');
             const assets = await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id});
             const byName = new Map(assets.data.map(a => [a.name, a]));
-            for (const name of ['PC-TeleRC-portable-v0.1.1.zip', 'PC-TeleRC-Setup-v0.1.1.exe',
-                                'PC-TeleRC-source-v0.1.1.zip', 'TeleRC-Firmware-v0.1.1-sketches.zip',
-                                'TeleRC-Firmware-v0.1.1-target-builds.zip',
+            for (const name of ['PC-TeleRC-portable-v0.1.2rc1.zip', 'PC-TeleRC-Setup-v0.1.2rc1.exe',
+                                'PC-TeleRC-source-v0.1.2rc1.zip', 'TeleRC-Firmware-v0.1.2rc1-sketches.zip',
+                                'TeleRC-Firmware-v0.1.2rc1-target-builds.zip',
                                 'SHA256-firmware-source.txt', 'SHA256-source-sketches.txt', 'SHA256-windows.txt']) {
               const asset = byName.get(name);
               if (!asset || asset.size <= 0 || asset.state !== 'uploaded') throw new Error('Missing or incomplete release asset: ' + name);
             }
             const published = await github.rest.repos.updateRelease({...context.repo,
-              release_id: release.id, target_commitish: context.sha, draft: false,
-              prerelease: false, make_latest: 'true'});
-            core.info('Published stable v0.1.1 with complete downloads: ' + published.data.html_url);
+              release_id: release.id, target_commitish: context.sha, draft: true,
+              prerelease: true, make_latest: 'false'});
+            core.info('Validated candidate draft v0.1.2rc1 with complete downloads: ' + published.data.html_url);

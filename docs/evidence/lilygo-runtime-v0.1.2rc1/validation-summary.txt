@@ -1,0 +1,10 @@
+PC TeleRC 0.1.2rc1 / LilyGO runtime 0.4.0 — 2026-10-14
+
+Local application: 139 pytest cases passed.
+Existing host firmware: 11 converter/bridge variants, 2 actual SX1262 roles and 6 LilyGO backend/LED variants passed.
+New runtime: BASE, ROVER Wi-Fi default and ROVER LoRa default, compiled with address/undefined-behavior sanitizers.
+Runtime coverage: BOOT debounce/rollover/hold, no entry double-select, active Wi-Fi/LoRa neutral/release, UART backpressure, storage failure, saved transport load, physical setup entry, CSRF, invalid passwords, matching C++/Python password vector, secret-free NVS/replies, restart delay, OLED failure.
+PC coverage: password validation/derivation, generated 8-character passwords, USB derived-key payload, advanced hex compatibility, partner-board memory draft and clear-on-close behavior.
+
+Real target and Windows package compilation are checked separately by the release CI. Keep v0.1.2rc1 draft until field validation/promotion is requested. v0.1.1 remains Latest.
+No physical OLED, BOOT, RF, UART, power-supply, receiver takeover or motor latency evidence is available. These require HIL before ground use.

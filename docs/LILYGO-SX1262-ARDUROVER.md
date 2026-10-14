@@ -1,3 +1,5 @@
+Current runtime candidate 0.4.0: see [BOOT/menu and password setup](LILYGO-RUNTIME-SETUP.md). The wiring and protocol notes below remain applicable; the new menu replaces older re-pairing/compile-time mode instructions.
+
 # LilyGO T3-S3 SX1262 ArduRover direct pair — firmware 0.2.0 / PC 0.1.1rc5
 
 Use two matching T3-S3 SX1262 boards: BASE connected to the Windows PC by native USB; ROVER connected to SpeedyBee UART3. This removes Wi-Fi from the driving path. The external SX1262 antenna belongs to LoRa; it does not boost the ESP32 Wi-Fi radio. Attach the correct band antenna to both boards before enabling RF.

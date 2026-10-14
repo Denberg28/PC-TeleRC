@@ -2,9 +2,11 @@
 #include <iostream>
 #ifndef TEST_BASE
 #define TELERC_TRANSPORT_WIFI 0
-#include "TeleRCLoRa_ROVER.ino"
+#define TELERC_ROLE 3
+#include "Link.h"
 #else
-#include "TeleRCLoRa_BASE.ino"
+#define TELERC_ROLE 1
+#include "Link.h"
 #endif
 int main(){
  setup();assert(maintenance&&!radioOK); // unprovisioned -> no RF/ownership

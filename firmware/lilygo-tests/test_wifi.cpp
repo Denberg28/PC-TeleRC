@@ -1,7 +1,8 @@
 #include <cassert>
 #include <array>
 #include <iostream>
-#include "TeleRCLoRa_ROVER.ino"
+#define TELERC_ROLE 3
+#include "WiFiLink.h"
 void crc(std::vector<uint8_t>&p,uint8_t extra){uint16_t c=0xffff;for(size_t i=1;i<p.size()-2;++i)c=telerc::mavCrcByte(c,p[i]);c=telerc::mavCrcByte(c,extra);p[p.size()-2]=uint8_t(c);p.back()=uint8_t(c>>8);}
 std::vector<uint8_t> rc(uint16_t steer,uint16_t drive){std::vector<uint8_t>p(26,0xff);p[0]=0xfe;p[1]=18;p[2]=0;p[3]=255;p[4]=190;p[5]=70;mesh::put16(p.data()+6,steer);mesh::put16(p.data()+8,drive);p[22]=1;p[23]=1;crc(p,124);return p;}
 std::vector<uint8_t> heartbeat(bool rover=true){std::vector<uint8_t>p(17,0);p[0]=0xfe;p[1]=9;p[3]=rover?1:255;p[4]=rover?1:190;p[10]=rover?10:6;p[11]=rover?3:8;p[14]=3;crc(p,50);return p;}

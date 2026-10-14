@@ -1,3 +1,3 @@
-# PC TeleRC 0.1.1
+# PC TeleRC 0.1.2rc1
 
-Read docs/STABLE-v0.1.1.md for board roles, mode choice, setup and the PWM driver update. LilyGO ROVER defaults to Wi-Fi; use the ROVER_LORA target when using the PC-side BASE. Never run two bridges on the same FC UART. PC Control and ARM remain separate manual actions at neutral.
+Read docs/LILYGO-RUNTIME-SETUP.md for BOOT navigation, saved Wi-Fi/LoRa mode and eight-character passwords. BASE remains USB-to-LoRa; ROVER can choose either transport. Setup stops control. Reconnect and manually enable at neutral after restarting. ARM remains separate. Retains PWM converter 1.0.5. Test candidate; v0.1.1 remains stable.

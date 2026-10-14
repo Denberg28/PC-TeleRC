@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
-#include "TeleRCLoRa_ROVER.ino"
+#define TELERC_ROLE 3
+#include "WiFiLink.h"
 int main(){
  WiFi.modeFailures=1;setup();assert(!apReady&&wifiAttempts==1);
  clockMs=1999;loop();assert(wifiAttempts==1);

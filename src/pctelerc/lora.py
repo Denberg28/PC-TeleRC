@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import binascii
+import hashlib
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 import re
@@ -98,6 +99,14 @@ class Board:
                 f'RX {self.rx} · rejected {self.rejected} · TX failures {self.tx_failures} · UART drops {self.uart_drops}')
 
 
+def password_pairing_key(password: str) -> str:
+    """Matches LilyGO Pairing.h; raw passwords never enter the USB protocol."""
+    if len(password) != 8 or any(not 33 <= ord(c) <= 126 for c in password):
+        raise ValueError('LoRa password must contain exactly 8 visible ASCII characters, without spaces.')
+    return hashlib.pbkdf2_hmac('sha256', password.encode('ascii'),
+                               b'TeleRC-LoRa-Link-v1', 10000, dklen=32).hex()
+
+
 def setup_request(mhz: str, power: int, key: str) -> bytes:
     try:
         khz = Decimal(mhz.strip()) * 1000
@@ -114,7 +123,7 @@ def setup_request(mhz: str, power: int, key: str) -> bytes:
 
 RESULTS = {
     b'SAVED_RESTART_BOARD': 'Saved. Close USB and restart this board. Provision its partner with the same frequency, power and key.',
-    b'ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST': 'Active radio unchanged. Disconnect motor power, erase board NVS and reflash before re-pairing.',
+    b'ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST': 'Active radio unchanged. On firmware 0.4.0, hold BOOT to pause, then read again. Older firmware may require NVS erase and reflash.',
     b'STORAGE_FAILED': 'Board storage failed. Read settings before retrying.',
     b'INVALID': 'Board rejected the values. Settings were not saved.',
 }
@@ -206,3 +215,4 @@ class RemoteStatus:
         reasons = ('boot', 'command-timeout', 'FC-heartbeat-timeout', 'release',
                    'disconnect', 'UART-write-failure', 'radio-fault', 'disarm')
         return f'LoRa rover: ready={int(self.ready)} owned={self.owned} stops={self.stops} last={reasons[self.reason]} command age={self.command_age_ms}ms'
+

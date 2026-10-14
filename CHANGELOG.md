@@ -1,3 +1,11 @@
+# v0.1.2rc1 — runtime setup candidate
+
+- LilyGO BOOT/OLED menu selects saved Wi-Fi/LoRa without reflashing; BASE remains USB-to-LoRa.
+- Local setup AP and PC setup accept identical eight-character passwords, preserving advanced hex keys.
+- Setup stops control, retries pending release and delays restart beyond PC heartbeat timeout.
+- Incremental OLED output avoids blocking radio deadlines; existing watchdogs and PWM glitch fix retained.
+- New runtime and password regression checks; six target builds and Windows packages retained.
+
 # v0.1.1 — stable
 
 - Consolidates LilyGO Wi-Fi/LoRa 0.3.1 with link indication and PWM converter 1.0.5 glitch filtering.

@@ -7,7 +7,7 @@ import time
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QVBoxLayout, QWidget
 
-from .lora import SetupExchange, setup_request
+from .lora import SetupExchange, password_pairing_key
 from .transport import VehicleLoRa
 
 
@@ -39,7 +39,7 @@ class LoRaSetupWidget(QWidget):
         title = QLabel('LoRa Setup')
         title.setStyleSheet('font-size:12pt;font-weight:700;')
         layout.addWidget(title)
-        hint = QLabel('Plug in one LilyGO board using its native USB port. Read it first; provision both boards with the same values, then restart them. Disconnect motor power during setup.')
+        hint = QLabel('Disconnect motor power. On LilyGO firmware 0.4.0, hold BOOT after startup to pause the link. Plug in native USB, read the board, then save. Use the same frequency and password on BASE and ROVER. Exit the BOOT menu to restart.')
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -65,9 +65,10 @@ class LoRaSetupWidget(QWidget):
         self.power.setSuffix(' dBm')
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
-        self.key.setMaxLength(64)
-        self.key.setPlaceholderText('64 hexadecimal characters')
-        self.key.setAccessibleName('LoRa pairing key')
+        self.key_type = QComboBox()
+        self.key_type.addItems(['8-character password', 'Advanced hex key'])
+        self.key_type.setAccessibleName('LoRa credential type')
+        self._credential_type()
         key_row = QWidget()
         row = QHBoxLayout(key_row)
         row.setContentsMargins(0, 0, 0, 0)
@@ -79,7 +80,8 @@ class LoRaSetupWidget(QWidget):
         row.addWidget(self.generate)
         form.addRow('Frequency', self.mhz)
         form.addRow('Power', self.power)
-        form.addRow('Pairing key', key_row)
+        form.addRow('Credential type', self.key_type)
+        form.addRow('Password / key', key_row)
         layout.addLayout(form)
         row = QHBoxLayout()
         self.read_button = QPushButton('Read board')
@@ -98,11 +100,24 @@ class LoRaSetupWidget(QWidget):
         self.read_button.clicked.connect(self.read_board)
         self.save_button.clicked.connect(self.save_board)
         self.show_key.toggled.connect(self._show_key)
-        self.generate.clicked.connect(lambda: self.key.setText(secrets.token_hex(32)))
+        self.generate.clicked.connect(self._generate)
+        self.key_type.currentIndexChanged.connect(self._credential_type)
         self.timer = QTimer(self)
         self.timer.setInterval(5)
         self.timer.timeout.connect(self.poll)
         self._buttons()
+
+    def _credential_type(self):
+        self.key.clear()
+        password = self.key_type.currentIndex() == 0
+        self.key.setMaxLength(8 if password else 64)
+        self.key.setPlaceholderText('Exactly 8 visible ASCII characters' if password else '64 hexadecimal characters')
+        self.key.setAccessibleName('LoRa link password' if password else 'LoRa pairing key')
+
+    def _generate(self):
+        alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+        self.key.setText(''.join(secrets.choice(alphabet) for _ in range(8))
+                         if self.key_type.currentIndex() == 0 else secrets.token_hex(32))
 
     def _show_key(self, show):
         self.key.setEchoMode(QLineEdit.EchoMode.Normal if show else QLineEdit.EchoMode.Password)
@@ -117,7 +132,7 @@ class LoRaSetupWidget(QWidget):
         self.scan.setEnabled(not opened)
         self.read_button.setEnabled(opened and not pending and not self.exchange.blocked and not self.exchange.restart_required)
         self.save_button.setEnabled(opened and self.exchange.can_save)
-        for field in (self.mhz, self.power, self.key, self.generate):
+        for field in (self.mhz, self.power, self.key, self.key_type, self.generate):
             field.setEnabled(not pending)
 
     def open_usb(self):
@@ -175,7 +190,10 @@ class LoRaSetupWidget(QWidget):
         if not self.link:
             return
         try:
-            request = self.exchange.begin_save(self.mhz.text(), self.power.value(), self.key.text())
+            credential = self.key.text()
+            if self.key_type.currentIndex() == 0:
+                credential = password_pairing_key(credential)
+            request = self.exchange.begin_save(self.mhz.text(), self.power.value(), credential)
         except ValueError as exc:
             self.status.setText(str(exc))
             return
@@ -210,3 +228,4 @@ class LoRaSetupWidget(QWidget):
     def clear_secret(self):
         self.key.clear()
         self.show_key.setChecked(False)
+

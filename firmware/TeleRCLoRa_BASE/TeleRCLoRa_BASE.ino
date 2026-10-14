@@ -1,2 +1,4 @@
 #define TELERC_ROLE 1
-#include "Link.h"
+#include "Runtime.h"
+void setup(){runtime::setup();}
+void loop(){runtime::loop();}

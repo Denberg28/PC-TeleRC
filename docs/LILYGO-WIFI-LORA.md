@@ -1,4 +1,6 @@
-# LilyGO T3-S3 SX1262 firmware 0.3.1 — Wi-Fi / LoRa stable package
+# LilyGO T3-S3 SX1262 — Wi-Fi / LoRa
+
+Current candidate: firmware 0.4.0 / PC 0.1.2rc1. Read [runtime setup](LILYGO-RUNTIME-SETUP.md) for BOOT mode selection and password pairing. The notes below describe the previous stable 0.3.1 implementation; compile-time switching instructions apply only to that version.
 
 ROVER now defaults to Wi-Fi. BASE remains the LoRa USB bridge. This stable release includes PC TeleRC 0.1.1, LilyGO firmware 0.3.1, PWM converter 1.0.5, source sketches and prebuilt role-specific binaries. The firmware extends the previously delivered 0.3.0 update with bounded USB diagnostic waits.
 

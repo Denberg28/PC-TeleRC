@@ -1,5 +1,5 @@
 #pragma once
-// TeleRC SX1262 ArduRover direct pair 0.3.1. No Wi-Fi in the driving path.
+// TeleRC SX1262 ArduRover direct pair 0.4.0. No Wi-Fi in the driving path.
 #include <Arduino.h>
 #include <algorithm>
 #include <cctype>
@@ -298,12 +298,14 @@ void loop(){
  uint32_t now=millis();
  // Enter setup by holding BOOT after the sketch has booted; holding it during
  // RESET selects the ESP ROM downloader instead. Never resume RF automatically.
+#ifndef TELERC_RUNTIME_MENU
  if(!maintenance&&digitalRead(0)==LOW){
   if(!bootTracking){bootTracking=true;bootPressAt=now;}
   else if(uint32_t(now-bootPressAt)>=1000){
    stopControl(4);radio.standby();radioOK=false;transmitting=scanning=false;maintenance=true;
   }
  }else bootTracking=false;
+#endif
  if(TELERC_ROLE==ROVER&&stopPending&&uint32_t(now-lastStopTry)>=100)tryStop();
  if(TELERC_ROLE==ROVER&&!maintenance){
   if(safety.expired(now))stopControl(1);

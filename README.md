@@ -1,10 +1,8 @@
-# PC TeleRC v0.1.1 — stable release
+# PC TeleRC v0.1.2rc1 — LilyGO runtime setup candidate
 
-Windows wheel control with independent steering/throttle sensitivity, LilyGO T3-S3 Wi-Fi/LoRa firmware 0.3.1 with link LED indication, and PWM converter 1.0.5 with the verified pulse-noise fix.
+BOOT/OLED menu, saved rover Wi-Fi/LoRa selection, local link setup and eight-character LoRa passwords. Existing hex pairing keys remain supported. Independent steering/throttle sensitivity and PWM converter 1.0.5 are retained.
 
-Download the installer, portable app, role-specific firmware builds and sketches from the v0.1.1 release. Read [the setup guide](docs/STABLE-v0.1.1.md) before flashing; the LilyGO rover defaults to Wi-Fi and LoRa is a separate build. Software and target-build checks are recorded; physical rover validation remains outstanding.
-
-
+Read [the runtime setup guide](docs/LILYGO-RUNTIME-SETUP.md). This candidate remains a draft for testing; [v0.1.1](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.1) remains the latest stable release. Physical rover validation remains outstanding.
 
 # PC TeleRC
 
@@ -32,7 +30,7 @@ See [candidate notes](docs/releases/v0.1.1rc2.md) for test evidence and hardware
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current candidate:** `0.1.1rc2`; stable baseline: `0.1.0a10` — Android-aligned CH1 steering / CH2 drive mapping.
+**Current candidate:** `0.1.2rc1`; latest stable: `0.1.1` — Android-aligned CH1 steering / CH2 drive mapping.
 
 ## Operator flow
 1. Connect the PC to the ESP32-S3 rover network.

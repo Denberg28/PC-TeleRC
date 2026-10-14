@@ -1,6 +1,6 @@
 #pragma once
 // 1 = LilyGO Wi-Fi AP (default); 0 = existing SX1262 LoRa direct pair.
-// Select while motor power is disconnected, then upload/restart the ROVER.
+// Initial default only: saved BOOT menu mode overrides this after startup.
 #ifndef TELERC_TRANSPORT_WIFI
 #define TELERC_TRANSPORT_WIFI 1
 #endif
