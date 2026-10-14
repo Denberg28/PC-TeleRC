@@ -43,8 +43,12 @@ inline bool ledcWrite(int p, int v) {
 }
 struct SerialMock {
   std::string output;
+  uint32_t txTimeoutMs=100;
+  bool busy=false;
+  void setTxTimeoutMs(uint32_t ms) { txTimeoutMs=ms; }
   void begin(int) {}
-  int availableForWrite() { return 32; }
-  size_t write(const uint8_t* p, size_t n) { output.append(reinterpret_cast<const char*>(p), n); return n; }
+  int availableForWrite() { if(busy)clockUs+=txTimeoutMs*1000; return 32; }
+  size_t write(const uint8_t* p, size_t n) { if(busy)clockUs+=txTimeoutMs*1000; output.append(reinterpret_cast<const char*>(p), n); return n; }
 };
 inline SerialMock Serial;
+

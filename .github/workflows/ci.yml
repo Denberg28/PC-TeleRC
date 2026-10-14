@@ -1,4 +1,4 @@
-name: rc6 independent sensitivity release build
+name: rc7 PWM noise recovery release build
 on:
   push:
     branches: [main, "dev/**"]
@@ -13,16 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Reserve draft release for direct asset uploads
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/independent-sensitivity-rc6'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1rc6
+          tag_name: v0.1.1rc7
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.1rc6 — Independent steering and throttle sensitivity
+          name: PC TeleRC v0.1.1rc7 — PWM noise and recovery fixes
           draft: true
           prerelease: true
           make_latest: false
-          body_path: docs/releases/v0.1.1rc6.md
+          body_path: docs/releases/v0.1.1rc7.md
   firmware:
     needs: prepare
     runs-on: ubuntu-latest
@@ -46,19 +46,30 @@ jobs:
         run: |
           arduino-cli compile --fqbn esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,Revision=Radio_SX1262,PSRAM=enabled --output-dir firmware-build/BASE firmware/TeleRCLoRa_BASE
           arduino-cli compile --fqbn esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,Revision=Radio_SX1262,PSRAM=enabled --output-dir firmware-build/ROVER firmware/TeleRCLoRa_ROVER
+      - name: Compile ESP32-S3 PWM converter and Wi-Fi/ELRS bridge
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc --output-dir firmware-build/PWM firmware/TeleRC_4x_BTS7960_PWM_GlitchFilter
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc --output-dir firmware-build/WIFI firmware/TeleRCBridge
+          mkdir -p firmware-build-input/TeleRCBridge_ELRS
+          sed 's/#define TELERC_LINK_MODE 0/#define TELERC_LINK_MODE 1/' firmware/TeleRCBridge/TeleRCBridge.ino > firmware-build-input/TeleRCBridge_ELRS/TeleRCBridge_ELRS.ino
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc --output-dir firmware-build/ELRS firmware-build-input/TeleRCBridge_ELRS
       - name: Package sketches, source checkpoint and compiled targets
         run: |
           python3 scripts/package_candidate.py
-          cp docs/LILYGO-SX1262-ARDUROVER.md firmware-build/READ-ME-FIRST.md
+          cp docs/FIRMWARE-RECOVERY-rc7.md firmware-build/READ-ME-FIRST.md
           cd firmware-build
-          zip -r ../release-dist/TeleRC-LilyGO-T3S3-SX1262-v0.2.0-target-builds.zip .
+          zip -r ../release-dist/TeleRC-Firmware-v0.1.1rc7-target-builds.zip .
           cd ../release-dist
           sha256sum *.zip > SHA256-firmware-source.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-rc7-firmware-source
+          path: release-dist/*
       - name: Attach firmware directly to draft release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/independent-sensitivity-rc6'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1rc6
+          tag_name: v0.1.1rc7
           target_commitish: ${{ github.sha }}
           draft: true
           prerelease: true
@@ -86,8 +97,9 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
+          Copy-Item docs\FIRMWARE-RECOVERY-rc7.md dist\PC-TeleRC\FIRMWARE-RECOVERY-rc7.md
           Copy-Item docs\LILYGO-SX1262-ARDUROVER.md dist\PC-TeleRC\LILYGO-SX1262-ARDUROVER.md
-          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.1rc6.zip -Force
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath dist\PC-TeleRC-portable-v0.1.1rc7.zip -Force
       - name: Install Inno Setup and build installer
         shell: pwsh
         run: |
@@ -98,14 +110,18 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force windows-release | Out-Null
-          Copy-Item dist\PC-TeleRC-portable-v0.1.1rc6.zip windows-release\
-          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.1rc6.exe windows-release\
+          Copy-Item dist\PC-TeleRC-portable-v0.1.1rc7.zip windows-release\
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.1rc7.exe windows-release\
           Get-ChildItem windows-release\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii windows-release\SHA256-windows.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-rc7-windows
+          path: windows-release/*
       - name: Attach Windows builds directly to draft release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/independent-sensitivity-rc6'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1rc6
+          tag_name: v0.1.1rc7
           target_commitish: ${{ github.sha }}
           draft: true
           prerelease: true
@@ -113,7 +129,7 @@ jobs:
           files: windows-release/*
   release:
     needs: [firmware, windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/independent-sensitivity-rc6'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
     runs-on: ubuntu-latest
     steps:
       - name: Verify all release downloads exist
@@ -121,15 +137,15 @@ jobs:
         with:
           script: |
             const releases = await github.rest.repos.listReleases({...context.repo});
-            const release = releases.data.find(r => r.tag_name === 'v0.1.1rc6');
+            const release = releases.data.find(r => r.tag_name === 'v0.1.1rc7');
             if (!release) throw new Error('Draft release missing');
             const assets = await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id});
             const names = new Set(assets.data.map(a => a.name));
-            for (const name of ['PC-TeleRC-portable-v0.1.1rc6.zip', 'PC-TeleRC-Setup-v0.1.1rc6.exe',
-                                'PC-TeleRC-source-v0.1.1rc6.zip', 'TeleRC-LilyGO-T3S3-SX1262-v0.2.0-sketches.zip',
-                                'TeleRC-LilyGO-T3S3-SX1262-v0.2.0-target-builds.zip',
+            for (const name of ['PC-TeleRC-portable-v0.1.1rc7.zip', 'PC-TeleRC-Setup-v0.1.1rc7.exe',
+                                'PC-TeleRC-source-v0.1.1rc7.zip', 'TeleRC-Firmware-v0.1.1rc7-sketches.zip',
+                                'TeleRC-Firmware-v0.1.1rc7-target-builds.zip',
                                 'SHA256-firmware-source.txt', 'SHA256-windows.txt']) {
               if (!names.has(name)) throw new Error('Missing release asset: ' + name);
             }
-            core.info('Complete rc5 Windows / SX1262 draft release attached to ' + release.html_url);
+            core.info('Complete rc7 Windows / firmware draft release attached to ' + release.html_url);
 

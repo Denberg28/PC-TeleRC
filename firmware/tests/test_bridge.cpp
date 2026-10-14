@@ -15,6 +15,7 @@ std::vector<uint8_t> rc(std::array<uint16_t,4> channels){
 void receive(std::vector<uint8_t> p){udp.incoming=p;loop();}
 int main(){
  setup();
+ assert(Serial.txTimeoutMs==1);
  assert(std::string(PERSONAL_AP_PASSWORD)=="telerc123");
  if(ELRS_MODE){
    assert(WiFi.active==WIFI_OFF);
@@ -77,3 +78,4 @@ int main(){
  clockMs=uint32_t(lastControlMs+500);loop();assert(!controlActive);
  std::cout<<"PASS blocked USB does not suspend timeout; millis wrap handled\n";
 }
+

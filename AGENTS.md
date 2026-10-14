@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.1rc6 — independent steering/throttle sensitivity, retaining rc5 transport behavior.
+0.1.1rc7 — PWM noise capture and bounded USB diagnostics, retaining independent sensitivities.
 
 Preserve the wheel connection session in ControlFrame; new instances require manual enable. Wi-Fi enable/ARM requires centered steering and CH1–CH4, matching bridge firmware. Firmware diagnostics preserve the last stop; do not increase watchdog thresholds to conceal electrical faults. See REVIEW-DROPOUTS.md and the conditional motor-side parameter patch.
 
@@ -71,3 +71,5 @@ ELRS reliability: 20 Hz safety checks separate from 5 Hz drive sends; monitor-on
 
 LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. New firmware is a direct SX1262 pair; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
 
+
+PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.

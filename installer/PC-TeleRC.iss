@@ -1,5 +1,5 @@
 #define MyAppName "PC TeleRC"
-#define MyAppVersion "0.1.1rc6"
+#define MyAppVersion "0.1.1rc7"
 #define MyAppPublisher "Denberg28"
 #define MyAppExeName "PC-TeleRC.exe"
 
@@ -21,7 +21,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\installer-dist
-OutputBaseFilename=PC-TeleRC-Setup-v0.1.1rc6
+OutputBaseFilename=PC-TeleRC-Setup-v0.1.1rc7
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
