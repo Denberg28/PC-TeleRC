@@ -58,7 +58,7 @@ def combined_pedal_to_throttle(axis: float, *, invert: bool = False, deadzone: f
     return shape_axis(axis, AxisConfig(deadzone=deadzone, expo=0.0, invert=invert))
 
 def apply_sensitivity(value: float, sensitivity: float = 1.0) -> float:
-    """Scale steering authority without changing the configured expo curve."""
+    """Scale an axis command without changing its configured response curve."""
     value = clamp(float(value), -1.0, 1.0)
     sensitivity = clamp(float(sensitivity), 0.25, 1.0)
     return clamp(value * sensitivity, -1.0, 1.0)
@@ -80,3 +80,4 @@ def control_is_fresh(frame: ControlFrame | None, *, now: float | None = None, st
     now = time.monotonic() if now is None else now
     return (all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp))
             and now - frame.timestamp <= stale_after)
+

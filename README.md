@@ -1,6 +1,8 @@
-# Current candidate: v0.1.1rc5
+# Current candidate: v0.1.1rc6
 
-See [LilyGO SX1262 ArduRover wiring and setup](docs/LILYGO-SX1262-ARDUROVER.md) and [release notes](docs/releases/v0.1.1rc5.md). This candidate retains the rc4 fixes and adds a direct LoRa USB/FC link. The remainder below records the earlier stable baseline.
+Steering sensitivity and throttle sensitivity now have separate 25–100% controls in the Controller panel. Both are saved independently; existing settings retain steering and default throttle sensitivity to 100%. Throttle sensitivity scales forward/reverse commands before the separate throttle limit. Editing either control disables PC Control; click Apply Settings and re-enable manually. Neutral checks use unscaled pedal input.
+
+See [LilyGO SX1262 ArduRover wiring and setup](docs/LILYGO-SX1262-ARDUROVER.md) and [release notes](docs/releases/v0.1.1rc6.md). This candidate retains the rc4 fixes and adds a direct LoRa USB/FC link. The remainder below records the earlier stable baseline.
 
 # PC TeleRC
 
@@ -135,3 +137,4 @@ The installed build now uses PyInstaller **onedir** inside the Inno Setup instal
 
 ## Bridge control wire format
 PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing control traffic (GCS heartbeat, ARM/DISARM, RC override, neutral and release) is deliberately encoded as MAVLink 1 from system 255 / component 190 so it remains compatible with the TeleRC ESP32-S3 command filter and Android TeleRC control envelope.
+

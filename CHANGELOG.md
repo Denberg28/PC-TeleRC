@@ -1,3 +1,9 @@
+# v0.1.1rc6
+
+- Separate steering and throttle sensitivity controls, persistence, and diagnostic values.
+- Scale throttle before the independent throttle limit; retain unscaled neutral checks.
+- Retain rc5 Wi-Fi, LoRa, ELRS, takeover, and disconnect behavior.
+
 # 0.1.1rc5
 
 - Retain rc3 direct wheel sampling and rc4 wheel-session/neutral/mapping fixes.
@@ -59,3 +65,4 @@
 
 ## 0.1.0a6 — 2026-10-01
 - Full code-review baseline with dependency integrity and UI symmetry checks.
+

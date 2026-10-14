@@ -7,7 +7,7 @@ import time
 from typing import Optional
 
 from .config import AppSettings
-from .core import ControlFrame, LinkState, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
+from .core import ControlFrame, LinkState, apply_sensitivity, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
 from .field_safety import can_arm, can_continue_control, can_enable_control
 from .network_errors import describe_mavlink_start_error
 
@@ -718,7 +718,7 @@ class MavlinkService:
 
         steer = PWM_NEUTRAL if initializing_lora else normalized_to_pwm(frame.steering, 1.0)
         throttle = PWM_NEUTRAL if initializing_lora else normalized_to_pwm(
-            frame.throttle,
+            apply_sensitivity(frame.throttle, settings.throttle_sensitivity),
             settings.throttle_limit,
         )
         if self._send_override(steer, throttle):
@@ -889,3 +889,4 @@ class MavlinkService:
                     reason = "Neutral/release USB writes failed; verify rover failsafe and handover."
                     self._snapshot = replace(self._snapshot, error=(self._snapshot.error + " " + reason).strip())
         return delivered
+

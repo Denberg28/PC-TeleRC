@@ -214,9 +214,14 @@ class MainWindow(QMainWindow):
         self.steering_sensitivity.setRange(25, 100)
         self.steering_sensitivity.setSuffix(" %")
         self.steering_sensitivity.setToolTip("Scale steering authority. 100% = full steering command; lower values reduce steering gain.")
+        self.throttle_sensitivity = QSpinBox()
+        self.throttle_sensitivity.setRange(25, 100)
+        self.throttle_sensitivity.setSuffix(" %")
+        self.throttle_sensitivity.setToolTip("Scale forward/reverse pedal commands independently of steering, before the throttle limit. Neutral checks use the unscaled pedal input.")
         wheel_form.addRow("Deadzone", self.deadzone)
         wheel_form.addRow("Steering expo", self.expo)
-        wheel_form.addRow("Controller sensitivity", self.steering_sensitivity)
+        wheel_form.addRow("Steering sensitivity", self.steering_sensitivity)
+        wheel_form.addRow("Throttle sensitivity", self.throttle_sensitivity)
         wheel_layout.addLayout(wheel_form)
 
         self.apply_btn = QPushButton("Apply Settings")
@@ -313,7 +318,7 @@ class MainWindow(QMainWindow):
         non_network = (
             self.pedal_mode, self.steer_axis, self.throttle_axis, self.brake_axis,
             self.invert_steer, self.invert_throttle, self.invert_brake,
-            self.deadzone, self.expo, self.steering_sensitivity, self.throttle_limit,
+            self.deadzone, self.expo, self.steering_sensitivity, self.throttle_sensitivity, self.throttle_limit,
             self.steer_channel, self.throttle_channel,
         )
         for widget in non_network:
@@ -361,6 +366,7 @@ class MainWindow(QMainWindow):
         self.deadzone.setValue(s.deadzone)
         self.expo.setValue(s.expo)
         self.steering_sensitivity.setValue(round(s.steering_sensitivity * 100))
+        self.throttle_sensitivity.setValue(round(s.throttle_sensitivity * 100))
         self.throttle_limit.setValue(round(s.throttle_limit * 100))
         self.steer_channel.setValue(s.steering_channel)
         self.throttle_channel.setValue(s.throttle_channel)
@@ -387,6 +393,7 @@ class MainWindow(QMainWindow):
             deadzone=self.deadzone.value(),
             expo=self.expo.value(),
             steering_sensitivity=self.steering_sensitivity.value() / 100,
+            throttle_sensitivity=self.throttle_sensitivity.value() / 100,
             throttle_limit=self.throttle_limit.value() / 100,
             steering_channel=self.steer_channel.value(),
             throttle_channel=self.throttle_channel.value(),
@@ -689,3 +696,4 @@ class MainWindow(QMainWindow):
         if not self._settings_dirty:
             save_settings(self.settings)
         event.accept()
+

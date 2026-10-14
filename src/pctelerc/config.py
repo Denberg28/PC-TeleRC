@@ -28,6 +28,7 @@ class AppSettings:
     deadzone: float = 0.04
     expo: float = 0.15
     steering_sensitivity: float = 1.0
+    throttle_sensitivity: float = 1.0
     throttle_limit: float = 0.25
     steering_channel: int = 1
     throttle_channel: int = 2
@@ -48,6 +49,7 @@ class AppSettings:
         self.deadzone = min(0.30, max(0.0, float(self.deadzone)))
         self.expo = min(1.0, max(0.0, float(self.expo)))
         self.steering_sensitivity = min(1.0, max(0.25, float(self.steering_sensitivity)))
+        self.throttle_sensitivity = min(1.0, max(0.25, float(self.throttle_sensitivity)))
         self.throttle_limit = min(1.0, max(0.05, float(self.throttle_limit)))
         self.steering_channel = min(8, max(1, int(self.steering_channel)))
         self.throttle_channel = min(8, max(1, int(self.throttle_channel)))
@@ -104,3 +106,4 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> Path:
     tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
     return target
+

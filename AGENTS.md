@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.1rc5 — SX1262 USB/ArduRover candidate, retaining delivered rc4 fixes.
+0.1.1rc6 — independent steering/throttle sensitivity, retaining rc5 transport behavior.
 
 Preserve the wheel connection session in ControlFrame; new instances require manual enable. Wi-Fi enable/ARM requires centered steering and CH1–CH4, matching bridge firmware. Firmware diagnostics preserve the last stop; do not increase watchdog thresholds to conceal electrical faults. See REVIEW-DROPOUTS.md and the conditional motor-side parameter patch.
 
@@ -38,7 +38,8 @@ Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lor
 
 ## Controller sensitivity
 - Range 25–100%; default 100%.
-- Applies only to steering after deadzone/expo shaping.
+- Steering sensitivity applies after deadzone/expo shaping.
+- Throttle sensitivity applies in the send path before throttle limit. Neutral checks use unscaled pedal input; never scale the safety frame.
 - Acts as steering gain: lower values proportionally reduce steering authority.
 - Steering expo remains the independent nonlinear response control.
 - Throttle limit remains independent.
@@ -69,3 +70,4 @@ Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel ma
 ELRS reliability: 20 Hz safety checks separate from 5 Hz drive sends; monitor-only sessions never release RC. Serialize enable/disable/configure/ARM with sends. Fresh ArduRover autopilot heartbeat and input required. Missed watchdog deadlines and USB failures latch OFF. Purge the local output queue before owned neutral/release; USB write success never proves RF delivery. Reconnect timers carry a generation token and frozen applied settings; edits cancel them. Preserve original Wi-Fi/LoRa control rates and protocol frames.
 
 LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. New firmware is a direct SX1262 pair; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
+
