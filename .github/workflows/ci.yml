@@ -61,10 +61,6 @@ jobs:
           zip -r ../release-dist/TeleRC-Firmware-v0.1.1rc7-target-builds.zip .
           cd ../release-dist
           sha256sum *.zip > SHA256-firmware-source.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PC-TeleRC-rc7-firmware-source
-          path: release-dist/*
       - name: Attach firmware directly to draft release
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
         uses: softprops/action-gh-release@v2
@@ -113,10 +109,6 @@ jobs:
           Copy-Item dist\PC-TeleRC-portable-v0.1.1rc7.zip windows-release\
           Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.1rc7.exe windows-release\
           Get-ChildItem windows-release\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii windows-release\SHA256-windows.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PC-TeleRC-rc7-windows
-          path: windows-release/*
       - name: Attach Windows builds directly to draft release
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev/firmware-recovery-rc7'
         uses: softprops/action-gh-release@v2
