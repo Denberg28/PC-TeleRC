@@ -94,6 +94,7 @@ class VehicleLoRa(VehicleSerial):
         from collections import deque
         from .lora import Parser
         self.parser = Parser()
+        self.remote_status = None
         self.packets = deque()
         # Native CDC needs DTR asserted for firmware Serial.availableForWrite().
         # RTS is kept low; select the board's native USB port, not a reset-wired adapter.
@@ -118,7 +119,12 @@ class VehicleLoRa(VehicleSerial):
             if len(self.packets) >= 32:
                 raise OSError('LoRa USB receive backlog; reconnect required.')
             self.packets.append(packet)
-        return self.packets.popleft() if self.packets else b''
+        packet = self.packets.popleft() if self.packets else b''
+        from .lora import RemoteStatus
+        status = RemoteStatus.parse(packet, time.monotonic())
+        if status:
+            self.remote_status = status
+        return packet
 
     def check_health(self):
         if not self.port.is_open:

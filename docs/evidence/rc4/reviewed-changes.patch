@@ -1,0 +1,467 @@
+--- a/src/pctelerc/__init__.py
++++ b/src/pctelerc/__init__.py
+@@ -1 +1 @@
+-__version__ = "0.1.1rc3"
++__version__ = "0.1.1rc4"
+--- a/src/pctelerc/controller.py
++++ b/src/pctelerc/controller.py
+@@ -2,6 +2,7 @@
+ 
+ from dataclasses import dataclass
+ import os
++import math
+ import threading
+ import time
+ from typing import Optional
+@@ -26,6 +27,7 @@
+     guid: str
+     axes: int
+     buttons: int
++    instance_id: int = -1
+ 
+ 
+ @dataclass(frozen=True)
+@@ -94,12 +96,25 @@
+ 
+         joystick = None
+         active_guid = ""
++        active_instance = None
++        session = 0
+         last_scan = 0.0
+ 
+         while not self._stop.is_set():
+             now = time.monotonic()
+             try:
+-                pygame.event.pump()
++                # Consume the queue as well as pumping it: rapid axes must not
++                # leave an ever-growing queue or hide a remove/add event.
++                for event in pygame.event.get():
++                    if event.type == pygame.JOYDEVICEREMOVED and event.instance_id == active_instance:
++                        joystick = None
++                        active_guid = ""
++                        active_instance = None
++                        with self._lock:
++                            self._snapshot = ControllerSnapshot(error="Selected controller disconnected.")
++                        last_scan = 0.0
++                    elif event.type == pygame.JOYDEVICEADDED:
++                        last_scan = 0.0
+ 
+                 if now - last_scan >= 1.0:
+                     devices: list[ControllerDevice] = []
+@@ -113,6 +128,7 @@
+                                 guid=probe.get_guid(),
+                                 axes=probe.get_numaxes(),
+                                 buttons=probe.get_numbuttons(),
++                                instance_id=probe.get_instance_id(),
+                             )
+                         )
+ 
+@@ -125,13 +141,20 @@
+                     else:
+                         chosen = devices[0] if devices else None
+ 
+-                    if chosen and (joystick is None or chosen.guid != active_guid):
++                    if chosen and (joystick is None or chosen.instance_id != active_instance):
+                         joystick = pygame.joystick.Joystick(chosen.index)
+                         joystick.init()
+                         active_guid = chosen.guid
++                        active_instance = chosen.instance_id
++                        session += 1
++                        # Once auto-selected, do not silently pick another wheel.
++                        with self._lock:
++                            if not self._selected_guid:
++                                self._selected_guid = active_guid
+                     elif not chosen:
+                         joystick = None
+                         active_guid = ""
++                        active_instance = None
+ 
+                     last_scan = now
+ 
+@@ -144,6 +167,8 @@
+                     continue
+ 
+                 axes = tuple(float(joystick.get_axis(i)) for i in range(joystick.get_numaxes()))
++                if not all(math.isfinite(axis) for axis in axes):
++                    raise ValueError("Controller returned a non-finite axis value")
+                 with self._lock:
+                     settings = AppSettings(**vars(self._settings)).validate()
+ 
+@@ -173,7 +198,7 @@
+                     if abs(throttle) <= settings.deadzone:
+                         throttle = 0.0
+ 
+-                frame = ControlFrame(steer, throttle, now)
++                frame = ControlFrame(steer, throttle, now, session)
+                 with self._lock:
+                     self._snapshot = ControllerSnapshot(
+                         connected=True,
+@@ -188,6 +213,7 @@
+             except Exception as exc:
+                 joystick = None
+                 active_guid = ""
++                active_instance = None
+                 with self._lock:
+                     self._snapshot = ControllerSnapshot(error=f"Controller read error: {exc}")
+ 
+--- a/src/pctelerc/core.py
++++ b/src/pctelerc/core.py
+@@ -24,6 +24,7 @@
+     steering: float
+     throttle: float
+     timestamp: float
++    session: int = 0
+     @property
+     def neutral(self) -> bool:
+         return abs(self.throttle) <= 0.05
+@@ -77,4 +78,5 @@
+     if frame is None:
+         return False
+     now = time.monotonic() if now is None else now
+-    return now - frame.timestamp <= stale_after
++    return (all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp))
++            and now - frame.timestamp <= stale_after)
+--- a/src/pctelerc/diagnostics.py
++++ b/src/pctelerc/diagnostics.py
+@@ -9,6 +9,7 @@
+ from .controller import ControllerDevice, ControllerSnapshot
+ from .core import LinkState, control_is_fresh
+ from .logging_setup import log_path
++from .field_safety import validate_mapping
+ from .mavlink import MavlinkSnapshot
+ 
+ 
+@@ -91,8 +92,11 @@
+     if settings.pedal_mode == "separate":
+         mapped.append(settings.brake_axis)
+     invalid = [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped
++    mapping_check = validate_mapping(settings, len(wheel.axes) if wheel.axes else None)
+     if settings.steering_channel == settings.throttle_channel:
+         mapping = _item("FAIL", "Mapping", "Steer/throttle share one RC channel.")
++    elif not mapping_check.allowed:
++        mapping = _item("FAIL", "Mapping", mapping_check.message)
+     elif invalid:
+         mapping = _item("FAIL", "Mapping", "Mapped controller axis unavailable.")
+     else:
+@@ -112,6 +116,9 @@
+         safety = _item("PASS", "Safety", "PC Control ACTIVE.")
+     elif wheel.frame is not None and not wheel.frame.neutral:
+         safety = _item("WARN", "Safety", "Throttle not neutral.")
++    elif (settings.link_mode in ("telerc_udp", "lora_usb") and wheel.frame is not None
++          and abs(wheel.frame.steering) > .05):
++        safety = _item("WARN", "Safety", "Center the steering wheel before enabling control.")
+     else:
+         safety = _item("PASS", "Safety", "Ready / control OFF.")
+ 
+@@ -129,6 +136,7 @@
+     network_dirty: bool,
+     now: float | None = None,
+ ) -> DiagnosticReport:
++    now = time.monotonic() if now is None else now
+     status = build_targeted_status(
+         settings=settings,
+         wheel=wheel,
+@@ -153,6 +161,11 @@
+     ]
+     if mav.error:
+         items.append(_item("FAIL", "MAVLink error", mav.error))
++    if wheel.frame is not None:
++        items.append(_item("INFO", "Input sample",
++                           f"age {max(0., now-wheel.frame.timestamp):.3f}s / limit {settings.controller_timeout:.3f}s; session {wheel.frame.session}"))
++    if wheel.error:
++        items.append(_item("FAIL", "Controller error", wheel.error))
+ 
+     counts = {
+         "PASS": sum(i.level == "PASS" for i in items),
+--- a/src/pctelerc/field_safety.py
++++ b/src/pctelerc/field_safety.py
+@@ -13,6 +13,8 @@
+ 
+ 
+ def validate_mapping(settings: AppSettings, axis_count: int | None = None) -> SafetyDecision:
++    if settings.link_mode == "telerc_udp" and max(settings.steering_channel, settings.throttle_channel) > 4:
++        return SafetyDecision(False, "bridge_mapping", "Wi-Fi bridge accepts control on CH1–CH4 only.")
+     if settings.link_mode == "lora_usb" and (settings.steering_channel, settings.throttle_channel) != (1, 2):
+         return SafetyDecision(False, "lora_mapping", "TeleRC LoRa requires CH1 steering and CH2 drive.")
+     if settings.steering_channel == settings.throttle_channel:
+@@ -44,8 +46,8 @@
+         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
+     if frame is None or not frame.neutral:
+         return SafetyDecision(False, "throttle_not_neutral", "Release throttle/brake to neutral before enabling PC control.")
+-    if settings.link_mode == "lora_usb" and abs(frame.steering) > 0.05:
+-        return SafetyDecision(False, "steering_not_neutral", "Center the wheel before enabling LoRa control.")
++    if settings.link_mode in ("lora_usb", "telerc_udp") and abs(frame.steering) > 0.05:
++        return SafetyDecision(False, "steering_not_neutral", "Center the wheel and release pedals before enabling control.")
+     return SafetyDecision(True, "ok", "PC control prerequisites satisfied.")
+ 
+ 
+--- a/src/pctelerc/mavlink.py
++++ b/src/pctelerc/mavlink.py
+@@ -72,6 +72,7 @@
+         self._owns_elrs_override = False
+         self._last_elrs_tick = None
+         self._next_elrs_send = 0.0
++        self._enabled_controller_session = None
+ 
+     def configure(self, settings: AppSettings):
+         with self._send_lock:
+@@ -207,6 +208,7 @@
+             self._lora_direct_deadline = time.monotonic() + 2.5 if settings.link_mode == "lora_usb" and snap.mode == "FAILSAFE" else None
+             self._failsafe_latched = False
+             self._control_enabled = True
++            self._enabled_controller_session = frame.session
+             if settings.link_mode == "elrs_serial":
+                 self._owns_elrs_override = True
+                 self._last_elrs_tick = time.monotonic()
+@@ -628,6 +630,16 @@
+             axis_count=axis_count,
+             now=now,
+         )
++        if (frame is not None and self._enabled_controller_session is not None
++                and frame.session != self._enabled_controller_session):
++            from .field_safety import SafetyDecision
++            decision = SafetyDecision(False, "controller_reconnected",
++                                      "Controller reconnected or changed; re-enable manually at neutral.")
++        elif not decision.allowed and decision.code == "controller_stale":
++            from .field_safety import SafetyDecision
++            age = "missing" if frame is None else f"{max(0.0, now - frame.timestamp):.3f}s old"
++            decision = SafetyDecision(False, decision.code,
++                                      f"Controller input missing or stale: {age} (limit {settings.controller_timeout:.3f}s).")
+         if (settings.link_mode == "elrs_serial" and previous_tick is not None
+                 and now - previous_tick > settings.controller_timeout):
+             from .field_safety import SafetyDecision
+--- a/src/pctelerc/ui.py
++++ b/src/pctelerc/ui.py
+@@ -668,6 +668,8 @@
+         self.select_btn.setEnabled(self.device_combo.count() > 0)
+         self.calibrate_btn.setEnabled(wheel_ok)
+         neutral_ok = wheel.frame is not None and wheel.frame.neutral
++        if self.settings.link_mode in ("telerc_udp", "lora_usb"):
++            neutral_ok = neutral_ok and abs(wheel.frame.steering) <= .05
+         self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
+         self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty and not self._network_dirty)
+         self.disarm_btn.setEnabled(link_ok and mav.armed)
+--- a/firmware/TeleRCBridge/TeleRCBridge.ino
++++ b/firmware/TeleRCBridge/TeleRCBridge.ino
+@@ -1,4 +1,4 @@
+-// TeleRC bridge Wi-Fi recovery candidate 0.1.2, 2026-10-14
++// TeleRC bridge dropout-diagnostic candidate 0.1.4, 2026-10-14
+ #include <Arduino.h>
+ #include <WiFi.h>
+ #include <WiFiUdp.h>
+@@ -78,8 +78,11 @@
+ uint8_t ownedChannels = 0;
+ bool neutralRequired = true;
+ uint32_t controlTimeouts = 0;
++uint32_t neutralRejects = 0, uartShortWrites = 0;
++uint32_t lastStopAtMs = 0, lastStopGapMs = 0, maxControlGapMs = 0;
++const char* lastStopReason = "startup";
+ int bootResetReason = 0;
+-char usbDiagnostic[256];
++char usbDiagnostic[512];
+ size_t usbLength = 0, usbOffset = 0;
+ void serviceUsbDiagnostic() {
+   if (usbOffset >= usbLength) return;
+@@ -200,7 +203,12 @@
+ }
+ 
+ // This helper owns only channels previously accepted from the current client.
+-void stopWifiControl() {
++void stopWifiControl(const char* reason = "release") {
++  if (controlActive) {
++    lastStopReason = reason;
++    lastStopAtMs = millis();
++    lastStopGapMs = millis() - lastControlMs;
++  }
+   if (ownedChannels && targetSystem) {
+     sendOverride(1500);
+     sendOverride(0);
+@@ -222,7 +230,7 @@
+     else if (value < 1465 || value > 1535) neutral = false;
+   }
+   if (ownedChannels && targetSystem != p[22]) return false;
+-  if (!release && neutralRequired && !neutral) return false;
++  if (!release && neutralRequired && !neutral) { ++neutralRejects; return false; }
+   // Releasing a channel we do not own must not disturb a transmitter.
+   if (release && !(mask & ownedChannels)) return true;
+   if (release) {
+@@ -235,7 +243,11 @@
+   if (!release) ownedChannels |= mask;
+   const size_t written = writeFcCommand(p, count);
+   diagnosticUartTxBytes += written;
+-  if (written != count) { stopWifiControl(); return false; }
++  if (written != count) { ++uartShortWrites; stopWifiControl("uart-short"); return false; }
++  if (controlActive) {
++    const uint32_t gap = millis() - lastControlMs;
++    if (gap > maxControlGapMs) maxControlGapMs = gap;
++  }
+   if (release) ownedChannels &= ~mask;
+   else neutralRequired = false;
+   controlActive = ownedChannels != 0;
+@@ -296,7 +308,7 @@
+   if (apReady && uint32_t(now - lastWifiCheckMs) >= 1000) {
+     lastWifiCheckMs = now;
+     if (!(WiFi.getMode() & WIFI_AP) || WiFi.softAPIP() != AP_IP) {
+-      stopWifiControl();
++      stopWifiControl("ap-lost");
+       udp.stop();
+       apReady = udpReady = false;
+       phone = IPAddress(0, 0, 0, 0);
+@@ -338,14 +350,14 @@
+     elrs.setRxBufferSize(4096);
+     elrs.begin(460800, SERIAL_8N1, ELRS_RX_GPIO, ELRS_TX_GPIO);
+     const int n = snprintf(usbDiagnostic, sizeof(usbDiagnostic),
+-      "ROLE=BRIDGE v0.1.2 MODE=ELRS WiFi=OFF; set TELERC_LINK_MODE=0 for TeleRC-Rover; reset=%d\n",
++      "ROLE=BRIDGE v0.1.4 MODE=ELRS WiFi=OFF; set TELERC_LINK_MODE=0 for TeleRC-Rover; reset=%d\n",
+       bootResetReason);
+     usbLength = n > 0 && n < int(sizeof(usbDiagnostic)) ? size_t(n) : 0;
+   } else {
+     lastWifiAttemptMs = millis() - WIFI_RETRY_MS;
+     serviceWifi();
+     const int n = snprintf(usbDiagnostic, sizeof(usbDiagnostic),
+-      "ROLE=BRIDGE v0.1.2 MODE=WIFI SSID=TeleRC-Rover channel=1 visible=1 IP=192.168.4.1 state=%s reset=%d\n",
++      "ROLE=BRIDGE v0.1.4 MODE=WIFI SSID=TeleRC-Rover channel=1 visible=1 IP=192.168.4.1 state=%s reset=%d\n",
+       wifiState, bootResetReason);
+     usbLength = n > 0 && n < int(sizeof(usbDiagnostic)) ? size_t(n) : 0;
+   }
+@@ -378,7 +390,7 @@
+   }
+   if (controlActive && millis() - lastControlMs >= 500) {
+     ++controlTimeouts;
+-    stopWifiControl();
++    stopWifiControl("command-timeout");
+   }
+   serviceWifi();
+   if (!apReady || !udpReady) {
+@@ -415,7 +427,7 @@
+     } else if (packetSize == sizeof(DISCONNECT) - 1 && count == packetSize &&
+         sender == phone && senderPort == UDP_PORT && local &&
+         memcmp(p, DISCONNECT, sizeof(DISCONNECT) - 1) == 0) {
+-      stopWifiControl();
++      stopWifiControl("disconnect");
+       phone = IPAddress(0, 0, 0, 0);
+     } else if (packetSize == 26 && count == 26 && senderPort == UDP_PORT && local &&
+         paired && acceptOverride(p, count)) {
+@@ -423,8 +435,8 @@
+       lastPhonePacketMs = millis();
+     } else if (count == packetSize && senderPort == UDP_PORT && local &&
+                paired && validPcAuxiliary(p, size_t(count))) {
+-      if (p[5] == 76 && p[8] == 0 && p[9] == 0) stopWifiControl();
+-      if (fc.write(p, size_t(count)) != size_t(count)) stopWifiControl();
++      if (p[5] == 76 && p[8] == 0 && p[9] == 0) stopWifiControl("disarm");
++      if (fc.write(p, size_t(count)) != size_t(count)) { ++uartShortWrites; stopWifiControl("uart-short"); }
+       phone = sender;
+       lastPhonePacketMs = millis();
+     }
+@@ -445,13 +457,16 @@
+     }
+     if (usbOffset >= usbLength) {
+       const int n = snprintf(usbDiagnostic, sizeof(usbDiagnostic),
+-        "ROLE=BRIDGE MODE=WIFI AP=ready SSID=TeleRC-Rover up=%lu reset=%d%s RX=%lu accepted=%lu timeout=%lu mask=%u neutralWait=%u CH1=%u CH2=%u\n",
++        "ROLE=BRIDGE MODE=WIFI AP=ready SSID=TeleRC-Rover up=%lu reset=%d%s RX=%lu accepted=%lu timeout=%lu mask=%u neutralWait=%u CH1=%u CH2=%u last=%s at=%lu gapMs=%lu maxGapMs=%lu neutralReject=%lu uartShort=%lu\n",
+         static_cast<unsigned long>(millis()), bootResetReason,
+         bootResetReason == ESP_RST_BROWNOUT ? "/brownout" : "",
+         static_cast<unsigned long>(diagnosticReceived),
+         static_cast<unsigned long>(diagnosticAccepted),
+         static_cast<unsigned long>(controlTimeouts), ownedChannels,
+-        unsigned(neutralRequired), diagnosticSteer, diagnosticDrive);
++        unsigned(neutralRequired), diagnosticSteer, diagnosticDrive,
++        lastStopReason, static_cast<unsigned long>(lastStopAtMs),
++        static_cast<unsigned long>(lastStopGapMs), static_cast<unsigned long>(maxControlGapMs),
++        static_cast<unsigned long>(neutralRejects), static_cast<unsigned long>(uartShortWrites));
+       usbLength = n > 0 && n < int(sizeof(usbDiagnostic)) ? size_t(n) : 0;
+       usbOffset = 0;
+     }
+--- a/firmware/TeleRC_4x_BTS7960_PWM_GlitchFilter/TeleRC_4x_BTS7960_PWM_GlitchFilter.ino
++++ b/firmware/TeleRC_4x_BTS7960_PWM_GlitchFilter/TeleRC_4x_BTS7960_PWM_GlitchFilter.ino
+@@ -1,6 +1,6 @@
+ /*
+   TeleRC / ArduRover - ESP32-S3 PWM converter
+-  Responsive-drive test candidate 1.0.3, 2026-10-14
++  Dropout-diagnostic test candidate 1.0.4, 2026-10-14
+   Derived from your uploaded Pasted markdown(3).md.
+   Invalid samples are discarded; last valid sample expires after 150 ms.
+   Four FC inputs -> four BTS7960 drivers.
+@@ -8,6 +8,9 @@
+   M6 -> GPIO5 -> Rear Left
+   M7 -> GPIO6 -> Front Right
+   M8 -> GPIO7 -> Rear Right
++  REQUIRED side functions for that physical wiring:
++  SERVO5_FUNCTION=73, SERVO6_FUNCTION=73,
++  SERVO7_FUNCTION=74, SERVO8_FUNCTION=74.
+   Front Left:  RPWM GPIO8,  LPWM GPIO9
+   Rear Left:   RPWM GPIO10, LPWM GPIO11
+   Front Right: RPWM GPIO12, LPWM GPIO13
+@@ -71,6 +74,11 @@
+ uint32_t snapshotRejected[4] = {};
+ uint32_t signalStops = 0;
+ uint32_t loopStops = 0;
++// Preserve the last fault after neutral recovery. Bits 0..3 mean M5..M8.
++uint8_t lastFaultMask = 0;
++uint32_t lastFaultAgeUs[4] = {};
++uint32_t lastFaultAtMs = 0, lastFaultGapUs = 0;
++const char* lastFaultCause = "none";
+ const char* stopCause = "startup";
+ int bootResetReason = 0;
+ uint32_t snapshotLastUs[4] = {};
+@@ -85,7 +93,7 @@
+ uint32_t lastDiagMs = 0;
+ // Diagnostics are transmitted in small chunks so a complete line
+ // does not have to fit in the USB transmit buffer at once.
+-char diagnostic[256];
++char diagnostic[512];
+ size_t diagnosticLength = 0;
+ size_t diagnosticOffset = 0;
+ static inline void IRAM_ATTR captureEdge(uint8_t channel) {
+@@ -182,6 +190,16 @@
+   return snapshotValid[channel] &&
+          uint32_t(nowUs - snapshotLastUs[channel]) < RC_TIMEOUT_US;
+ }
++void recordFault(uint32_t nowUs, uint32_t gapUs, const char* cause) {
++  lastFaultMask = 0;
++  for (uint8_t i = 0; i < 4; ++i) {
++    lastFaultAgeUs[i] = snapshotValid[i] ? uint32_t(nowUs - snapshotLastUs[i]) : UINT32_MAX;
++    if (!channelFresh(i, nowUs)) lastFaultMask |= 1U << i;
++  }
++  lastFaultCause = cause;
++  lastFaultAtMs = millis();
++  lastFaultGapUs = gapUs;
++}
+ int rcPulseToCommand(uint16_t pulseUs) {
+   pulseUs = constrain(pulseUs, RC_MIN_US, RC_MAX_US);
+   const int delta = static_cast<int>(pulseUs) - RC_CENTER_US;
+@@ -265,7 +283,7 @@
+     const int count = snprintf(
+       diagnostic,
+       sizeof(diagnostic),
+-      "RC(us): %u%c %u%c %u%c %u%c CMD:%d,%d,%d,%d source=%s PWM=%s bad=%lu,%lu,%lu,%lu stops=%lu gap=%lu cause=%s up=%lu reset=%d/%s\n",
++      "RC(us): %u%c %u%c %u%c %u%c CMD:%d,%d,%d,%d source=%s PWM=%s bad=%lu,%lu,%lu,%lu stops=%lu gap=%lu cause=%s up=%lu reset=%d/%s last=%s at=%lu mask=%u ageUs=%lu,%lu,%lu,%lu loopUs=%lu\n",
+       static_cast<unsigned>(snapshotPulseUs[0]),
+       channelFresh(0, nowUs) ? '*' : '!',
+       static_cast<unsigned>(snapshotPulseUs[1]),
+@@ -283,7 +301,11 @@
+       static_cast<unsigned long>(snapshotRejected[3]),
+       static_cast<unsigned long>(signalStops),
+       static_cast<unsigned long>(loopStops), stopCause,
+-      static_cast<unsigned long>(nowMs), bootResetReason, resetName()
++      static_cast<unsigned long>(nowMs), bootResetReason, resetName(),
++      lastFaultCause, static_cast<unsigned long>(lastFaultAtMs), unsigned(lastFaultMask),
++      static_cast<unsigned long>(lastFaultAgeUs[0]), static_cast<unsigned long>(lastFaultAgeUs[1]),
++      static_cast<unsigned long>(lastFaultAgeUs[2]), static_cast<unsigned long>(lastFaultAgeUs[3]),
++      static_cast<unsigned long>(lastFaultGapUs)
+     );
+     diagnosticOffset = 0;
+     diagnosticLength =
+@@ -337,10 +359,12 @@
+     if (!motorPwmReady || !computeTargets(nowUs)) {
+       if (sourceEnabled && motorPwmReady) ++signalStops;
+       stopCause = motorPwmReady ? "input-timeout" : "pwm-init";
++      if (sourceEnabled) recordFault(nowUs, controlGapUs, stopCause);
+       hardStop();
+     } else if (sourceEnabled && controlGapUs >= MAX_CONTROL_GAP_US) {
+       ++loopStops;
+       stopCause = "loop-gap";
++      recordFault(nowUs, controlGapUs, stopCause);
+       hardStop();
+     } else {
+       if (!sourceEnabled) {

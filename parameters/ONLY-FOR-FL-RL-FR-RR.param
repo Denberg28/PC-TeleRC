@@ -1,0 +1,6 @@
+# Conditional patch for the latest converter's documented physical wiring ONLY.
+# Verify: M5=Front Left, M6=Rear Left, M7=Front Right, M8=Rear Right.
+# Requires SERVO5_FUNCTION=73 and SERVO8_FUNCTION=74 already.
+# Do not apply if physical wiring is FL/FR/RL/RR.
+SERVO6_FUNCTION,73
+SERVO7_FUNCTION,74

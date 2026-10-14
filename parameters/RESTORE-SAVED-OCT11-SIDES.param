@@ -1,0 +1,4 @@
+# Restores the two changed values from the saved October 11 snapshot.
+# This is not a backup of the current FC. Save current FC parameters first.
+SERVO6_FUNCTION,74
+SERVO7_FUNCTION,73

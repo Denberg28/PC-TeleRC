@@ -66,11 +66,16 @@ class Board:
     rejected: int
     tx_failures: int
     uart_drops: int
+    backend: str = "DIRECT"
 
     @classmethod
     def parse(cls, reply: bytes) -> Board | None:
         try:
             f = reply.decode('ascii').split(',')
+            backend = 'DIRECT'
+            if len(f) == 12 and f[0] == 'TELERC_LORA_INFO_V2' and f[-1] == 'ARDUROVER':
+                backend = f.pop()
+                f[0] = 'TELERC_LORA_INFO_V1'
             if len(f) != 11 or f[0] != 'TELERC_LORA_INFO_V1' or f[1] not in ('BASE', 'ROVER'):
                 return None
             if f[2] not in ('1262', '1276') or f[3] not in ('0', '1') or not re.fullmatch('[0-9a-fA-F]{4}', f[6]):
@@ -83,12 +88,12 @@ class Board:
             counters = [int(v) for v in f[7:]]
             if any(not 0 <= n <= 0xffffffff for n in counters):
                 return None
-            return cls(f[1], int(f[2]), f[3] == '1', khz, power, f[6].lower(), *counters)
+            return cls(f[1], int(f[2]), f[3] == '1', khz, power, f[6].lower(), *counters, backend)
         except (UnicodeError, ValueError):
             return None
 
     def describe(self):
-        return (f'{self.role} · SX{self.chip} · radio {"active" if self.active else "inactive"}\n'
+        return (f'{self.role} · SX{self.chip} · {self.backend} · radio {"active" if self.active else "inactive"}\n'
                 f'{self.khz / 1000:g} MHz · {self.power} dBm · fingerprint {self.fingerprint}\n'
                 f'RX {self.rx} · rejected {self.rejected} · TX failures {self.tx_failures} · UART drops {self.uart_drops}')
 
@@ -165,3 +170,39 @@ class SetupExchange:
             self.pending = None
             self.board = None
             self.blocked = True
+
+
+@dataclass(frozen=True)
+class RemoteStatus:
+    ready: bool
+    owned: int
+    stops: int
+    boot: int
+    reason: int
+    command_age_ms: int
+    received_at: float
+
+    @classmethod
+    def parse(cls, reply: bytes, now: float):
+        try:
+            fields = reply.decode('ascii').split(',')
+            if len(fields) != 7 or fields[0] != 'TELERC_LORA_STATUS_V1':
+                return None
+            if any(not re.fullmatch('[0-9]+', v) for v in fields[1:]):
+                return None
+            ready, owned, stops, boot, reason, age = map(int, fields[1:])
+            if ready > 1 or owned > 3 or reason > 7 or not 1 <= boot <= 0xffffffff:
+                return None
+            if stops > 0xffffffff or age > 0xffffffff:
+                return None
+            return cls(bool(ready), owned, stops, boot, reason, age, now)
+        except (UnicodeError, ValueError):
+            return None
+
+    def fresh(self, now):
+        return 0 <= now - self.received_at < .5
+
+    def describe(self):
+        reasons = ('boot', 'command-timeout', 'FC-heartbeat-timeout', 'release',
+                   'disconnect', 'UART-write-failure', 'radio-fault', 'disarm')
+        return f'LoRa rover: ready={int(self.ready)} owned={self.owned} stops={self.stops} last={reasons[self.reason]} command age={self.command_age_ms}ms'

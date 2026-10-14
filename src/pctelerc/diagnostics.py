@@ -9,6 +9,7 @@ from .config import AppSettings
 from .controller import ControllerDevice, ControllerSnapshot
 from .core import LinkState, control_is_fresh
 from .logging_setup import log_path
+from .field_safety import validate_mapping
 from .mavlink import MavlinkSnapshot
 
 
@@ -91,8 +92,11 @@ def build_targeted_status(
     if settings.pedal_mode == "separate":
         mapped.append(settings.brake_axis)
     invalid = [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped
+    mapping_check = validate_mapping(settings, len(wheel.axes) if wheel.axes else None)
     if settings.steering_channel == settings.throttle_channel:
         mapping = _item("FAIL", "Mapping", "Steer/throttle share one RC channel.")
+    elif not mapping_check.allowed:
+        mapping = _item("FAIL", "Mapping", mapping_check.message)
     elif invalid:
         mapping = _item("FAIL", "Mapping", "Mapped controller axis unavailable.")
     else:
@@ -112,6 +116,9 @@ def build_targeted_status(
         safety = _item("PASS", "Safety", "PC Control ACTIVE.")
     elif wheel.frame is not None and not wheel.frame.neutral:
         safety = _item("WARN", "Safety", "Throttle not neutral.")
+    elif (settings.link_mode in ("telerc_udp", "lora_usb") and wheel.frame is not None
+          and abs(wheel.frame.steering) > .05):
+        safety = _item("WARN", "Safety", "Center the steering wheel before enabling control.")
     else:
         safety = _item("PASS", "Safety", "Ready / control OFF.")
 
@@ -129,6 +136,7 @@ def build_diagnostic_report(
     network_dirty: bool,
     now: float | None = None,
 ) -> DiagnosticReport:
+    now = time.monotonic() if now is None else now
     status = build_targeted_status(
         settings=settings,
         wheel=wheel,
@@ -151,8 +159,15 @@ def build_diagnostic_report(
         _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),
         _item("INFO", "Field log", str(log_path())),
     ]
+    if mav.radio_status:
+        items.append(_item("INFO", "Radio", mav.radio_status))
     if mav.error:
         items.append(_item("FAIL", "MAVLink error", mav.error))
+    if wheel.frame is not None:
+        items.append(_item("INFO", "Input sample",
+                           f"age {max(0., now-wheel.frame.timestamp):.3f}s / limit {settings.controller_timeout:.3f}s; session {wheel.frame.session}"))
+    if wheel.error:
+        items.append(_item("FAIL", "Controller error", wheel.error))
 
     counts = {
         "PASS": sum(i.level == "PASS" for i in items),

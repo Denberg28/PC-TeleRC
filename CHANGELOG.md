@@ -1,3 +1,13 @@
+# 0.1.1rc5
+
+- Retain rc3 direct wheel sampling and rc4 wheel-session/neutral/mapping fixes.
+- Add two native-USB SX1262 sketches for BASE and ArduRover ROVER, firmware 0.2.0.
+- Recognize INFO_V2 ARDUROVER separately from legacy DIRECT.
+- Require real MANUAL heartbeat, neutral acquisition and authenticated rover status.
+- Latch PC control off on remote stop, boot change, stale status or ownership loss.
+- Surface rover stop cause in diagnostic reports. Preserve Wi-Fi bridge 0.1.4 and converter 1.0.4.
+- Build current standalone Windows ZIP/installer and both ESP32 targets with pinned dependencies.
+
 # Changelog
 
 ## 0.1.1rc2 — ELRS reliability candidate

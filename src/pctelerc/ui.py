@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
 
         self.wheel = WheelService()
         self.mav = MavlinkService()
+        self.mav.set_control_source(self.wheel.snapshot)
 
         self._build()
         self._apply_settings_to_widgets()
@@ -598,7 +599,6 @@ class MainWindow(QMainWindow):
     def _refresh(self):
         wheel = self.wheel.snapshot()
         mav = self.mav.snapshot()
-        self.mav.set_control_frame(wheel.frame, len(wheel.axes) if wheel.connected else None)
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
@@ -649,7 +649,7 @@ class MainWindow(QMainWindow):
             self.safety_label.setStyleSheet("color:#64d98b;font-weight:700;")
             self.control_btn.setText("Disable PC Control")
         elif mav.failsafe_latched:
-            self.safety_label.setText("FAIL-SAFE LATCHED — manual re-enable required")
+            self.safety_label.setText("CONTROL STOPPED — manual re-enable required")
             self.safety_label.setStyleSheet("color:#ff6b6b;font-weight:700;")
             self.control_btn.setText("Re-enable PC Control")
         else:
@@ -662,11 +662,14 @@ class MainWindow(QMainWindow):
 
         link_ok = mav.running and mav.state == LinkState.CONNECTED
         wheel_ok = wheel.connected
-        self.global_status.setText("Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
+        self.global_status.setText("Control stopped" if mav.failsafe_latched else
+                                  "Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
         self.calibrate_btn.setEnabled(wheel_ok)
         neutral_ok = wheel.frame is not None and wheel.frame.neutral
+        if self.settings.link_mode in ("telerc_udp", "lora_usb"):
+            neutral_ok = neutral_ok and abs(wheel.frame.steering) <= .05
         self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
         self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty and not self._network_dirty)
         self.disarm_btn.setEnabled(link_ok and mav.armed)

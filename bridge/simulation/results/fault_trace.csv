@@ -1,0 +1,21 @@
+profile,time_ms,event,latched
+Before,398.944,RC accepted,False
+Before,797.888,RC accepted,False
+Before,1196.832,exchange lost,False
+Before,1297.888,watchdog stop,True
+Before,1595.776,exchange lost,True
+Before,1994.72,nonneutral rejected after stop,True
+Before,2393.663,exchange lost,True
+Before,2792.607,exchange lost,True
+Before,3191.551,exchange lost,True
+Before,3590.495,nonneutral rejected after stop,True
+Optimized direct,128.944,RC accepted,False
+Optimized direct,257.888,RC accepted,False
+Optimized direct,386.832,exchange lost,False
+Optimized direct,515.776,exchange lost,False
+Optimized direct,644.72,RC accepted,False
+Optimized direct,773.663,exchange lost,False
+Optimized direct,902.607,exchange lost,False
+Optimized direct,1031.551,exchange lost,False
+Optimized direct,1144.72,watchdog stop,True
+Optimized direct,1160.495,nonneutral rejected after stop,True

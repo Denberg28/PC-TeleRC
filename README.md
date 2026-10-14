@@ -1,3 +1,7 @@
+# Current candidate: v0.1.1rc5
+
+See [LilyGO SX1262 ArduRover wiring and setup](docs/LILYGO-SX1262-ARDUROVER.md) and [release notes](docs/releases/v0.1.1rc5.md). This candidate retains the rc4 fixes and adds a direct LoRa USB/FC link. The remainder below records the earlier stable baseline.
+
 # PC TeleRC
 
 ## ELRS reliability candidate — v0.1.1rc2

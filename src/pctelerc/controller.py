@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import math
 import threading
 import time
 from typing import Optional
@@ -26,6 +27,7 @@ class ControllerDevice:
     guid: str
     axes: int
     buttons: int
+    instance_id: int = -1
 
 
 @dataclass(frozen=True)
@@ -94,12 +96,25 @@ class WheelService:
 
         joystick = None
         active_guid = ""
+        active_instance = None
+        session = 0
         last_scan = 0.0
 
         while not self._stop.is_set():
             now = time.monotonic()
             try:
-                pygame.event.pump()
+                # Consume the queue as well as pumping it: rapid axes must not
+                # leave an ever-growing queue or hide a remove/add event.
+                for event in pygame.event.get():
+                    if event.type == pygame.JOYDEVICEREMOVED and event.instance_id == active_instance:
+                        joystick = None
+                        active_guid = ""
+                        active_instance = None
+                        with self._lock:
+                            self._snapshot = ControllerSnapshot(error="Selected controller disconnected.")
+                        last_scan = 0.0
+                    elif event.type == pygame.JOYDEVICEADDED:
+                        last_scan = 0.0
 
                 if now - last_scan >= 1.0:
                     devices: list[ControllerDevice] = []
@@ -113,6 +128,7 @@ class WheelService:
                                 guid=probe.get_guid(),
                                 axes=probe.get_numaxes(),
                                 buttons=probe.get_numbuttons(),
+                                instance_id=probe.get_instance_id(),
                             )
                         )
 
@@ -125,13 +141,20 @@ class WheelService:
                     else:
                         chosen = devices[0] if devices else None
 
-                    if chosen and (joystick is None or chosen.guid != active_guid):
+                    if chosen and (joystick is None or chosen.instance_id != active_instance):
                         joystick = pygame.joystick.Joystick(chosen.index)
                         joystick.init()
                         active_guid = chosen.guid
+                        active_instance = chosen.instance_id
+                        session += 1
+                        # Once auto-selected, do not silently pick another wheel.
+                        with self._lock:
+                            if not self._selected_guid:
+                                self._selected_guid = active_guid
                     elif not chosen:
                         joystick = None
                         active_guid = ""
+                        active_instance = None
 
                     last_scan = now
 
@@ -144,6 +167,8 @@ class WheelService:
                     continue
 
                 axes = tuple(float(joystick.get_axis(i)) for i in range(joystick.get_numaxes()))
+                if not all(math.isfinite(axis) for axis in axes):
+                    raise ValueError("Controller returned a non-finite axis value")
                 with self._lock:
                     settings = AppSettings(**vars(self._settings)).validate()
 
@@ -173,7 +198,7 @@ class WheelService:
                     if abs(throttle) <= settings.deadzone:
                         throttle = 0.0
 
-                frame = ControlFrame(steer, throttle, now)
+                frame = ControlFrame(steer, throttle, now, session)
                 with self._lock:
                     self._snapshot = ControllerSnapshot(
                         connected=True,
@@ -188,6 +213,7 @@ class WheelService:
             except Exception as exc:
                 joystick = None
                 active_guid = ""
+                active_instance = None
                 with self._lock:
                     self._snapshot = ControllerSnapshot(error=f"Controller read error: {exc}")
 
