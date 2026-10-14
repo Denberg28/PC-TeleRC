@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080">
+<rect width="1440" height="1080" fill="#f6f8fb"/>
+<defs><style>text{font-family:Arial,sans-serif;fill:#1c3044}.title{font-size:31px;font-weight:700}.head{font-size:22px;font-weight:700}.body{font-size:18px}.small{font-size:16px}.label{font-size:17px;font-weight:700;fill:#1761a0}</style></defs>
+<text x="50" y="55" class="title">TeleRC Mini Rover  |  4 TT motors + 2 MX1508 + ESP32-S3</text>
+<text x="50" y="88" class="small">Wiring overview • Match PCB labels; do not infer terminal order from this drawing.</text>
+<rect x="50" y="125" width="360" height="126" rx="14" fill="#eaf3fc" stroke="#c8d4df" stroke-width="2"/>
+<text x="70" y="159" class="head">ESP32 logic power</text>
+<text x="70" y="190" class="body">USB 5 V power bank / PC USB</text>
+<text x="70" y="217" class="body">Do not feed motors from USB.</text>
+<rect x="700" y="125" width="480" height="126" rx="14" fill="#fff2e9" stroke="#c8d4df" stroke-width="2"/>
+<text x="720" y="159" class="head">Motor power</text>
+<text x="720" y="190" class="body">4x NiMH AA pack, 4.8 V nominal</text>
+<text x="720" y="217" class="body">Fuse + accessible switch on positive</text>
+<text x="700" y="281" class="small">For TT motors rated up to 6 V; verify your exact motors.</text>
+<rect x="50" y="355" width="350" height="370" rx="14" fill="#eaf3fc" stroke="#c8d4df" stroke-width="2"/>
+<text x="70" y="389" class="head">ESP32-S3 DevKitC-1</text>
+<text x="70" y="420" class="body">Wi-Fi AP: TeleRC-MiniRover</text>
+<text x="70" y="447" class="body">Password: telerc123</text>
+<text x="70" y="474" class="body">UDP 192.168.4.1:14550</text>
+<text x="70" y="501" class="body"></text>
+<text x="70" y="528" class="body">GPIO4 / 5  -&gt; LF inputs</text>
+<text x="70" y="555" class="body">GPIO6 / 7  -&gt; LR inputs</text>
+<text x="70" y="582" class="body">GPIO8 / 9  -&gt; RF inputs</text>
+<text x="70" y="609" class="body">GPIO10 / 11 -&gt; RR inputs</text>
+<text x="70" y="636" class="body"></text>
+<text x="70" y="663" class="body">GND -&gt; common star point</text>
+<path d="M220,251 L220,355" fill="none" stroke="#b76726" stroke-width="4"/>
+<text x="235" y="309" class="small">USB power</text>
+<rect x="700" y="355" width="330" height="160" rx="14" fill="#fff" stroke="#c8d4df" stroke-width="2"/>
+<text x="720" y="389" class="head">D1: MX1508 — LEFT</text>
+<text x="720" y="420" class="body">IN1/IN2 &lt;- GPIO4/5</text>
+<text x="720" y="447" class="body">IN3/IN4 &lt;- GPIO6/7</text>
+<text x="720" y="474" class="body">Power + and GND</text>
+<rect x="700" y="610" width="330" height="160" rx="14" fill="#fff" stroke="#c8d4df" stroke-width="2"/>
+<text x="720" y="644" class="head">D2: MX1508 — RIGHT</text>
+<text x="720" y="675" class="body">IN1/IN2 &lt;- GPIO8/9</text>
+<text x="720" y="702" class="body">IN3/IN4 &lt;- GPIO10/11</text>
+<text x="720" y="729" class="body">Power + and GND</text>
+<path d="M400,470 L540,470" fill="none" stroke="#1761a0" stroke-width="3"/>
+<path d="M540,470 L540,415" fill="none" stroke="#1761a0" stroke-width="3"/>
+<path d="M540,415 L700,415" fill="none" stroke="#1761a0" stroke-width="3"/>
+<text x="435" y="402" class="label">GPIO4/5 + 6/7</text>
+<path d="M400,660 L540,660" fill="none" stroke="#1761a0" stroke-width="3"/>
+<path d="M540,660 L540,670" fill="none" stroke="#1761a0" stroke-width="3"/>
+<path d="M540,670 L700,670" fill="none" stroke="#1761a0" stroke-width="3"/>
+<text x="435" y="647" class="label">GPIO8/9 + 10/11</text>
+<rect x="1140" y="355" width="250" height="160" rx="14" fill="#edf7ef" stroke="#c8d4df" stroke-width="2"/>
+<text x="1160" y="389" class="head">Left wheels</text>
+<text x="1160" y="420" class="body">Motor A -&gt; left front</text>
+<text x="1160" y="447" class="body">Motor B -&gt; left rear</text>
+<text x="1160" y="474" class="body">1 output pair / motor</text>
+<rect x="1140" y="610" width="250" height="160" rx="14" fill="#edf7ef" stroke="#c8d4df" stroke-width="2"/>
+<text x="1160" y="644" class="head">Right wheels</text>
+<text x="1160" y="675" class="body">Motor A -&gt; right front</text>
+<text x="1160" y="702" class="body">Motor B -&gt; right rear</text>
+<text x="1160" y="729" class="body">1 output pair / motor</text>
+<path d="M1030,426 L1140,426" fill="none" stroke="#3c8953" stroke-width="4"/>
+<path d="M1030,681 L1140,681" fill="none" stroke="#3c8953" stroke-width="4"/>
+<text x="1051" y="409" class="small">A + B</text>
+<text x="1051" y="664" class="small">A + B</text>
+<path d="M1180,181 L1412,181" fill="none" stroke="#c25b29" stroke-width="4"/>
+<path d="M1412,181 L1412,570" fill="none" stroke="#c25b29" stroke-width="4"/>
+<path d="M1412,311 L865,311" fill="none" stroke="#c25b29" stroke-width="4"/>
+<path d="M865,311 L865,355" fill="none" stroke="#c25b29" stroke-width="4"/>
+<path d="M1412,570 L865,570" fill="none" stroke="#c25b29" stroke-width="4"/>
+<path d="M865,570 L865,610" fill="none" stroke="#c25b29" stroke-width="4"/>
+<text x="1194" y="164" class="small">Motor + only</text>
+<rect x="50" y="815" width="1340" height="118" rx="14" fill="#e8edf2" stroke="#c8d4df" stroke-width="2"/>
+<text x="70" y="849" class="head">Common GND — star wiring</text>
+<text x="70" y="880" class="body">Pack negative + D1 GND + D2 GND + ESP32 GND. Route motor returns directly to the star point.</text>
+<text x="70" y="907" class="body">Power rails stay separate: motor positive never connects to ESP32 5V/3V3.</text>
+<path d="M225,725 L225,815" fill="none" stroke="#5b6c7c" stroke-width="4"/>
+<path d="M865,515 L668,515" fill="none" stroke="#5b6c7c" stroke-width="3"/>
+<path d="M668,515 L668,815" fill="none" stroke="#5b6c7c" stroke-width="3"/>
+<path d="M865,770 L865,815" fill="none" stroke="#5b6c7c" stroke-width="3"/>
+<text x="50" y="974" class="body">At EACH driver: 470–1000 uF + 100 nF across power. At EACH motor: 100 nF across terminals.</text>
+<text x="50" y="1007" class="body">Eight 10 kohm pulldowns: every IN pin to GND. All stop paths COAST; no active holding brake.</text>
+<text x="50" y="1040" class="small">Optional LED: GPIO21 -&gt; 330 ohm -&gt; LED anode; cathode -&gt; GND. BOOT held during operation stops/disarms.</text>
+</svg>

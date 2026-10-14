@@ -1,0 +1,2 @@
+PASS: actual sketch host simulation; peer locks, independent CRC, arm, release, timeout, startup output, stop button, reversal, Wi-Fi loss, wrap, mixing bounds, MAVLink2 dispatch, concatenation, force-arm rejection, 50000 malformed frames
+PASS: actual sketch host simulation; peer locks, independent CRC, arm, release, timeout, startup output, stop button, reversal, Wi-Fi loss, wrap, mixing bounds, MAVLink2 dispatch, concatenation, force-arm rejection, 50000 malformed frames

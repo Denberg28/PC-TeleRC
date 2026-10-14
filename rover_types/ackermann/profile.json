@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "ackermann",
+  "status": "planned",
+  "latest_release": null,
+  "form_factor": null,
+  "motor_count": null,
+  "driven_wheel_count": null,
+  "steering": "ackermann",
+  "requires_active_balance": false,
+  "controller": null,
+  "driver": null,
+  "firmware_present": false,
+  "hardware_validated": false,
+  "metadata_only": true
+}

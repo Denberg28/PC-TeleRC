@@ -125,3 +125,15 @@ See [docs/REVIEW-2026-10-03.md](docs/REVIEW-2026-10-03.md) for verified defects,
 Steering and drive now have separate 25–100% sliders. Drive gain applies before the throttle limit; ARM/enable still require unscaled neutral pedals.
 
 Experimental ELRS external TX USB MAVLink mode uses a selected COM port at 460800 baud. It requires compatible module/receiver firmware; it is not a raw CRSF module-bay adapter. HGLRC T ONE USB capability and concurrent Pocket/PC control are not hardware verified. See [ELRS setup and limits](docs/ELRS.md).
+
+
+## Rover types and vehicle sub-releases
+
+See the [rover catalog](rover_types/README.md) for versioned firmware, wiring
+and development plans. [Mini v0.1.0 test candidate](rover_types/mini/README.md)
+is the first documented standalone ESP32-S3 build. Balancing, mono, four-wheel
+steering, two-wheel drive, tracked and Ackermann folders contain future
+requirements only. These vehicle sub-releases do not change the PC app version.
+For the mini, follow its neutral-stream-before-ARM procedure rather than the
+ArduRover operator example above.
+

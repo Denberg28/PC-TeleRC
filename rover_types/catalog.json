@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "documented_date": "2026-10-15",
+  "timezone": "Asia/Manila",
+  "purpose": "Documentation catalog; not loaded by the PC application",
+  "profiles": [
+    {
+      "id": "mini",
+      "profile": "mini/profile.json",
+      "readme": "mini/README.md"
+    },
+    {
+      "id": "balancing",
+      "profile": "balancing/profile.json",
+      "readme": "balancing/README.md"
+    },
+    {
+      "id": "mono",
+      "profile": "mono/profile.json",
+      "readme": "mono/README.md"
+    },
+    {
+      "id": "four_wheel_steering",
+      "profile": "four_wheel_steering/profile.json",
+      "readme": "four_wheel_steering/README.md"
+    },
+    {
+      "id": "two_wheel_drive",
+      "profile": "two_wheel_drive/profile.json",
+      "readme": "two_wheel_drive/README.md"
+    },
+    {
+      "id": "tracked",
+      "profile": "tracked/profile.json",
+      "readme": "tracked/README.md"
+    },
+    {
+      "id": "ackermann",
+      "profile": "ackermann/profile.json",
+      "readme": "ackermann/README.md"
+    }
+  ]
+}

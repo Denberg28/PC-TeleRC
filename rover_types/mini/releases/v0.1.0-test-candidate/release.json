@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "release_id": "rover-mini-v0.1.0-test-candidate",
+  "rover_type": "mini",
+  "version": "0.1.0",
+  "status": "test-candidate",
+  "documented_date": "2026-10-15",
+  "timezone": "Asia/Manila",
+  "firmware_version_string": "0.1.0-test-candidate",
+  "package_directory": "package",
+  "archive": {
+    "path": "archives/TeleRC-MiniRover-v0.1.0-sketch-and-wiring.zip",
+    "sha256": "2847eded8ff1ed0142cefeed0f530e4d0409e0d3390f446abac4cd98074bd25f",
+    "size_bytes": 296458
+  },
+  "preservation": "Original archive and extracted package unchanged",
+  "pc_application_changed": false,
+  "keyboard_implementation_added": false,
+  "validation": {
+    "host_simulation": "passed",
+    "esp32_cross_compile": "pending",
+    "hardware": "pending",
+    "pc_wheel_integration": "pending",
+    "pc_keyboard_integration": "pending"
+  }
+}
