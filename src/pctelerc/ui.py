@@ -376,6 +376,7 @@ class MainWindow(QMainWindow):
         health = QHBoxLayout()
         self.link_label.setMinimumWidth(220)
         health.addWidget(self.link_label, 1)
+        health.addWidget(self.vehicle_label)
         self.telemetry_label = QLabel("GPS —   Speed —   Battery —")
         health.addWidget(self.telemetry_label)
         self.camera_status = QLabel("Camera off")
@@ -478,7 +479,6 @@ class MainWindow(QMainWindow):
         footer.addWidget(self.axis_label)
         footer.addWidget(self.output_label)
         screen_layout.addLayout(footer)
-        self.vehicle_label.hide()
         self.controller_label.hide()
         self.setCentralWidget(screen)
         root.deleteLater()
@@ -924,7 +924,8 @@ class MainWindow(QMainWindow):
         self.rover_map.set_snapshot(mav)
         gps=f"GPS {mav.satellites or '—'}" if position_fresh(mav) else "GPS —"
         speed=f"{mav.speed:.1f} m/s" if position_fresh(mav) and mav.speed is not None else "—"
-        battery=f"{mav.voltage:.1f} V" if mav.state == LinkState.CONNECTED and mav.voltage is not None else "—"
+        battery=f"{mav.voltage:.1f} V" if (mav.state == LinkState.CONNECTED and mav.voltage is not None
+            and mav.battery_timestamp is not None and time.monotonic()-mav.battery_timestamp <= 5) else "—"
         self.telemetry_label.setText(f"{gps}   Speed {speed}   Battery {battery}")
 
         devices = self.wheel.devices()
@@ -961,10 +962,8 @@ class MainWindow(QMainWindow):
             else:
                 self.link_label.setText("Waiting for MAVLink heartbeat…")
 
-        self.vehicle_label.setText(
-            f"Vehicle: sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • "
-            f"{mav.mode or 'mode —'} • {'ARMED' if mav.armed else 'disarmed'}"
-        )
+        self.vehicle_label.setText(f"{'ARMED' if mav.armed else 'DISARMED'} • {mav.mode or 'mode —'}")
+        self.vehicle_label.setStyleSheet("color:#fbbf24;font-weight:700;" if mav.armed else "color:#91a0b2;")
         self.traffic_label.setText(f"RX {mav.rx_messages} • TX {mav.tx_messages}")
         self.output_label.setText(
             f"CH{self.settings.steering_channel} {mav.steer_pwm} • "

@@ -203,7 +203,11 @@ class RoverMap(QWidget):
         painter.rotate(self._snapshot.heading or 0)
         rover = QPainterPath(); rover.moveTo(0,-13); rover.lineTo(9,10); rover.lineTo(0,6); rover.lineTo(-9,10); rover.closeSubpath()
         painter.setBrush(QColor("#38bdf8" if fresh else "#9ca3af")); painter.setPen(QPen(QColor("#ffffff"),1))
-        painter.drawPath(rover); painter.restore()
+        if self._snapshot.heading is None:
+            painter.drawEllipse(QPointF(0,0),7,7)
+        else:
+            painter.drawPath(rover)
+        painter.restore()
         painter.fillRect(QRectF(0,0,self.width(),23),QColor(10,16,24,210))
         painter.setPen(QColor("#e2e8f0")); painter.drawText(8,16,"GPS live" if fresh else "GPS stale / unavailable")
         painter.fillRect(QRectF(0,self.height()-20,self.width(),20),QColor(10,16,24,220))

@@ -37,6 +37,7 @@ def test_global_position_and_battery_are_read_only_and_unknown_values_stay_unkno
     assert service.snapshot().speed == 5 and service.snapshot().heading is None
     service._handle_message(message('SYS_STATUS',voltage_battery=12400,battery_remaining=75),101)
     assert service.snapshot().voltage == 12.4 and service.snapshot().battery_remaining == 75
+    assert service.snapshot().battery_timestamp == 101
     service._handle_message(message('SYS_STATUS',voltage_battery=65535,battery_remaining=-1),102)
     assert service.snapshot().voltage is None and service.snapshot().battery_remaining is None
     assert service.snapshot().last_heartbeat == 80

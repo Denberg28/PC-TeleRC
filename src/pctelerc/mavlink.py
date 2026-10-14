@@ -41,6 +41,7 @@ class MavlinkSnapshot:
     speed: float | None = None
     voltage: float | None = None
     battery_remaining: int | None = None
+    battery_timestamp: float | None = None
     gps_fix: int = 0
     satellites: int | None = None
     position_timestamp: float | None = None
@@ -547,7 +548,8 @@ class MavlinkService:
                     voltage = getattr(msg, "voltage_battery", 65535)
                     remaining = getattr(msg, "battery_remaining", -1)
                     snap = replace(snap, voltage=None if voltage == 65535 else voltage / 1000,
-                                   battery_remaining=remaining if 0 <= remaining <= 100 else None)
+                                   battery_remaining=remaining if 0 <= remaining <= 100 else None,
+                                   battery_timestamp=now)
                 self._snapshot = snap
                 return
 
