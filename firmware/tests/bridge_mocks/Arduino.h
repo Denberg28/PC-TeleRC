@@ -23,6 +23,8 @@ class String {
 };
 struct SerialMock {
  int room=32;
+ uint32_t txTimeoutMs=100;
+ void setTxTimeoutMs(uint32_t ms){txTimeoutMs=ms;}
  void begin(int){}
  int availableForWrite(){return room;}
  size_t write(const uint8_t*,size_t n){return n;}
@@ -45,3 +47,4 @@ struct HardwareSerial {
   frames.emplace_back(p,p+sent);return sent;
  }
 };
+

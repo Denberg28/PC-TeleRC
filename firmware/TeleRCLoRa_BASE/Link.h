@@ -1,5 +1,5 @@
 #pragma once
-// TeleRC SX1262 ArduRover direct pair 0.2.0. No Wi-Fi in the driving path.
+// TeleRC SX1262 ArduRover direct pair 0.2.1. No Wi-Fi in the driving path.
 #include <Arduino.h>
 #include <algorithm>
 #include <cctype>
@@ -262,7 +262,11 @@ void sendPoll(){
  challenge.active=false;if(enqueue(p,0))pollAt=now;
 }
 void setup(){
- Serial.begin(115200);pinMode(0,INPUT_PULLUP);delay(30);
+ Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+ Serial.setTxTimeoutMs(1);
+#endif
+ pinMode(0,INPUT_PULLUP);delay(30);
  do {bootId=esp_random();}while(!bootId);
  Preferences pref;if(pref.begin("telerc-lora2",true)){
   Config stored;if(pref.getBytesLength("config")==sizeof(stored)&&pref.getBytes("config",&stored,sizeof(stored))==sizeof(stored)&&validConfig(stored))cfg=stored;pref.end();
@@ -296,3 +300,4 @@ void loop(){
  if(radioOK&&TELERC_ROLE==ROVER)sendPoll();
  pumpTx();serviceUsbTx();delay(1);
 }
+

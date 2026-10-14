@@ -4,6 +4,7 @@
 void pulse(unsigned ch, uint16_t width, uint32_t end) {
   clockUs=end-width; levels[RC_IN_PIN[ch]]=1; captureEdge(ch);
   clockUs=end; levels[RC_IN_PIN[ch]]=0; captureEdge(ch);
+  clockUs=end+RC_EDGE_FILTER_US; snapshotInputs();
 }
 void frame(uint32_t t, uint16_t left, uint16_t right) {
   for(unsigned i=0;i<4;i++) pulse(i, i<2 ? left : right, t);
@@ -45,3 +46,4 @@ int main() {
   assert(std::string(diagnostic).find("mask=2")!=std::string::npos);
   std::cout<<"PASS M6 timeout record survives recovery and diagnostics do not overflow\n";
 }
+

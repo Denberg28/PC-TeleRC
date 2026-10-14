@@ -1,4 +1,4 @@
-// TeleRC bridge dropout-diagnostic candidate 0.1.4, 2026-10-14
+// TeleRC bridge dropout-diagnostic candidate 0.1.5, 2026-10-14
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
@@ -343,6 +343,9 @@ void serviceWifi() {
 void setup() {
   bootResetReason = static_cast<int>(esp_reset_reason());
   Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+  Serial.setTxTimeoutMs(1);
+#endif
   fc.setRxBufferSize(4096);
   fc.begin(FC_BAUD, SERIAL_8N1, FC_RX_GPIO, FC_TX_GPIO);
   if (ELRS_MODE) {
@@ -350,14 +353,14 @@ void setup() {
     elrs.setRxBufferSize(4096);
     elrs.begin(460800, SERIAL_8N1, ELRS_RX_GPIO, ELRS_TX_GPIO);
     const int n = snprintf(usbDiagnostic, sizeof(usbDiagnostic),
-      "ROLE=BRIDGE v0.1.4 MODE=ELRS WiFi=OFF; set TELERC_LINK_MODE=0 for TeleRC-Rover; reset=%d\n",
+      "ROLE=BRIDGE v0.1.5 MODE=ELRS WiFi=OFF; set TELERC_LINK_MODE=0 for TeleRC-Rover; reset=%d\n",
       bootResetReason);
     usbLength = n > 0 && n < int(sizeof(usbDiagnostic)) ? size_t(n) : 0;
   } else {
     lastWifiAttemptMs = millis() - WIFI_RETRY_MS;
     serviceWifi();
     const int n = snprintf(usbDiagnostic, sizeof(usbDiagnostic),
-      "ROLE=BRIDGE v0.1.4 MODE=WIFI SSID=TeleRC-Rover channel=1 visible=1 IP=192.168.4.1 state=%s reset=%d\n",
+      "ROLE=BRIDGE v0.1.5 MODE=WIFI SSID=TeleRC-Rover channel=1 visible=1 IP=192.168.4.1 state=%s reset=%d\n",
       wifiState, bootResetReason);
     usbLength = n > 0 && n < int(sizeof(usbDiagnostic)) ? size_t(n) : 0;
   }
@@ -474,3 +477,4 @@ void loop() {
   serviceUsbDiagnostic();
   delay(1);
 }
+

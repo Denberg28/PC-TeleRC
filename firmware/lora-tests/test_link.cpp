@@ -44,7 +44,7 @@ int main(){
  resetHost();inputUsb(request.c_str());
  assert(usbMessages().back()=="TELERC_LORA_RESULT_V1,ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST");
  // Production setup loads saved config; holds BOOT for local re-provisioning.
- pins[0]=HIGH;setup();assert(radioOK&&!maintenance);
+ pins[0]=HIGH;setup();assert(radioOK&&!maintenance && Serial.txTimeoutMs==1);
  pins[0]=LOW;setup();assert(maintenance);pins[0]=HIGH;
 
  resetHost();accept(rc(1700,1800));assert(!safety.owned&&vehicle.tx.empty());
@@ -104,3 +104,4 @@ int main(){
  pumpTx();assert(scanning);testMs+=21;pumpRadio();assert(!radioOK&&!safety.owned);
  std::cout<<"SX1262 role "<<TELERC_ROLE<<": provisioning, 2000 rapid input cycles, neutral gate, ownership, timeout, FC loss, UART retry, authentication, replay, radio path, CDC stalls and CAD deadline passed\n";
 }
+

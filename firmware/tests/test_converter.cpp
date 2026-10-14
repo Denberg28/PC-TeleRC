@@ -4,6 +4,7 @@
 void pulse(unsigned ch, uint16_t width, uint32_t end) {
   clockUs = end - width; levels[RC_IN_PIN[ch]] = 1; captureEdge(ch);
   clockUs = end; levels[RC_IN_PIN[ch]] = 0; captureEdge(ch);
+  clockUs=end+RC_EDGE_FILTER_US; snapshotInputs();
 }
 void frame(uint32_t t, uint16_t width) {
   for (unsigned i=0;i<4;i++) pulse(i, width, t);
@@ -66,3 +67,4 @@ int main() {
   assert(diagnosticOffset==diagnosticLength);
   std::cout << "PASS diagnostics include rejection/stop/uptime/reset fields\n";
 }
+

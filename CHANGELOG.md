@@ -1,3 +1,10 @@
+# v0.1.1rc7
+
+- PWM converter 1.0.5 confirms falling edges after 30 us of low level; short in-pulse noise no longer splits valid commands.
+- USB CDC waits bounded to 1 ms on converter, Wi-Fi/ELRS bridge 0.1.5 and SX1262 pair 0.2.1.
+- Retains existing watchdogs, 300 ms neutral recovery, takeover and independent sensitivity controls.
+- CI builds all five ESP32-S3 firmware targets plus Windows installer/portable.
+
 # v0.1.1rc6
 
 - Separate steering and throttle sensitivity controls, persistence, and diagnostic values.

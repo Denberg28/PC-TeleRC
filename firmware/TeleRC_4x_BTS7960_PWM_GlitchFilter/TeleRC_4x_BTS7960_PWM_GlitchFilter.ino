@@ -1,6 +1,6 @@
 /*
   TeleRC / ArduRover - ESP32-S3 PWM converter
-  Dropout-diagnostic test candidate 1.0.4, 2026-10-14
+  Noise-filter recovery test candidate 1.0.5, 2026-10-14
   Derived from your uploaded Pasted markdown(3).md.
   Invalid samples are discarded; last valid sample expires after 150 ms.
   Four FC inputs -> four BTS7960 drivers.
@@ -37,6 +37,9 @@ constexpr uint16_t RC_VALID_MIN_US = 850;
 constexpr uint16_t RC_VALID_MAX_US = 2150;
 constexpr uint16_t RC_DEADBAND_US = 35;
 constexpr uint32_t RC_TIMEOUT_US = 150000;
+// Confirm a falling edge only after 30 us of low level. No busy wait.
+// Short low notches inside a high PWM pulse preserve the original rise time.
+constexpr uint32_t RC_EDGE_FILTER_US = 30;
 constexpr uint32_t NEUTRAL_DWELL_US = 300000;
 constexpr uint32_t CONTROL_PERIOD_US = 5000;
 constexpr uint32_t DIAG_PERIOD_MS = 250;
@@ -62,6 +65,8 @@ constexpr uint8_t LPWM_CH[4] = {1, 3, 5, 7};
 #endif
 portMUX_TYPE captureMux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool riseSeen[4] = {};
+volatile bool fallPending[4] = {};
+volatile uint32_t fallUs[4] = {};
 // Latched only after a valid pulse; rejected edges never refresh its age.
 volatile bool pulseValid[4] = {};
 volatile uint32_t rejectedPulseCount[4] = {};
@@ -96,26 +101,46 @@ uint32_t lastDiagMs = 0;
 char diagnostic[512];
 size_t diagnosticLength = 0;
 size_t diagnosticOffset = 0;
+// Caller holds captureMux. Timestamp is the original falling edge, so
+// confirmation never renews an old command or extends the 150 ms deadline.
+static inline void IRAM_ATTR confirmFallingEdge(uint8_t channel) {
+  const uint32_t width = fallUs[channel] - riseUs[channel];
+  if (riseSeen[channel] && width >= RC_VALID_MIN_US && width <= RC_VALID_MAX_US) {
+    pulseWidthUs[channel] = static_cast<uint16_t>(width);
+    lastValidPulseUs[channel] = fallUs[channel];
+    pulseValid[channel] = true;
+  } else {
+    ++rejectedPulseCount[channel];
+  }
+  fallPending[channel] = false;
+  riseSeen[channel] = false;
+}
 static inline void IRAM_ATTR captureEdge(uint8_t channel) {
   const uint32_t now = micros();
   portENTER_CRITICAL_ISR(&captureMux);
   if (digitalRead(RC_IN_PIN[channel])) {
-    riseUs[channel] = now;
-    riseSeen[channel] = true;
-  } else {
-    const uint32_t width = now - riseUs[channel];
-    const bool valid = riseSeen[channel] &&
-      width >= RC_VALID_MIN_US && width <= RC_VALID_MAX_US;
-    if (valid) {
-      pulseWidthUs[channel] = static_cast<uint16_t>(width);
-      lastValidPulseUs[channel] = now;
-      pulseValid[channel] = true;
-    } else {
-      // Reject this sample, retain the last VALID command for at most 150 ms.
-      // Do not clear pulseValid or update lastValidPulseUs on noise.
-      ++rejectedPulseCount[channel];
+    if (fallPending[channel]) {
+      if (uint32_t(now - fallUs[channel]) < RC_EDGE_FILTER_US) {
+        // A short low notch is noise, not the end/start of two commands.
+        fallPending[channel] = false;
+        ++rejectedPulseCount[channel];
+        portEXIT_CRITICAL_ISR(&captureMux);
+        return;
+      }
+      confirmFallingEdge(channel);
     }
-    riseSeen[channel] = false;
+    // A missed falling edge or stuck-high input must not poison the next pulse.
+    if (!riseSeen[channel] || uint32_t(now - riseUs[channel]) > RC_VALID_MAX_US) {
+      riseUs[channel] = now;
+      riseSeen[channel] = true;
+    }
+  } else if (riseSeen[channel]) {
+    if (!fallPending[channel]) {
+      fallUs[channel] = now;
+      fallPending[channel] = true;
+    }
+  } else {
+    ++rejectedPulseCount[channel];
   }
   portEXIT_CRITICAL_ISR(&captureMux);
 }
@@ -126,6 +151,10 @@ void IRAM_ATTR rc3ISR() { captureEdge(3); }
 void snapshotInputs() {
   portENTER_CRITICAL(&captureMux);
   for (uint8_t i = 0; i < 4; ++i) {
+    if (fallPending[i] && digitalRead(RC_IN_PIN[i]) == LOW &&
+        uint32_t(micros() - fallUs[i]) >= RC_EDGE_FILTER_US) {
+      confirmFallingEdge(i);
+    }
     snapshotPulseUs[i] = pulseWidthUs[i];
     snapshotLastUs[i] = lastValidPulseUs[i];
     snapshotValid[i] = pulseValid[i];
@@ -341,6 +370,11 @@ void setup() {
     pinMode(RC_IN_PIN[i], INPUT_PULLDOWN);
   }
   Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+  // availableForWrite() itself can wait on a USB mutex. Bound both calls.
+  // Use 1 ms (not zero) for compatibility with HWCDC's timeout counter.
+  Serial.setTxTimeoutMs(1);
+#endif
   bootResetReason = static_cast<int>(esp_reset_reason());
   // No wait for Serial: motor safety must work without a computer.
   motorPwmReady = attachMotorPwm();
@@ -387,3 +421,4 @@ void loop() {
   }
   serviceDiagnostics(nowUs);
 }
+

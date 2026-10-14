@@ -1,8 +1,10 @@
-# Current candidate: v0.1.1rc6
+# Current candidate: v0.1.1rc7
+
+The firmware update adds PWM falling-edge confirmation to reject short low notches inside a valid pulse and bounds USB diagnostic waits. See [recovery review and flashing guide](docs/FIRMWARE-RECOVERY-rc7.md).
 
 Steering sensitivity and throttle sensitivity now have separate 25–100% controls in the Controller panel. Both are saved independently; existing settings retain steering and default throttle sensitivity to 100%. Throttle sensitivity scales forward/reverse commands before the separate throttle limit. Editing either control disables PC Control; click Apply Settings and re-enable manually. Neutral checks use unscaled pedal input.
 
-See [LilyGO SX1262 ArduRover wiring and setup](docs/LILYGO-SX1262-ARDUROVER.md) and [release notes](docs/releases/v0.1.1rc6.md). This candidate retains the rc4 fixes and adds a direct LoRa USB/FC link. The remainder below records the earlier stable baseline.
+See [LilyGO SX1262 ArduRover wiring and setup](docs/LILYGO-SX1262-ARDUROVER.md) and [release notes](docs/releases/v0.1.1rc7.md). This candidate retains the rc4 fixes and adds a direct LoRa USB/FC link. The remainder below records the earlier stable baseline.
 
 # PC TeleRC
 

@@ -49,7 +49,7 @@ struct String:std::string {
 };
 struct EspMock {bool restarted=false;void restart(){restarted=true;}};inline EspMock ESP;
 struct Stream {virtual ~Stream()=default;virtual size_t write(const uint8_t*,size_t)=0;};
-struct SerialMock:Stream {std::vector<uint8_t> rx,tx;size_t cursor=0;int capacity=1024;int available(){return int(rx.size()-cursor);}int read(){return cursor<rx.size()?rx[cursor++]:-1;}int availableForWrite(){return capacity;}size_t write(const uint8_t*p,size_t n)override{tx.insert(tx.end(),p,p+n);return n;}void begin(int){} void println(const char* = ""){} template<class T>void print(T){} template<class... A>void printf(const char*,A...){} };
+struct SerialMock:Stream {uint32_t txTimeoutMs=100;void setTxTimeoutMs(uint32_t ms){txTimeoutMs=ms;}std::vector<uint8_t> rx,tx;size_t cursor=0;int capacity=1024;int available(){return int(rx.size()-cursor);}int read(){return cursor<rx.size()?rx[cursor++]:-1;}int availableForWrite(){return capacity;}size_t write(const uint8_t*p,size_t n)override{tx.insert(tx.end(),p,p+n);return n;}void begin(int){} void println(const char* = ""){} template<class T>void print(T){} template<class... A>void printf(const char*,A...){} };
 inline SerialMock Serial;
 struct HardwareSerial:Stream {int capacity=1024;std::vector<uint8_t> tx,rx;size_t cursor=0; HardwareSerial(int){} void setRxBufferSize(int){} void setTxBufferSize(int){} void begin(int,int,int,int){} int available(){return int(rx.size()-cursor);}int read(){return cursor<rx.size()?rx[cursor++]:-1;}int availableForWrite(){return capacity;}size_t write(const uint8_t*p,size_t n){tx.insert(tx.end(),p,p+n);return n;}};
 inline bool ledcAttach(int,int,int){return attachOk;}
@@ -61,4 +61,5 @@ inline bool ledcWrite(int p,int v){
 }
 inline double ledcSetup(int,int,int){return attachOk?20000:0;}
 inline void ledcAttachPin(int pin,int channel){pwmChannelPins[channel]=pin;}
+
 
