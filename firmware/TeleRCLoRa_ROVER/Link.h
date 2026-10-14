@@ -1,5 +1,5 @@
 #pragma once
-// TeleRC SX1262 ArduRover direct pair 0.4.0. No Wi-Fi in the driving path.
+// TeleRC SX1262 ArduRover ordered relay link 0.5.0. No Wi-Fi in the driving path.
 #include <Arduino.h>
 #include <algorithm>
 #include <cctype>
@@ -9,9 +9,12 @@
 #include <esp_system.h>
 #include "MeshCore.h"
 #include "LinkLed.h"
+#include "SketchSettings.h"
+#include "Pairing.h"
+#include "RelayRoute.h"
 
-constexpr uint8_t BASE=1, ROVER=3;
-static_assert(TELERC_ROLE==BASE || TELERC_ROLE==ROVER, "Select BASE or ROVER");
+constexpr uint8_t BASE=1, NODE=2, ROVER=3;
+static_assert(TELERC_ROLE==BASE || TELERC_ROLE==NODE || TELERC_ROLE==ROVER, "Select BASE or ROVER");
 struct Config {
  uint32_t magic=0x544c0200, khz=0;
  uint8_t power=2, key[32]={};
@@ -25,13 +28,14 @@ mesh::Safety safety;
 mesh::MavParser mav;
 telerc::CommandMailbox commands;
 telerc::UartParser usbParser;
+constexpr bool sketchPairing=settings::COMPILED_PAIRING;
 bool maintenance=false,radioOK=false,transmitting=false,scanning=false,pollInFlight=false;
 bool haveFc=false,stopPending=false,bootTracking=false;
 uint32_t bootPressAt=0;
 volatile bool radioIRQ=false;
 uint64_t inflightToken=0;
 uint32_t txAt=0,pollAt=0,fcAt=0,lastStopTry=0,scanAt=0,bootId=0;
-uint32_t rxCount=0,rejectCount=0,txFail=0,uartDrops=0,stopCount=0;
+uint32_t txCount=0,rxCount=0,rejectCount=0,txFail=0,uartDrops=0,stopCount=0;
 uint8_t lastReason=0;
 size_t scanSlot=0;
 struct Telemetry {uint8_t data[telerc::RADIO_MAX]={};size_t n=0;uint32_t at=0;};
@@ -56,6 +60,17 @@ bool validConfig(const Config&v){
  bool band=(v.khz>=400250&&v.khz<=519750)||(v.khz>=830250&&v.khz<=944750);
  return v.magic==0x544c0200&&band&&key&&v.power>=2&&v.power<=17;
 }
+void loadConfig(){
+ if(sketchPairing){
+  Config next;next.khz=TELERC_LORA_FREQUENCY_KHZ;next.power=TELERC_LORA_POWER_DBM;
+  if(!telerc::passwordKey(settings::PASSWORD,sizeof(settings::PASSWORD)-1,next.key)||!validConfig(next))next=Config{};
+  cfg=next;return; // Explicit sketch pairing overrides NVS, including on re-upload.
+ }
+ Preferences pref;if(pref.begin("telerc-lora2",true)){
+  Config stored;if(pref.getBytesLength("config")==sizeof(stored)&&pref.getBytes("config",&stored,sizeof(stored))==sizeof(stored)&&validConfig(stored))cfg=stored;
+  pref.end();
+ }
+}
 bool usbSend(const uint8_t*p,size_t n,bool expires=false){
  if(usbCount==8){++uartDrops;return false;}
  auto&s=usbQueue[usbTail];s.n=telerc::encodeUart(p,n,s.data);s.offset=0;s.at=millis();s.expires=expires;
@@ -79,7 +94,7 @@ void info(){
  char line[180];
  uint16_t fingerprint=telerc::crc16(cfg.key,sizeof(cfg.key));
  snprintf(line,sizeof(line),"TELERC_LORA_INFO_V2,%s,1262,%u,%lu,%u,%04x,%lu,%lu,%lu,%lu,ARDUROVER",
-   TELERC_ROLE==BASE?"BASE":"ROVER",unsigned(radioOK&&!maintenance),
+   TELERC_ROLE==BASE?"BASE":TELERC_ROLE==NODE?"NODE":"ROVER",unsigned(radioOK&&!maintenance),
    static_cast<unsigned long>(cfg.khz),unsigned(cfg.power),unsigned(fingerprint),
    static_cast<unsigned long>(rxCount),static_cast<unsigned long>(rejectCount),
    static_cast<unsigned long>(txFail),static_cast<unsigned long>(uartDrops));
@@ -91,6 +106,7 @@ bool parseNumber(const char*s,uint32_t low,uint32_t high,uint32_t&v){
  return v>=low&&v<=high;
 }
 void provision(const uint8_t*p,size_t n){
+ if(sketchPairing){usbText("TELERC_LORA_RESULT_V1,SKETCH_PAIRING_LOCKED");return;}
  if(radioOK&&!maintenance){usbText("TELERC_LORA_RESULT_V1,ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST");return;}
  char text[140];if(n>=sizeof(text)||memchr(p,0,n)){usbText("TELERC_LORA_RESULT_V1,INVALID");return;}
  memcpy(text,p,n);text[n]=0;
@@ -124,8 +140,8 @@ bool enqueue(const mesh::Packet&p,uint32_t jitter){
  ++txFail;return false;
 }
 mesh::Packet makePacket(uint8_t kind,uint64_t token){
- mesh::Packet p;p.kind=kind;p.network=1;p.origin=TELERC_ROLE==BASE?1:2;p.sender=p.origin;
- p.dest=kind==mesh::POLL?1:2;p.limit=p.hops=1;p.token=token;
+ mesh::Packet p;p.kind=kind;p.network=1;p.origin=settings::SELF;p.sender=p.origin;
+ p.dest=kind==mesh::POLL?1:2;p.limit=p.hops=settings::LEGS;p.token=token;
  if(kind==mesh::POLL){p.ready=safety.ready;p.owned=safety.owned;p.reason=lastReason;
   p.stops=stopCount;p.boot=bootId;p.age=safety.owned?uint32_t(millis()-safety.at[0]):0;}
  return p;
@@ -205,19 +221,22 @@ void pumpRadio(){
    if(state==RADIOLIB_LORA_DETECTED){s.due=now+8+(esp_random()%18);restartRx();return;}
    if(state!=RADIOLIB_CHANNEL_FREE){radioFault();return;}
    if(!s.active||uint32_t(now-s.at)>mesh::QUEUE_MS){s.active=false;++txFail;restartRx();return;}
-   uint8_t out[mesh::MAX];size_t n=mesh::seal(s.p,cfg.key,out);auto p=s.p;s.active=false;
+   auto p=s.p;s.active=false;
+   // Coalesce at actual TX, after CAD, so the newest USB sample wins.
+   if(TELERC_ROLE==BASE&&p.kind==mesh::COMMAND)p.n=commands.take(p.body,millis());
+   uint8_t out[mesh::MAX];size_t n=mesh::seal(p,cfg.key,out);
    if(!n){++rejectCount;restartRx();return;}
-   if(p.kind==mesh::COMMAND&&uint32_t(millis()-s.at)+(radio.getTimeOnAir(n)+999)/1000+2>mesh::timing(1).responseMs){
+   if(p.kind==mesh::COMMAND&&uint32_t(millis()-s.at)+p.hops*((radio.getTimeOnAir(n)+999)/1000)+2+4*(p.hops-1)>mesh::timing(settings::LEGS).responseMs){
     ++txFail;restartRx();return;
    }
    if(radio.startTransmit(out,n)!=RADIOLIB_ERR_NONE){radioFault();return;}
-   transmitting=true;txAt=now;pollInFlight=p.kind==mesh::POLL&&TELERC_ROLE==ROVER;inflightToken=p.token;
+   ++txCount;transmitting=true;txAt=now;pollInFlight=p.kind==mesh::POLL&&TELERC_ROLE==ROVER;inflightToken=p.token;
   }else if(uint32_t(now-scanAt)>20)radioFault();
   return;
  }
  if(transmitting){
   if(radioIRQ){radioIRQ=false;radio.finishTransmit();transmitting=false;
-   if(pollInFlight){challenge.issue(inflightToken,millis(),mesh::timing(1).responseMs);pollAt=millis();}
+   if(pollInFlight){challenge.issue(inflightToken,millis(),mesh::timing(settings::LEGS).responseMs);pollAt=millis();}
    pollInFlight=false;restartRx();
   }else if(uint32_t(now-txAt)>100)radioFault();
   return;
@@ -227,15 +246,18 @@ void pumpRadio(){
  if(n<mesh::HEADER+mesh::TAG||n>sizeof(in)){radio.standby();restartRx();++rejectCount;return;}
  int state=radio.readData(in,n);if(!restartRx())return;
  mesh::Packet p;
- if(state!=RADIOLIB_ERR_NONE||!mesh::open(in,n,cfg.key,p)||p.network!=1||p.limit!=1||p.hops!=1||
-    (TELERC_ROLE==BASE?(p.kind!=mesh::POLL||p.origin!=2||p.sender!=2||p.dest!=1):
-                      (p.kind!=mesh::COMMAND||p.origin!=1||p.sender!=1||p.dest!=2))){++rejectCount;return;}
+ if(state!=RADIOLIB_ERR_NONE||!mesh::open(in,n,cfg.key,p)||!relay::addressed(p)){++rejectCount;return;}
  if(!seen.admit(p,now)){++rejectCount;return;}++rxCount;
+ if(TELERC_ROLE==NODE){
+  linkLed.received(now);
+  if(relay::forward(p))enqueue(p,2);
+  return;
+ }
  if(TELERC_ROLE==BASE){
   linkLed.received(now); // Authenticated, addressed, nonduplicate rover poll.
   forwardStatus(p);
   if(p.n&&mesh::telemetryClass(p.body,p.n)>=0)usbSend(p.body,p.n,true);
-  mesh::Packet response=makePacket(mesh::COMMAND,p.token);response.n=commands.take(response.body,millis());enqueue(response,3);
+  mesh::Packet response=makePacket(mesh::COMMAND,p.token);enqueue(response,2);
  }else{
   if(!challenge.consume(p.token,now)){++rejectCount;return;}
   linkLed.received(now); // Authenticated reply to a live rover challenge.
@@ -263,7 +285,7 @@ void pumpVehicle(){
 }
 void sendPoll(){
  uint32_t now=millis();
- if(transmitting||scanning||challenge.pending(now)||uint32_t(now-pollAt)<mesh::timing(1).pollMs)return;
+ if(transmitting||scanning||challenge.pending(now)||uint32_t(now-pollAt)<mesh::timing(settings::LEGS).pollMs)return;
  for(auto&s:queue)if(s.active)return;
  uint64_t token=0;while(!token)token=(uint64_t(esp_random())<<32)|esp_random();
  mesh::Packet p=makePacket(mesh::POLL,token);
@@ -271,7 +293,7 @@ void sendPoll(){
  for(auto&s:telemetry)if(s.n){size_t n=s.n;s.n=0;if(uint32_t(now-s.at)>1200)continue;p.n=n;memcpy(p.body,s.data,n);break;}
  challenge.active=false;if(enqueue(p,0))pollAt=now;
 }
-void setup(){
+void setup(bool configReady=false){
  // T3-S3 V1.2/V1.3 user LED is active HIGH on GPIO37.
  // Start lit immediately; loop() blinks until valid peer traffic arrives.
  // No delay or USB wait is added for LED indication.
@@ -282,9 +304,7 @@ void setup(){
 #endif
  pinMode(0,INPUT_PULLUP);delay(30);
  do {bootId=esp_random();}while(!bootId);
- Preferences pref;if(pref.begin("telerc-lora2",true)){
-  Config stored;if(pref.getBytesLength("config")==sizeof(stored)&&pref.getBytes("config",&stored,sizeof(stored))==sizeof(stored)&&validConfig(stored))cfg=stored;pref.end();
- }
+ if(!configReady)loadConfig();
  maintenance=!validConfig(cfg)||digitalRead(0)==LOW;
  if(maintenance)return;
  if(TELERC_ROLE==ROVER){vehicle.setRxBufferSize(1024);vehicle.setTxBufferSize(1024);vehicle.begin(115200,SERIAL_8N1,44,43);}

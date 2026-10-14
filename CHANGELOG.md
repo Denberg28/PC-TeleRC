@@ -1,3 +1,12 @@
+# v0.1.2rc2 — sketch pairing and relays
+
+- LilyGO 0.5.0 adds sketch-level eight-character password/frequency, overriding old NVS when set.
+- OLED turns off after 30 seconds; BOOT wakes without entering setup or stopping control.
+- Standalone NODE sketch supports one/two ordered relays with matching key/frequency/count.
+- Latest-command selection at TX, bounded forwarding, and response-driven relay cadence reduce avoidable delay.
+- Existing 500 ms watchdog, neutral/ARM gates, receiver takeover and PWM glitch fix retained.
+- Added display, sketch-pairing and actual-driver chain/outage/latency tests; target builds grouped by role.
+
 # v0.1.2rc1 — runtime setup candidate
 
 - LilyGO BOOT/OLED menu selects saved Wi-Fi/LoRa without reflashing; BASE remains USB-to-LoRa.

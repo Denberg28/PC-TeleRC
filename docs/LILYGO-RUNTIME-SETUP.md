@@ -1,3 +1,5 @@
+Current 0.5.0 / 0.1.2rc2 additions: [sketch password, 30-second screen sleep and NODE relays](LILYGO-SKETCH-RELAYS.md). Runtime instructions below remain available with an empty sketch password. Non-empty sketch pairing locks web/USB edits.
+
 # LilyGO T3-S3 runtime setup — firmware 0.4.0 / PC TeleRC 0.1.2rc1
 
 This test candidate adds a BOOT/OLED menu and saved rover Wi-Fi/LoRa selection. BASE remains the native-USB-to-LoRa bridge. It uses TeleRC's existing direct SX1262 pair protocol; it is not Meshtastic firmware and does not communicate with Meshtastic nodes.

@@ -28,7 +28,7 @@ using portMUX_TYPE = int;
 #define portENTER_CRITICAL_ISR(x) ((void)0)
 #define portEXIT_CRITICAL_ISR(x) ((void)0)
 inline uint32_t testMs=1000, testUs=1000000;
-inline int pins[64]={}, duties[64]={};
+inline int pins[64]={HIGH}, duties[64]={};
 inline std::array<int,16> pwmChannelPins=[] {std::array<int,16> p{};p.fill(-1);return p;}();
 inline bool attachOk=true;
 inline uint32_t millis(){return testMs;}

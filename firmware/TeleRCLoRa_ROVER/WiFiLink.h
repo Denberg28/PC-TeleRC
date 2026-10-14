@@ -1,5 +1,5 @@
 #pragma once
-// LilyGO T3-S3 SX1262 Wi-Fi bridge 0.4.0. Used by the mutually exclusive runtime transport dispatcher.
+// LilyGO T3-S3 SX1262 Wi-Fi bridge 0.5.0. Used by the mutually exclusive runtime transport dispatcher.
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
@@ -61,7 +61,7 @@ void serviceDiagnostic(){
  if(uint32_t(now-diagAt)>=3000&&diagOffset==diagN){
   diagAt=now;
   int n=snprintf(diagnostic,sizeof(diagnostic),
-   "ROLE=ROVER v0.4.0 MODE=WIFI AP=%u UDP=%u clients=%u FC=%u RX=%lu reject=%lu stops=%lu last=%s uartDrop=%lu up=%lu reset=%d\n",
+   "ROLE=ROVER v0.5.0 MODE=WIFI AP=%u UDP=%u clients=%u FC=%u RX=%lu reject=%lu stops=%lu last=%s uartDrop=%lu up=%lu reset=%d\n",
    unsigned(apReady),unsigned(udpReady),unsigned(WiFi.softAPgetStationNum()),unsigned(freshFc(now)),
    static_cast<unsigned long>(accepted),static_cast<unsigned long>(rejected),static_cast<unsigned long>(stopCount),lastStop,
    static_cast<unsigned long>(uartDrops),static_cast<unsigned long>(now),bootResetReason);

@@ -1,0 +1,15 @@
+PC TeleRC 0.1.2rc2 / LilyGO firmware 0.5.0 — 2026-10-14
+
+Local pytest: 140 passed.
+Runtime C++: 12 role/profile cases passed with address/undefined-behavior sanitizers, plus 3 invalid-password compile-failure checks.
+Existing direct SX1262 roles and six LilyGO backend/LED cases passed.
+Actual-driver isolated-instance chain simulation: direct, one-relay and two-relay cases passed. Reproduce with firmware/relay-tests/run_tests.py.
+All chains: authenticated forwarding, real FC heartbeat parser, neutral acquisition, explicit recovery, power-cycle outage stop within unchanged 500 ms, no non-neutral reacquisition, replay deadline and NODE UART isolation. Relay chains also reject a mismatched key.
+Clear-channel delivered-newest-sample-to-UART modeled latency (mean / p95 / max ms):
+  0 relays: 62.26 / 83 / 85 (23 samples)
+  1 relay: 106.30 / 128 / 128 (20 samples)
+  2 relays: 146.15 / 167 / 167 (13 samples)
+Assumptions: one-ms loops, two-ms CAD, RadioLib 7.2.1 SF7/BW500 airtime, adjacent-only reception. This covers delivered samples after coalescing, not every operator event or physical RF delay/range.
+
+Target compilation and Windows packaging are separate CI checks. Candidate remains draft; v0.1.1 remains Latest.
+No physical OLED, BOOT, power, radio-range, receiver-takeover or motor-stop validation is available.

@@ -6,7 +6,7 @@ namespace telerc {
 // SSD1306 128x64, SDA18/SCL17. Each loop sends one <=17-byte transaction.
 // A missing/stuck OLED disables display output; it never gates motor control.
 struct TinyOled {
- bool ready=false;uint8_t pixels[1024]={};size_t offset=1024;bool address=false;
+ bool ready=false,asleep=false;uint8_t pixels[1024]={};size_t offset=1024;bool address=false;
  static const uint8_t*glyph(char c){
   static constexpr uint8_t letters[26][5]={
    {126,17,17,17,126},{127,73,73,73,54},{62,65,65,65,34},{127,65,65,34,28},
@@ -28,19 +28,24 @@ struct TinyOled {
   if(Wire.endTransmission()!=0){ready=false;return false;}return true;
  }
  void begin(){
-  Wire.begin(18,17);Wire.setClock(400000);Wire.setTimeOut(1);ready=true;
+  Wire.begin(18,17);Wire.setClock(400000);Wire.setTimeOut(1);ready=true;asleep=false;
   const uint8_t commands[]={0xae,0xd5,0x80,0xa8,0x3f,0xd3,0,0x40,0x8d,0x14,0x20,2,0xa1,0xc8,0xda,0x12,0x81,0x7f,0xd9,0xf1,0xdb,0x40,0xa4,0xa6,0xaf};
   send(0,commands,sizeof(commands));
  }
+ void setAwake(bool awake){
+  if(!ready){asleep=!awake;return;}
+  const uint8_t command=awake?0xaf:0xae;
+  if(send(0,&command,1))asleep=!awake;
+ }
  void rows(const char*const*lines){
-  if(!ready)return;
+  if(!ready||asleep)return;
   memset(pixels,0,sizeof(pixels));
   for(size_t row=0;row<8;++row)if(lines[row])for(size_t col=0;col<21&&lines[row][col];++col)
    memcpy(pixels+row*128+col*6,glyph(lines[row][col]),5);
   offset=0;address=true;
  }
  void step(){
-  if(!ready||offset==sizeof(pixels))return;
+  if(!ready||asleep||offset==sizeof(pixels))return;
   if(address){const uint8_t c[]={uint8_t(0xb0+offset/128),0,0x10};send(0,c,sizeof(c));address=false;return;}
   if(send(0x40,pixels+offset,16)){offset+=16;if(offset%128==0)address=true;}
  }

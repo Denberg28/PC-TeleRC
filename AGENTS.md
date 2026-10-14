@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.2rc1 — LilyGO runtime Wi-Fi/LoRa 0.4.0, BOOT/OLED setup and eight-character passwords. Stable v0.1.1 remains Latest.
+0.1.2rc2 — LilyGO 0.5.0, sketch pairing, 30 s OLED sleep/BOOT wake and ordered NODE relays. Stable v0.1.1 remains Latest.
 
 Preserve the wheel connection session in ControlFrame; new instances require manual enable. Wi-Fi enable/ARM requires centered steering and CH1–CH4, matching bridge firmware. Firmware diagnostics preserve the last stop; do not increase watchdog thresholds to conceal electrical faults. See REVIEW-DROPOUTS.md and the conditional motor-side parameter patch.
 
@@ -69,7 +69,7 @@ Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel ma
 
 ELRS reliability: 20 Hz safety checks separate from 5 Hz drive sends; monitor-only sessions never release RC. Serialize enable/disable/configure/ARM with sends. Fresh ArduRover autopilot heartbeat and input required. Missed watchdog deadlines and USB failures latch OFF. Purge the local output queue before owned neutral/release; USB write success never proves RF delivery. Reconnect timers carry a generation token and frozen applied settings; edits cancel them. Preserve original Wi-Fi/LoRa control rates and protocol frames.
 
-LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. Current LilyGO firmware 0.4.0 selects saved Wi-Fi or direct SX1262 LoRa via BOOT; runtime setup pauses all driving and restarts only after pending stop completes and at least 16 seconds of link silence; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
+LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. Current LilyGO firmware 0.5.0 selects saved Wi-Fi or SX1262 LoRa via BOOT; compiled nonempty password overrides NVS; relay count 0/1/2 must match all roles. NODE indices are ordered from BASE. Screen sleep/wake never interrupts control; first asleep BOOT gesture is consumed; runtime setup pauses all driving and restarts only after pending stop completes and at least 16 seconds of link silence; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
 
 
 PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.

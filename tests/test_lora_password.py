@@ -56,3 +56,14 @@ def test_setup_password_and_advanced_key_send_derived_key_only():
     assert not widget.key.text()
     widget.close()
     app.processEvents()
+
+
+def test_sketch_pairing_lock_is_reported_without_echoing_a_secret():
+    from pctelerc.lora import SetupExchange
+    state = SetupExchange()
+    state.begin_read()
+    state.receive(b'TELERC_LORA_INFO_V2,BASE,1262,0,915000,2,0000,0,0,0,0,ARDUROVER')
+    state.begin_save('915', 2, VECTOR)
+    message = state.receive(b'TELERC_LORA_RESULT_V1,SKETCH_PAIRING_LOCKED')
+    assert 'sketch' in message and VECTOR not in message
+    assert state.board is None and not state.pending and not state.can_save

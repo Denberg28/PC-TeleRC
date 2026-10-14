@@ -15,6 +15,8 @@
 #include "Pairing.h"
 #include "BootMenu.h"
 #include "TinyOled.h"
+#include "SketchSettings.h"
+#include "RelayRoute.h"
 // Include driver APIs above the namespaces; only backend state is namespaced.
 #define TELERC_RUNTIME_MENU 1
 namespace lora {
@@ -30,9 +32,11 @@ namespace runtime {
 constexpr uint8_t WIFI_MODE=1,LORA_MODE=0;
 // AppSettings allows at most 15 s heartbeat age. Setup holds telemetry OFF
 // beyond that before restart, so an old PC session cannot silently stay enabled.
-constexpr uint32_t RESTART_MIN_PAUSE_MS=16000;
+constexpr uint32_t RESTART_MIN_PAUSE_MS=16000,SCREEN_IDLE_MS=30000;
 telerc::BootButton button;telerc::TinyOled oled;WebServer server(80);
 uint8_t mode=LORA_MODE,choice=0;bool menu=false,statusPage=false,portal=false,restarting=false;
+bool wakeGesture=false;uint32_t screenAt=0;
+const char*roleName(){return TELERC_ROLE==1?"BASE":TELERC_ROLE==2?"NODE":"ROVER";}
 uint32_t pausedAt=0,paintedAt=0,restartAt=0;char csrf[17]={};const char*notice="";
 
 bool pendingStop(){
@@ -45,14 +49,11 @@ bool saveMode(uint8_t selected){
  Preferences p;if(!p.begin("telerc-ui",false))return false;
  bool ok=p.putUChar("mode",selected)==1;p.end();return ok;
 }
-void loadConfig(){
- Preferences p;if(!p.begin("telerc-lora2",true))return;
- lora::Config c;if(p.getBytesLength("config")==sizeof(c)&&p.getBytes("config",&c,sizeof(c))==sizeof(c)&&lora::validConfig(c))lora::cfg=c;
- p.end();
-}
+void loadConfig(){lora::loadConfig();}
 void paint(){
- char title[24],line[24],count[40],freq[24];
- snprintf(title,sizeof(title),"TELERC %s",TELERC_ROLE==1?"BASE":"ROVER");
+ char title[24],line[24],count[40],freq[24],route[24];
+ snprintf(title,sizeof(title),"TELERC %s",roleName());
+ snprintf(route,sizeof(route),"RELAYS: %u NODE:%u",unsigned(settings::RELAYS),unsigned(settings::SELF));
  snprintf(line,sizeof(line),"MODE: %s",mode==WIFI_MODE?"WI-FI":"LORA");
  snprintf(freq,sizeof(freq),"LORA %lu.%03lu MHZ",(unsigned long)(lora::cfg.khz/1000),(unsigned long)(lora::cfg.khz%1000));
  const char*rows[8]={title,line,"","","","","",""};
@@ -60,7 +61,7 @@ void paint(){
   uint32_t elapsed=millis()-pausedAt;uint32_t remaining=elapsed<RESTART_MIN_PAUSE_MS?(RESTART_MIN_PAUSE_MS-elapsed+999)/1000:0;
   snprintf(count,sizeof(count),"RESTART IN %lu S",(unsigned long)remaining);
   rows[2]="CONTROL STOPPED";rows[3]=count;rows[4]="REENABLE PC MANUALLY";
- }else if(portal){rows[2]="SETUP WIFI:";rows[3]=TELERC_ROLE==1?"TELERC-SETUP-BASE":"TELERC-SETUP-ROVER";rows[4]="PW LOWER: TELERC123";rows[5]="192.168.4.1";rows[6]="HOLD BOOT TO EXIT";
+ }else if(portal){rows[2]="SETUP WIFI:";rows[3]=TELERC_ROLE==1?"TELERC-SETUP-BASE":TELERC_ROLE==2?"TELERC-SETUP-NODE":"TELERC-SETUP-ROVER";rows[4]="PW LOWER: TELERC123";rows[5]="192.168.4.1";rows[6]="HOLD BOOT TO EXIT";
  }else if(menu&&!statusPage){
   const char*selected;
   if(TELERC_ROLE==3){const char*items[]={"> WI-FI","> LORA","> LINK SETTINGS","> STATUS","> EXIT / RESTART"};selected=items[choice];}
@@ -74,7 +75,8 @@ void paint(){
    rows[3]=count;rows[4]=menu?"SETUP PAUSED":(wifi::safety.owned?"PC CONTROL ACTIVE":"PC CONTROL OFF");
 #endif
   }else{snprintf(count,sizeof(count),"RX:%lu STOPS:%lu",(unsigned long)lora::rxCount,(unsigned long)lora::stopCount);rows[3]=count;rows[4]=menu?"SETUP PAUSED":(lora::radioOK&&!lora::maintenance?"RADIO READY":"PAIRING REQUIRED");}
-  rows[5]=menu?"TAP: BACK":"HOLD BOOT: MENU";
+  if(TELERC_ROLE==2){snprintf(count,sizeof(count),"RX:%lu TX:%lu",(unsigned long)lora::rxCount,(unsigned long)lora::txCount);rows[3]=count;}
+  rows[5]=menu?"TAP: BACK":"HOLD BOOT: MENU";rows[6]=route;rows[7]=lora::sketchPairing?"KEY: SKETCH":"KEY: SAVED";
  }
  oled.rows(rows);paintedAt=millis();
 }
@@ -103,18 +105,19 @@ String form(){
  return html;
 }
 void startPortal(){
+ if(lora::sketchPairing){notice="PAIRING IN SKETCH";paint();return;}
  if(pendingStop()){notice="WAIT FOR STOP WRITE";paint();return;}
  WiFi.mode(WIFI_OFF);
  if(!WiFi.mode(WIFI_AP)){notice="SETUP WIFI FAILED";paint();return;}
  if(!WiFi.softAPConfig(IPAddress(192,168,4,1),IPAddress(192,168,4,1),IPAddress(255,255,255,0))||
-    !WiFi.softAP(TELERC_ROLE==1?"TeleRC-Setup-BASE":"TeleRC-Setup-ROVER","telerc123",1,0,1)){
+    !WiFi.softAP(TELERC_ROLE==1?"TeleRC-Setup-BASE":TELERC_ROLE==2?"TeleRC-Setup-NODE":"TeleRC-Setup-ROVER","telerc123",1,0,1)){
   notice="SETUP WIFI FAILED";paint();return;
  }
  snprintf(csrf,sizeof(csrf),"%08lx%08lx",(unsigned long)esp_random(),(unsigned long)esp_random());
  server.on("/",HTTP_GET,[]{server.sendHeader("Cache-Control","no-store");server.send(200,"text/html",form());});
  server.on("/save",HTTP_POST,[]{
   server.sendHeader("Cache-Control","no-store");
-  if(!menu||!portal||restarting||pendingStop()||server.arg("csrf")!=csrf){server.send(409,"text/plain","Setup unavailable. Use BOOT to enter setup.");return;}
+  if(lora::sketchPairing||!menu||!portal||restarting||pendingStop()||server.arg("csrf")!=csrf){server.send(409,"text/plain","Setup unavailable. Use BOOT to enter setup.");return;}
   String pw=server.arg("password");lora::Config next=lora::cfg;uint32_t power=0;
   const String selected=server.arg("mode");
   bool valid=(selected=="0"||(TELERC_ROLE==3&&selected=="1"))&&telerc::frequencyKHz(server.arg("mhz").c_str(),next.khz)&&
@@ -138,18 +141,21 @@ void select(){
 }
 void setup(){
  pinMode(0,INPUT_PULLUP);loadConfig();
- mode=TELERC_ROLE==1?LORA_MODE:uint8_t(TELERC_TRANSPORT_WIFI);
+ mode=TELERC_ROLE==3?uint8_t(TELERC_TRANSPORT_WIFI):LORA_MODE;
  Preferences p;if(p.begin("telerc-ui",true)){uint8_t saved=p.getUChar("mode",mode);if(saved<=1)mode=saved;p.end();}
- if(TELERC_ROLE==1)mode=LORA_MODE;
+ if(TELERC_ROLE!=3)mode=LORA_MODE;
  oled.begin();
 #if TELERC_ROLE == 3
  if(mode==WIFI_MODE)wifi::setup();else
 #endif
- lora::setup();
- paint();
+ lora::setup(true);
+ screenAt=millis();wakeGesture=false;paint();
 }
 void loop(){
  uint32_t now=millis();telerc::Press event=button.update(digitalRead(0)==LOW,now);
+ if(button.raw||button.stable)screenAt=now;
+ if(oled.asleep&&button.stable){oled.setAwake(true);wakeGesture=true;paint();}
+ if(wakeGesture){event=telerc::Press::NONE;if(!button.raw&&!button.stable)wakeGesture=false;}
  if(!menu){
   if(event==telerc::Press::HOLD){pause();event=telerc::Press::NONE;}
   if(!menu){
@@ -177,6 +183,7 @@ void loop(){
   lora::serviceLed();delay(1);
  }
  if(uint32_t(now-paintedAt)>=1000)paint();
+ if(!button.raw&&!button.stable&&!oled.asleep&&uint32_t(now-screenAt)>=SCREEN_IDLE_MS)oled.setAwake(false);
  oled.step();
 }
 }

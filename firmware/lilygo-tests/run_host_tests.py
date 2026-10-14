@@ -10,5 +10,5 @@ cases=[('wifi','test_wifi.cpp','ROVER',[]),('routing','test_routing.cpp','ROVER'
 with tempfile.TemporaryDirectory() as work:
  for name,source,role,extra in cases:
   binary=Path(work)/name
-  subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-fno-pie','-no-pie','-DARDUINO_USB_CDC_ON_BOOT=1',*extra,'-I',str(root/'mocks'),'-I',str(firmware/f'TeleRCLoRa_{role}'),str(root/source),'-o',str(binary)],check=True)
+  subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=address,undefined','-fno-pie','-no-pie','-DARDUINO_USB_CDC_ON_BOOT=1',*extra,'-I',str(root/'mocks'),'-I',str(firmware/f'TeleRCLoRa_{role}'),str(root/source),'-lcrypto','-o',str(binary)],check=True)
   subprocess.run([str(binary)],check=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'})
