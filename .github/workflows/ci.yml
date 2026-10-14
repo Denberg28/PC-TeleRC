@@ -8,7 +8,23 @@ on:
 permissions:
   contents: write
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reserve draft release for direct asset uploads
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/sx1262-ardurover-rc5'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.1rc5
+          target_commitish: ${{ github.sha }}
+          name: PC TeleRC v0.1.1rc5 — LilyGO SX1262 ArduRover
+          draft: true
+          prerelease: true
+          make_latest: false
+          body_path: docs/releases/v0.1.1rc5.md
   firmware:
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,13 +54,18 @@ jobs:
           zip -r ../release-dist/TeleRC-LilyGO-T3S3-SX1262-v0.2.0-target-builds.zip .
           cd ../release-dist
           sha256sum *.zip > SHA256-firmware-source.txt
-      - uses: actions/upload-artifact@v4
+      - name: Attach firmware directly to draft release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/sx1262-ardurover-rc5'
+        uses: softprops/action-gh-release@v2
         with:
-          name: sx1262-rc5
-          path: release-dist/*
-          if-no-files-found: error
-          retention-days: 90
+          tag_name: v0.1.1rc5
+          target_commitish: ${{ github.sha }}
+          draft: true
+          prerelease: true
+          make_latest: false
+          files: release-dist/*
   windows:
+    needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,33 +101,34 @@ jobs:
           Copy-Item dist\PC-TeleRC-portable-v0.1.1rc5.zip windows-release\
           Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.1rc5.exe windows-release\
           Get-ChildItem windows-release\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii windows-release\SHA256-windows.txt
-      - uses: actions/upload-artifact@v4
+      - name: Attach Windows builds directly to draft release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/sx1262-ardurover-rc5'
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-rc5
-          path: windows-release/*
-          if-no-files-found: error
-          retention-days: 90
+          tag_name: v0.1.1rc5
+          target_commitish: ${{ github.sha }}
+          draft: true
+          prerelease: true
+          make_latest: false
+          files: windows-release/*
   release:
     needs: [firmware, windows]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev/sx1262-ardurover-rc5'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - name: Verify all release downloads exist
+        uses: actions/github-script@v7
         with:
-          name: windows-rc5
-          path: release-assets
-      - uses: actions/download-artifact@v4
-        with:
-          name: sx1262-rc5
-          path: release-assets
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v0.1.1rc5
-          target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.1rc5 — LilyGO SX1262 ArduRover
-          draft: true
-          prerelease: true
-          make_latest: false
-          body_path: docs/releases/v0.1.1rc5.md
-          files: release-assets/*
+          script: |
+            const releases = await github.rest.repos.listReleases({...context.repo});
+            const release = releases.data.find(r => r.tag_name === 'v0.1.1rc5');
+            if (!release) throw new Error('Draft release missing');
+            const assets = await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id});
+            const names = new Set(assets.data.map(a => a.name));
+            for (const name of ['PC-TeleRC-portable-v0.1.1rc5.zip', 'PC-TeleRC-Setup-v0.1.1rc5.exe',
+                                'PC-TeleRC-source-v0.1.1rc5.zip', 'TeleRC-LilyGO-T3S3-SX1262-v0.2.0-sketches.zip',
+                                'TeleRC-LilyGO-T3S3-SX1262-v0.2.0-target-builds.zip',
+                                'SHA256-firmware-source.txt', 'SHA256-windows.txt']) {
+              if (!names.has(name)) throw new Error('Missing release asset: ' + name);
+            }
+            core.info('Complete rc5 Windows / SX1262 draft release attached to ' + release.html_url);
