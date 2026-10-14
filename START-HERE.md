@@ -1,4 +1,6 @@
-# PC TeleRC 0.1.2rc3
+# PC TeleRC 0.1.2
+
+Live camera desktop: open Settings → Camera, choose USB / RTSP-HTTP video / HTTP MJPEG and Start. A separate video connection is required; LoRa does not carry video. The lower-left map displays fresh rover GPS telemetry. See CAMERA-DESKTOP.md in the portable package, or docs/CAMERA-DESKTOP.md in source.
 
 Keyboard: select **Keyboard — WASD / arrows**, Apply Settings, click the driving area, release all keys and manually enable PC Control. W/Up forward, S/Down reverse, A/Left and D/Right steer; hold Space for neutral brake. See KEYBOARD.md in the portable build or docs/KEYBOARD.md in source. Focus loss stops control. No firmware update is required for keyboard input.
 

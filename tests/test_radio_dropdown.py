@@ -35,6 +35,8 @@ def window(monkeypatch):
 
 
 def test_dropdown_shows_only_selected_radio_fields_and_retains_ports(window):
+    window.settings_btn.setChecked(True)
+    QApplication.processEvents()
     assert window.link_mode.count() == 3
     assert window.bind_host.isVisible()
     assert not window.lora_port.isVisible()
@@ -241,3 +243,4 @@ def test_elrs_usb_open_is_distinct_from_rover_connected_status(window):
     window.mav._snapshot = MavlinkSnapshot()
     window._refresh()
     assert "Disconnected" in window.link_label.text()
+

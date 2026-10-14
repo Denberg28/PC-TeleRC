@@ -7,7 +7,7 @@ import pctelerc.ui as ui
 from pctelerc.config import AppSettings
 
 
-def test_main_window_constructs_with_symmetric_columns_and_modeless_diagnostics(monkeypatch):
+def test_camera_first_window_with_modeless_diagnostics(monkeypatch):
     app = QApplication.instance() or QApplication([])
 
     monkeypatch.setattr(ui, "load_settings", lambda: AppSettings())
@@ -19,8 +19,15 @@ def test_main_window_constructs_with_symmetric_columns_and_modeless_diagnostics(
 
     window = ui.MainWindow()
     try:
-        assert [window.main_grid.columnStretch(i) for i in range(3)] == [1, 1, 1]
-        assert all(window.main_grid.columnMinimumWidth(i) == 330 for i in range(3))
+        window.show()
+        app.processEvents()
+        assert not window.settings_panel.isVisible()
+        assert window.camera_view.isVisible()
+        assert window.map_panel.isVisible()
+        assert window.camera_view.width() > window.map_panel.width()
+        assert window.map_panel.y() > window.camera_view.y()
+        assert window.steering_sensitivity.label.text() == "100%"
+        assert not window.windowIcon().isNull()
 
         window._open_diagnostics()
         app.processEvents()
@@ -32,3 +39,4 @@ def test_main_window_constructs_with_symmetric_columns_and_modeless_diagnostics(
             window._diagnostics_window.close()
         window.close()
         app.processEvents()
+

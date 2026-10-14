@@ -8,7 +8,7 @@ analysis = Analysis(
     ['main.py'],
     pathex=['src'],
     binaries=pymav_bins + pygame_bins,
-    datas=pymav_datas + pygame_datas,
+    datas=pymav_datas + pygame_datas + [('src/pctelerc/assets', 'pctelerc/assets'), ('tests/fixtures/test-pattern.mp4', 'pctelerc/assets')],
     hiddenimports=pymav_hidden + pygame_hidden,
     hookspath=[],
     hooksconfig={},
@@ -35,7 +35,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='src/pctelerc/assets/telerc.ico',
 )
 
 coll = COLLECT(
@@ -47,3 +47,4 @@ coll = COLLECT(
     upx_exclude=[],
     name='PC-TeleRC',
 )
+
