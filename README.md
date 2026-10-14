@@ -1,4 +1,6 @@
-# PC TeleRC v0.1.2rc2 — sketch pairing and relay candidate
+# PC TeleRC v0.1.2rc3 — keyboard driving candidate
+
+Adds selectable keyboard WASD / arrows and Space neutral brake. Focus loss stops keyboard control and requires manual re-enable. See [keyboard instructions](docs/KEYBOARD.md). Existing v0.1.2rc2 firmware remains compatible.
 
 LilyGO 0.5.0 adds an eight-character password in each sketch, 30-second OLED timeout with BOOT wake, and one/two ordered relay nodes. Wi-Fi/LoRa selection, independent sensitivities and PWM converter 1.0.5 remain available.
 
@@ -137,4 +139,9 @@ The installed build now uses PyInstaller **onedir** inside the Inno Setup instal
 
 ## Bridge control wire format
 PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing control traffic (GCS heartbeat, ARM/DISARM, RC override, neutral and release) is deliberately encoded as MAVLink 1 from system 255 / component 190 so it remains compatible with the TeleRC ESP32-S3 command filter and Android TeleRC control envelope.
+
+
+# Keyboard driving (v0.1.2rc3 candidate)
+
+Select **Keyboard — WASD / arrows**, Apply Settings, then focus the keyboard driving area and enable PC Control with all keys released. W/Up moves forward, S/Down reverses, A/Left and D/Right steer, and Space commands neutral brake. Existing sensitivity and throttle-limit settings apply. Focus loss stops control; no automatic re-enable. No joystick or firmware change is required. See [keyboard instructions](docs/KEYBOARD.md).
 

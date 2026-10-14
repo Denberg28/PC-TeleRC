@@ -76,7 +76,10 @@ def build_targeted_status(
     fresh = wheel.connected and control_is_fresh(
         wheel.frame, now=now, stale_after=settings.controller_timeout
     )
-    if not devices:
+    if settings.input_source == "keyboard":
+        controller = _item("PASS" if fresh else "FAIL", "Controller",
+                           "Keyboard • WASD / arrows / Space" if fresh else (wheel.error or "Keyboard input stale."))
+    elif not devices:
         controller = _item("FAIL", "Controller", "No controller detected.")
     elif selected and match is None:
         controller = _item("FAIL", "Controller", "Selected controller missing.")
@@ -91,7 +94,8 @@ def build_targeted_status(
     mapped = [settings.steer_axis, settings.throttle_axis]
     if settings.pedal_mode == "separate":
         mapped.append(settings.brake_axis)
-    invalid = [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped
+    invalid = ([] if settings.input_source == "keyboard" else
+               [axis for axis in mapped if axis < 0 or axis > max_axis] if wheel.axes else mapped)
     mapping_check = validate_mapping(settings, len(wheel.axes) if wheel.axes else None)
     if settings.steering_channel == settings.throttle_channel:
         mapping = _item("FAIL", "Mapping", "Steer/throttle share one RC channel.")
@@ -114,6 +118,8 @@ def build_targeted_status(
         safety = _item("WARN", "Safety", "Fail-safe latched.")
     elif mav.control_enabled:
         safety = _item("PASS", "Safety", "PC Control ACTIVE.")
+    elif settings.input_source == "keyboard" and wheel.frame is not None and not wheel.frame.acquisition_ready:
+        safety = _item("WARN", "Safety", "Release all driving keys before enabling control.")
     elif wheel.frame is not None and not wheel.frame.neutral:
         safety = _item("WARN", "Safety", "Throttle not neutral.")
     elif (settings.link_mode in ("telerc_udp", "lora_usb") and wheel.frame is not None
@@ -154,7 +160,8 @@ def build_diagnostic_report(
         _item("INFO", "Vehicle", f"sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • {mav.mode or '—'}"),
         _item("INFO", "Traffic", f"RX {mav.rx_messages} • TX {mav.tx_messages} • foreign HB {mav.ignored_heartbeats}"),
         _item("INFO", "Endpoint", (f"Wi-Fi {settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}" if settings.link_mode == "telerc_udp" else f"LoRa SX1262 USB {settings.lora_port or 'unselected'} @115200" if settings.link_mode == "lora_usb" else f"ELRS USB {settings.elrs_port or 'unselected'} @460800")),
-        _item("INFO", "Axes", f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
+        _item("INFO", "Input", "Keyboard • WASD / arrows / Space" if settings.input_source == "keyboard" else
+              f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
         _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • throttle {settings.throttle_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
         _item("INFO", "Platform", f"PC TeleRC {app_version} • {platform.system()} {platform.release()}"),
         _item("INFO", "Field log", str(log_path())),
@@ -183,4 +190,5 @@ def build_diagnostic_report(
     lines.extend(f"[{item.level}] {item.name}: {item.detail}" for item in items)
     lines.extend(["", "Diagnostics are read-only and do not alter control state."])
     return DiagnosticReport(tuple(items), "\n".join(lines))
+
 

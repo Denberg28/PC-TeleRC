@@ -19,7 +19,7 @@ def validate_mapping(settings: AppSettings, axis_count: int | None = None) -> Sa
         return SafetyDecision(False, "lora_mapping", "TeleRC LoRa requires CH1 steering and CH2 drive.")
     if settings.steering_channel == settings.throttle_channel:
         return SafetyDecision(False, "duplicate_rc_channel", "Steering and throttle must use different RC channels.")
-    if axis_count is not None:
+    if axis_count is not None and settings.input_source == "wheel":
         mapped = [settings.steer_axis, settings.throttle_axis]
         if settings.pedal_mode == "separate":
             mapped.append(settings.brake_axis)
@@ -44,6 +44,8 @@ def can_enable_control(
         return SafetyDecision(False, "link_unhealthy", "MAVLink heartbeat is not healthy.")
     if not control_is_fresh(frame, now=now, stale_after=settings.controller_timeout):
         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
+    if settings.input_source == "keyboard" and not frame.acquisition_ready:
+        return SafetyDecision(False, "keys_held", "Release all driving keys before enabling PC control or arming.")
     if frame is None or not frame.neutral:
         return SafetyDecision(False, "throttle_not_neutral", "Release throttle/brake to neutral before enabling PC control.")
     if settings.link_mode in ("lora_usb", "telerc_udp") and abs(frame.steering) > 0.05:
@@ -87,3 +89,4 @@ def can_continue_control(
     if not control_is_fresh(frame, now=now, stale_after=settings.controller_timeout):
         return SafetyDecision(False, "controller_stale", "Controller input is missing or stale.")
     return SafetyDecision(True, "ok", "Active PC control prerequisites satisfied.")
+

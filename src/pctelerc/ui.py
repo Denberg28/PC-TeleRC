@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import time
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
@@ -14,6 +14,7 @@ from . import __version__
 from .calibration_dialog import CalibrationDialog
 from .config import AppSettings, load_settings, save_settings
 from .controller import WheelService
+from .keyboard import InputService, KeyboardService
 from .core import LinkState
 from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
@@ -64,14 +65,17 @@ class MainWindow(QMainWindow):
         self._connected_settings = replace(self.settings)
 
         self.wheel = WheelService()
+        self.keyboard = KeyboardService()
+        self.inputs = InputService(self.wheel, self.keyboard)
         self.mav = MavlinkService()
-        self.mav.set_control_source(self.wheel.snapshot)
+        self.mav.set_control_source(self.inputs.snapshot)
 
         self._build()
         self._apply_settings_to_widgets()
         self._wire_buttons_and_fields()
 
         self.wheel.configure(self.settings)
+        self.inputs.configure(self.settings)
         self.wheel.start()
         self.mav.configure(self.settings)
         self.mav.start()
@@ -79,6 +83,12 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._refresh)
         self.timer.start(50)
+        self.keyboard_timer = QTimer(self)
+        self.keyboard_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self.keyboard_timer.timeout.connect(self._sample_keyboard)
+        self.keyboard_timer.start(20)
+        QApplication.instance().installEventFilter(self)
+        self._update_input_fields()
 
     def _build(self):
         root = QWidget()
@@ -90,7 +100,7 @@ class MainWindow(QMainWindow):
         title = QLabel("PC TeleRC")
         title.setObjectName("Title")
         top.addWidget(title)
-        subtitle = QLabel("Windows MAVLink rover bridge + wheel controller")
+        subtitle = QLabel("MAVLink rover bridge • wheel / keyboard")
         subtitle.setObjectName("Muted")
         top.addWidget(subtitle)
         top.addStretch()
@@ -163,7 +173,16 @@ class MainWindow(QMainWindow):
         connection.addStretch()
         grid.addWidget(connection_card, 0, 0)
 
-        wheel_card, wheel_layout = card("2. PXN / Game Controller")
+        wheel_card, wheel_layout = card("2. Driving Input")
+        self.input_source = QComboBox()
+        self.input_source.addItem("Wheel / game controller", "wheel")
+        self.input_source.addItem("Keyboard — WASD / arrows", "keyboard")
+        wheel_layout.addWidget(self.input_source)
+        self.keyboard_pad = QLabel("Click here to drive\nW / ↑ forward • S / ↓ reverse\nA / ← left • D / → right\nHold Space: brake / neutral")
+        self.keyboard_pad.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.keyboard_pad.setStyleSheet("QLabel { padding:12px; border:1px solid #344458; border-radius:6px; } QLabel:focus { border:2px solid #1677ff; }")
+        self.keyboard_pad.setToolTip("Enable PC Control with all keys released. Focus loss stops control; re-enable manually. Space commands neutral, not reverse torque.")
+        wheel_layout.addWidget(self.keyboard_pad)
         device_row = QHBoxLayout()
         self.device_combo = QComboBox()
         self.select_btn = QPushButton("Use selected")
@@ -178,6 +197,7 @@ class MainWindow(QMainWindow):
         wheel_layout.addWidget(self.calibrate_btn)
 
         wheel_form = QFormLayout()
+        self.wheel_form = wheel_form
         self.pedal_mode = QComboBox()
         self.pedal_mode.addItem("Separate throttle + brake", "separate")
         self.pedal_mode.addItem("Combined pedal axis", "combined")
@@ -269,7 +289,7 @@ class MainWindow(QMainWindow):
 
         self.control_btn = QPushButton("Enable PC Control")
         self.control_btn.setObjectName("Primary")
-        self.control_btn.setToolTip("Enable RC override only with healthy MAVLink, a fresh wheel, and neutral throttle.")
+        self.control_btn.setToolTip("Enable RC override only with a healthy link and fresh selected input at neutral. Keyboard requires all driving keys released.")
         safety.addWidget(self.control_btn)
 
         self.diagnostics_btn = QPushButton("Diagnostics")
@@ -299,6 +319,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root)
 
     def _wire_buttons_and_fields(self):
+        self.input_source.currentIndexChanged.connect(self._update_input_fields)
+        self.control_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.arm_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.disarm_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         # Button audit: every operator action has exactly one explicit handler.
         self.reconnect_btn.clicked.connect(self._apply_and_reconnect)
         self.disconnect_btn.clicked.connect(self._disconnect_link)
@@ -316,6 +340,7 @@ class MainWindow(QMainWindow):
         self.disarm_btn.clicked.connect(lambda: self._vehicle_command(self.mav.disarm, allow_dirty=True))
 
         non_network = (
+            self.input_source,
             self.pedal_mode, self.steer_axis, self.throttle_axis, self.brake_axis,
             self.invert_steer, self.invert_throttle, self.invert_brake,
             self.deadzone, self.expo, self.steering_sensitivity, self.throttle_sensitivity, self.throttle_limit,
@@ -333,6 +358,63 @@ class MainWindow(QMainWindow):
                 signal.connect(lambda *_args, is_network=network: self._mark_dirty(is_network))
                 return
 
+    def _update_input_fields(self, *_):
+        keyboard = self.input_source.currentData() == "keyboard"
+        self.keyboard_pad.setVisible(keyboard)
+        for row in range(6):
+            self.wheel_form.setRowVisible(row, not keyboard)
+        for widget in (self.device_combo, self.select_btn, self.calibrate_btn, self.raw_axes):
+            widget.setVisible(not keyboard)
+        for widget in (self.device_combo, self.select_btn, self.calibrate_btn,
+                       self.pedal_mode, self.steer_axis, self.throttle_axis,
+                       self.brake_axis, self.invert_steer, self.invert_throttle,
+                       self.invert_brake, self.deadzone, self.expo):
+            widget.setEnabled(not keyboard)
+
+    def _stop_keyboard(self):
+        self.keyboard.set_active(False)
+        if self.settings.input_source == "keyboard" and self.mav.snapshot().control_enabled:
+            self.mav.disable_control()
+            self.message.setText("Keyboard focus lost — PC Control stopped. Release keys and re-enable manually.")
+
+    def _sample_keyboard(self):
+        active = (self.settings.input_source == "keyboard"
+                  and self.input_source.currentData() == "keyboard"
+                  and QApplication.activeWindow() == self
+                  and QApplication.activeModalWidget() is None
+                  and QApplication.focusWidget() == self.keyboard_pad)
+        if not active:
+            self._stop_keyboard()
+        else:
+            self.keyboard.set_active(True)
+            self.keyboard.sample()
+
+    def eventFilter(self, watched, event):
+        kind = event.type()
+        if ((watched == self and kind == QEvent.Type.WindowDeactivate)
+                or (watched == self.keyboard_pad and kind == QEvent.Type.FocusOut)):
+            self._stop_keyboard()
+        key_events = (QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride)
+        if (kind in key_events and watched == self.keyboard_pad
+                and self.settings.input_source == "keyboard"):
+            names = {Qt.Key.Key_W: "w", Qt.Key.Key_A: "a", Qt.Key.Key_S: "s", Qt.Key.Key_D: "d",
+                     Qt.Key.Key_Up: "up", Qt.Key.Key_Left: "left", Qt.Key.Key_Down: "down",
+                     Qt.Key.Key_Right: "right", Qt.Key.Key_Space: "space"}
+            name = names.get(event.key())
+            if name is not None:
+                if kind == QEvent.Type.ShortcutOverride:
+                    event.accept()
+                elif kind == QEvent.Type.KeyRelease:
+                    self.keyboard.key(name, False, auto_repeat=event.isAutoRepeat())
+                elif event.modifiers() & (Qt.KeyboardModifier.ControlModifier
+                        | Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.MetaModifier):
+                    self._stop_keyboard()
+                else:
+                    self._sample_keyboard()
+                    self.keyboard.key(name, True, auto_repeat=event.isAutoRepeat())
+                return True
+        return super().eventFilter(watched, event)
+
     def _mark_dirty(self, network: bool):
         if self._restart_pending:
             self._restart_pending = False
@@ -348,6 +430,7 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_to_widgets(self):
         s = self.settings
+        self.input_source.setCurrentIndex(max(0, self.input_source.findData(s.input_source)))
         self.link_mode.setCurrentIndex(max(0, self.link_mode.findData(s.link_mode)))
         self.lora_port.setCurrentText(s.lora_port)
         self.elrs_port.setCurrentText(s.elrs_port)
@@ -375,6 +458,7 @@ class MainWindow(QMainWindow):
 
     def _settings_from_widgets(self) -> AppSettings:
         return AppSettings(
+            input_source=self.input_source.currentData(),
             link_mode=self.link_mode.currentData(),
             lora_port=self.lora_port.currentText().strip(),
             elrs_port=self.elrs_port.currentText().strip(),
@@ -411,6 +495,11 @@ class MainWindow(QMainWindow):
             return False
         self.settings = candidate
         self.wheel.configure(self.settings)
+        self.keyboard.set_active(False)
+        self.inputs.configure(self.settings)
+        if self.settings.input_source == "keyboard":
+            self.keyboard_pad.setFocus()
+            self._sample_keyboard()
         active_settings = self.settings
         if self._network_dirty:
             # Save the radio draft without redirecting the live session.
@@ -529,6 +618,8 @@ class MainWindow(QMainWindow):
         self.message.setText("Controller selection saved.")
 
     def _calibrate_controller(self):
+        if self.input_source.currentData() == "keyboard":
+            return
         snapshot = self.wheel.snapshot()
         if not snapshot.connected:
             QApplication.beep()
@@ -570,7 +661,7 @@ class MainWindow(QMainWindow):
 
         self._diagnostics_window = DiagnosticsDialog(
             settings=self.settings,
-            wheel=self.wheel,
+            wheel=self.inputs,
             mav=self.mav,
             state_provider=state_provider,
             parent=self,
@@ -604,7 +695,7 @@ class MainWindow(QMainWindow):
             QApplication.beep()
 
     def _refresh(self):
-        wheel = self.wheel.snapshot()
+        wheel = self.inputs.snapshot()
         mav = self.mav.snapshot()
 
         devices = self.wheel.devices()
@@ -673,8 +764,10 @@ class MainWindow(QMainWindow):
                                   "Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
-        self.calibrate_btn.setEnabled(wheel_ok)
+        self.calibrate_btn.setEnabled(self.input_source.currentData() == "wheel" and self.wheel.snapshot().connected)
         neutral_ok = wheel.frame is not None and wheel.frame.neutral
+        if self.settings.input_source == "keyboard" and wheel.frame is not None:
+            neutral_ok = neutral_ok and wheel.frame.acquisition_ready
         if self.settings.link_mode in ("telerc_udp", "lora_usb"):
             neutral_ok = neutral_ok and abs(wheel.frame.steering) <= .05
         self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
@@ -685,6 +778,9 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        QApplication.instance().removeEventFilter(self)
+        self.keyboard_timer.stop()
+        self.keyboard.set_active(False)
         self.timer.stop()
         self._restart_pending = False
         self._restart_generation += 1
@@ -696,4 +792,5 @@ class MainWindow(QMainWindow):
         if not self._settings_dirty:
             save_settings(self.settings)
         event.accept()
+
 

@@ -4,7 +4,9 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.2rc2 — LilyGO 0.5.0, sketch pairing, 30 s OLED sleep/BOOT wake and ordered NODE relays. Stable v0.1.1 remains Latest.
+0.1.2rc3 — selectable keyboard WASD/arrows and Space neutral brake; retains rc2 LilyGO 0.5.0. Stable v0.1.1 remains Latest.
+
+Keyboard requires focus in its driving area, all keys released for enable/ARM, and manual enable after focus loss or a GUI stall. Space has neutral priority and blocks held directions until release/repress. Never refresh keyboard timestamps in snapshot reads. The dedicated keyboard event-loop timer intentionally expires if the GUI stalls; recovered acquisition changes session. Wheel input still comes directly from WheelService.snapshot through InputService without GUI polling. Source/settings changes disable control. The keyboard candidate workflow builds application packages only; firmware is unchanged and remains the rc2 baseline.
 
 Preserve the wheel connection session in ControlFrame; new instances require manual enable. Wi-Fi enable/ARM requires centered steering and CH1–CH4, matching bridge firmware. Firmware diagnostics preserve the last stop; do not increase watchdog thresholds to conceal electrical faults. See REVIEW-DROPOUTS.md and the conditional motor-side parameter patch.
 
@@ -73,3 +75,4 @@ LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys
 
 
 PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.
+

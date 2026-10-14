@@ -1,0 +1,9 @@
+PC TeleRC v0.1.2rc3 keyboard candidate
+Baseline: f07d310b6fedf855a50ed788bb5f8c13456359f2 (dev/lilygo-relays-v0.1.2rc2)
+Local runtime: Python 3.12, PySide6 6.11.2, pymavlink 2.4.50, pygame-ce 2.5.8, pyserial 3.5, pytest 9.1.1.
+Application regression: 164 passed (140 existing + 24 keyboard/input/Qt cases).
+Source compilation and whitespace checks: passed.
+Keyboard UI inspected at 1180 x 720; wheel-only fields hidden in keyboard mode.
+Covered: WASD/arrows, aliases/opposing keys, simultaneous steer/drive, release-to-neutral, Space priority, release/repress after brake, Qt repeat events, focus loss, settings typing, source edits, stale samples, recovered-session stops, source persistence, sensitivity/limit application, keyboard diagnostics without a joystick, and existing wheel/radio regression.
+Windows builds: validated by keyboard-candidate.yml before attaching artifacts to a draft candidate.
+Firmware unchanged. Hardware braking, RF range and physical failsafe timing remain unverified.

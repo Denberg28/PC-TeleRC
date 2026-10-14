@@ -9,6 +9,7 @@ permissions:
   contents: write
 jobs:
   prepare:
+    if: github.ref != 'refs/heads/dev/keyboard-v0.1.2rc3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -178,3 +179,4 @@ jobs:
               release_id: release.id, target_commitish: context.sha, draft: true,
               prerelease: true, make_latest: 'false'});
             core.info('Validated candidate draft v0.1.2rc2 with complete downloads: ' + published.data.html_url);
+

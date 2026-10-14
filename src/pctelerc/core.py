@@ -25,6 +25,7 @@ class ControlFrame:
     throttle: float
     timestamp: float
     session: int = 0
+    acquisition_ready: bool = True
     @property
     def neutral(self) -> bool:
         return abs(self.throttle) <= 0.05
@@ -80,4 +81,5 @@ def control_is_fresh(frame: ControlFrame | None, *, now: float | None = None, st
     now = time.monotonic() if now is None else now
     return (all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp))
             and now - frame.timestamp <= stale_after)
+
 
