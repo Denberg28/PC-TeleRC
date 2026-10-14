@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
         form = QFormLayout()
         self.connection_form = form
         self.link_mode = QComboBox()
-        self.link_mode.addItem("ESP32-S3 · Wi-Fi", "telerc_udp")
+        self.link_mode.addItem("ESP32-S3 / LilyGO · Wi-Fi", "telerc_udp")
         self.link_mode.addItem("LilyGO T3S3 SX1262 · LoRa", "lora_usb")
         self.link_mode.addItem("HGLRC T ONE 900 MHz · ELRS", "elrs_serial")
         self.link_mode.setAccessibleName("Radio connection")
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
 
         arm_row = QHBoxLayout()
         self.arm_btn = QPushButton("ARM")
-        self.arm_btn.setToolTip("Send MAV_CMD_COMPONENT_ARM_DISARM only when link and neutral-controller checks pass.")
+        self.arm_btn.setToolTip("Send explicit ARM after neutral/link checks. For LilyGO Wi-Fi, enable PC Control at neutral first.")
         self.disarm_btn = QPushButton("DISARM")
         self.disarm_btn.setObjectName("Danger")
         self.disarm_btn.setToolTip("Send an explicit disarm command to the linked vehicle.")
@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
         self.lora_setup_btn.setVisible(mode == "lora_usb")
         self.guide.setText("Verify radio-loss stop and transmitter takeover before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
         self.link_hint.setText({
-            "telerc_udp": "Join the ESP32 Wi-Fi network. MAVLink UDP uses port 14550.",
+            "telerc_udp": "Join TeleRC-Rover Wi-Fi. ESP32-S3 and LilyGO use UDP 14550.",
             "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Use the matching BASE/ROVER firmware; supports ArduRover MANUAL or the legacy DIRECT motor controller.",
             "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
         }[mode])

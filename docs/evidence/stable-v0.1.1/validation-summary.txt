@@ -1,0 +1,4 @@
+Application: 130 tests pass locally.
+Firmware: 19 actual-sketch host variants pass with address/undefined-behavior sanitizers.
+Target and Windows builds: release workflow required; consult its final result.
+Physical HIL: not performed.

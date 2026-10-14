@@ -4,13 +4,13 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.1rc7 — PWM noise capture and bounded USB diagnostics, retaining independent sensitivities.
+0.1.1 — user-requested stable consolidation: LilyGO Wi-Fi/LoRa 0.3.1, PWM converter 1.0.5, independent sensitivities.
 
 Preserve the wheel connection session in ControlFrame; new instances require manual enable. Wi-Fi enable/ARM requires centered steering and CH1–CH4, matching bridge firmware. Firmware diagnostics preserve the last stop; do not increase watchdog thresholds to conceal electrical faults. See REVIEW-DROPOUTS.md and the conditional motor-side parameter patch.
 
 The control worker reads WheelService.snapshot directly; never route control input through the GUI timer. Preserve sample acquisition timestamps and keep real stale-input stops. Recovered heartbeats preserve a latched stop reason until manual re-enable.
 
-Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lora_usb, elrs_serial. Separate saved lora_port/elrs_port; no pairing credentials in AppSettings. Publish candidates as drafts; v0.1.0a10 remains stable/Latest.
+Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lora_usb, elrs_serial. Separate saved lora_port/elrs_port; no pairing credentials in AppSettings. The user explicitly requested the next stable release on 14 October 2026. Publish v0.1.1 only after all application/firmware/target builds and download checks pass; mark it Latest. Keep v0.1.0a10 available as the previous stable rollback. Future unpromoted candidates remain drafts.
 
 ## Non-negotiable safety behavior
 - Never auto-arm.
@@ -62,14 +62,14 @@ Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lor
 Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel mapping, measured controller/Wi-Fi fail-safe timing, then lock a first tagged test release.
 
 ## Radio profiles
-- LoRa uses CRC-framed native CDC compatible with TeleRC firmware commit 67b2cf5137989c1a6a65a4b02af960105d04afa3. Verify active SX1262 BASE, 115200, DTR high/RTS low, CH1/CH2. DIRECT motor profile only. Initial FAILSAFE sends neutral only, with a bounded DIRECT acquisition window.
+- LoRa uses CRC-framed native CDC compatible with TeleRC firmware commit 67b2cf5137989c1a6a65a4b02af960105d04afa3. Verify active SX1262 BASE, 115200, DTR high/RTS low, CH1/CH2. INFO_V2 advertises the ARDUROVER backend; retain legacy INFO_V1 DIRECT support with neutral-only acquisition.
 - ELRS uses raw MAVLink USB at 460800, DTR/RTS low, 5 Hz overrides. No ordinary CRSF, automatic firmware flashing, or validated T ONE/Pocket arbitration.
 - Apply Settings must not redirect a live session. Apply & Reconnect releases/closes the old profile before configuring/opening the new profile. Disconnect cancels pending restart callbacks.
 - Physical radio range, failsafe latency, and named hardware are unverified until HIL evidence exists.
 
 ELRS reliability: 20 Hz safety checks separate from 5 Hz drive sends; monitor-only sessions never release RC. Serialize enable/disable/configure/ARM with sends. Fresh ArduRover autopilot heartbeat and input required. Missed watchdog deadlines and USB failures latch OFF. Purge the local output queue before owned neutral/release; USB write success never proves RF delivery. Reconnect timers carry a generation token and frozen applied settings; edits cancel them. Preserve original Wi-Fi/LoRa control rates and protocol frames.
 
-LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. New firmware is a direct SX1262 pair; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
+LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys1/comp1 heartbeat, MANUAL mode, fresh remote status and neutral acquisition. Remote stop counter/boot changes latch PC control OFF. Legacy INFO_V1 remains DIRECT-only. Current LilyGO firmware 0.3.1 selects Wi-Fi or direct SX1262 LoRa at compile time; preserve old mesh development separately. Never fabricate an FC heartbeat or skip receiver takeover.
 
 
 PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.

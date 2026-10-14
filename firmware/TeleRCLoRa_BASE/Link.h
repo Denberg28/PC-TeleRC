@@ -1,5 +1,5 @@
 #pragma once
-// TeleRC SX1262 ArduRover direct pair 0.2.1. No Wi-Fi in the driving path.
+// TeleRC SX1262 ArduRover direct pair 0.3.1. No Wi-Fi in the driving path.
 #include <Arduino.h>
 #include <algorithm>
 #include <cctype>
@@ -8,6 +8,7 @@
 #include <Preferences.h>
 #include <esp_system.h>
 #include "MeshCore.h"
+#include "LinkLed.h"
 
 constexpr uint8_t BASE=1, ROVER=3;
 static_assert(TELERC_ROLE==BASE || TELERC_ROLE==ROVER, "Select BASE or ROVER");
@@ -41,6 +42,13 @@ TxSlot queue[4];
 struct UsbSlot {uint8_t data[telerc::UART_MAX+6]={};size_t n=0,offset=0;uint32_t at=0;bool expires=false;};
 UsbSlot usbQueue[8];
 uint8_t usbHead=0,usbTail=0,usbCount=0;
+telerc::LinkLed linkLed;
+
+void serviceLed(){
+ static int previous=HIGH; // setup() starts with the LED on.
+ int next=linkLed.on(millis(),radioOK&&!maintenance)?HIGH:LOW;
+ if(next!=previous){digitalWrite(37,next);previous=next;}
+}
 
 void IRAM_ATTR onRadio(){radioIRQ=true;}
 bool validConfig(const Config&v){
@@ -224,11 +232,13 @@ void pumpRadio(){
                       (p.kind!=mesh::COMMAND||p.origin!=1||p.sender!=1||p.dest!=2))){++rejectCount;return;}
  if(!seen.admit(p,now)){++rejectCount;return;}++rxCount;
  if(TELERC_ROLE==BASE){
+  linkLed.received(now); // Authenticated, addressed, nonduplicate rover poll.
   forwardStatus(p);
   if(p.n&&mesh::telemetryClass(p.body,p.n)>=0)usbSend(p.body,p.n,true);
   mesh::Packet response=makePacket(mesh::COMMAND,p.token);response.n=commands.take(response.body,millis());enqueue(response,3);
  }else{
   if(!challenge.consume(p.token,now)){++rejectCount;return;}
+  linkLed.received(now); // Authenticated reply to a live rover challenge.
   acceptCommands(p.body,p.n);
  }
 }
@@ -262,6 +272,10 @@ void sendPoll(){
  challenge.active=false;if(enqueue(p,0))pollAt=now;
 }
 void setup(){
+ // T3-S3 V1.2/V1.3 user LED is active HIGH on GPIO37.
+ // Start lit immediately; loop() blinks until valid peer traffic arrives.
+ // No delay or USB wait is added for LED indication.
+ pinMode(37,OUTPUT);digitalWrite(37,HIGH);
  Serial.begin(115200);
 #if ARDUINO_USB_CDC_ON_BOOT
  Serial.setTxTimeoutMs(1);
@@ -298,6 +312,5 @@ void loop(){
  }
  pumpUsb();pumpRadio();
  if(radioOK&&TELERC_ROLE==ROVER)sendPoll();
- pumpTx();serviceUsbTx();delay(1);
+ pumpTx();serviceUsbTx();serviceLed();delay(1);
 }
-
