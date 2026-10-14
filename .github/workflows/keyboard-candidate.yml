@@ -1,13 +1,12 @@
 name: Keyboard v0.1.2rc3 Windows candidate
 on:
   push:
-    branches: [dev/keyboard-v0.1.2rc3]
+    branches: [main, dev/keyboard-v0.1.2rc3, dev/lilygo-relays-v0.1.2rc2]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   windows:
-    if: github.ref == 'refs/heads/dev/keyboard-v0.1.2rc3'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +49,7 @@ jobs:
           name: PC-TeleRC-Windows-v0.1.2rc3
           path: windows-release/*
       - name: Attach verified application builds to draft candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/keyboard-v0.1.2rc3'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.2rc3
