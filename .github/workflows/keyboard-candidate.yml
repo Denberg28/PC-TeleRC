@@ -1,0 +1,72 @@
+name: Keyboard v0.1.2rc3 Windows candidate
+on:
+  push:
+    branches: [main, dev/keyboard-v0.1.2rc3, dev/lilygo-relays-v0.1.2rc2]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip check
+          python -m compileall -q src tests main.py
+      - name: Keyboard safety and full application regression
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+      - name: Build Windows executable
+        run: pyinstaller --noconfirm --clean PC-TeleRC.spec
+      - name: Package portable app and source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force windows-release | Out-Null
+          Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
+          Copy-Item docs\KEYBOARD.md dist\PC-TeleRC\KEYBOARD.md
+          Copy-Item docs\LILYGO-SKETCH-RELAYS.md dist\PC-TeleRC\LILYGO-SKETCH-RELAYS.md
+          Copy-Item docs\LILYGO-WIFI-LORA.md dist\PC-TeleRC\LILYGO-WIFI-LORA.md
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath windows-release\PC-TeleRC-portable-v0.1.2rc3.zip
+          git archive --format=zip --output=windows-release/PC-TeleRC-source-v0.1.2rc3.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.2rc3.exe windows-release\
+          Get-ChildItem windows-release\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii windows-release\SHA256-windows.txt
+      - name: Attach verified application builds to draft candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/keyboard-v0.1.2rc3'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.2rc3
+          target_commitish: ${{ github.sha }}
+          name: PC TeleRC v0.1.2rc3 — Keyboard WASD, arrows and Space brake
+          draft: true
+          prerelease: true
+          make_latest: false
+          body_path: docs/releases/v0.1.2rc3.md
+          files: windows-release/*
+      - name: Verify draft download assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/keyboard-v0.1.2rc3'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.rest.repos.listReleases({...context.repo});
+            const release = releases.data.find(r => r.tag_name === 'v0.1.2rc3');
+            if (!release || !release.draft) throw new Error('Keyboard draft candidate missing');
+            const assets = await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id});
+            for (const name of ['PC-TeleRC-portable-v0.1.2rc3.zip', 'PC-TeleRC-Setup-v0.1.2rc3.exe',
+                                'PC-TeleRC-source-v0.1.2rc3.zip', 'SHA256-windows.txt']) {
+              const asset = assets.data.find(a => a.name === name);
+              if (!asset || asset.size <= 0 || asset.state !== 'uploaded') throw new Error('Missing download: ' + name);
+            }

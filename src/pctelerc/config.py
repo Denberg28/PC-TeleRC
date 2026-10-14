@@ -18,6 +18,7 @@ class AppSettings:
     target_host: str = ""
     target_port: int = 14550
     wheel_guid: str = ""
+    input_source: str = "wheel"
     steer_axis: int = 0
     throttle_axis: int = 1
     brake_axis: int = 2
@@ -37,6 +38,8 @@ class AppSettings:
 
     def validate(self) -> "AppSettings":
         self.settings_version = CURRENT_SETTINGS_VERSION
+        if self.input_source not in {"wheel", "keyboard"}:
+            self.input_source = "wheel"
         if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial"}:
             self.link_mode = "telerc_udp"
         self.lora_port = str(self.lora_port).strip()
@@ -106,4 +109,5 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> Path:
     tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
     return target
+
 

@@ -1,3 +1,12 @@
+# v0.1.2rc3 — keyboard driving
+
+- Added selectable keyboard input: WASD / arrows, simultaneous steer/drive, and Space brake priority.
+- Brake sends neutral; held directions require release/repress after braking.
+- Dedicated driving focus prevents accidental input in settings; focus loss stops control with manual re-enable.
+- Fresh acquisition timestamps, session changes after GUI stalls, and all-keys-released ARM/control gates.
+- Existing independent sensitivities, wheel input, RC mapping and radio protocols retained.
+- Added keyboard and Qt focus regression tests and a dedicated Windows application candidate build.
+
 # v0.1.2rc2 — sketch pairing and relays
 
 - LilyGO 0.5.0 adds sketch-level eight-character password/frequency, overriding old NVS when set.
@@ -97,4 +106,5 @@
 
 ## 0.1.0a6 — 2026-10-01
 - Full code-review baseline with dependency integrity and UI symmetry checks.
+
 

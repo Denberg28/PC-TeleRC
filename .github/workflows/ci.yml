@@ -10,10 +10,17 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - name: Identify candidate version
+        id: version
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Prepare test candidate draft
-        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-relays-v0.1.2rc2'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-relays-v0.1.2rc2' && steps.version.outputs.version == '0.1.2rc2'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.2rc2
@@ -25,6 +32,7 @@ jobs:
           body_path: docs/releases/v0.1.2rc2.md
   firmware:
     needs: prepare
+    if: needs.prepare.outputs.version == '0.1.2rc2'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +81,7 @@ jobs:
           files: release-dist/*
   lilygo:
     needs: prepare
+    if: needs.prepare.outputs.version == '0.1.2rc2'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -102,6 +111,7 @@ jobs:
           files: release-dist/*
   windows:
     needs: prepare
+    if: needs.prepare.outputs.version == '0.1.2rc2'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,8 +161,8 @@ jobs:
           make_latest: false
           files: windows-release/*
   release:
-    needs: [firmware, lilygo, windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-relays-v0.1.2rc2'
+    needs: [prepare, firmware, lilygo, windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lilygo-relays-v0.1.2rc2' && needs.prepare.outputs.version == '0.1.2rc2'
     runs-on: ubuntu-latest
     steps:
       - name: Verify complete candidate assets and retain draft
@@ -178,3 +188,4 @@ jobs:
               release_id: release.id, target_commitish: context.sha, draft: true,
               prerelease: true, make_latest: 'false'});
             core.info('Validated candidate draft v0.1.2rc2 with complete downloads: ' + published.data.html_url);
+
