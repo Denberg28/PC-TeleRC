@@ -1,5 +1,5 @@
 #define MyAppName "PC TeleRC"
-#define MyAppVersion "0.1.1rc5"
+#define MyAppVersion "0.1.1rc6"
 #define MyAppPublisher "Denberg28"
 #define MyAppExeName "PC-TeleRC.exe"
 
@@ -21,7 +21,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\installer-dist
-OutputBaseFilename=PC-TeleRC-Setup-v0.1.1rc5
+OutputBaseFilename=PC-TeleRC-Setup-v0.1.1rc6
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -52,3 +52,4 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch PC TeleRC"; Flags: nowai
 [UninstallDelete]
 ; Deliberately do not remove %LOCALAPPDATA%\PC-TeleRC.
 ; Controller calibration/settings/logs are preserved across upgrades and uninstall.
+
