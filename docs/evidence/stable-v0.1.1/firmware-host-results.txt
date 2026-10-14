@@ -1,0 +1,74 @@
+test_converter-api2
+PASS startup without valid input stays stopped
+PASS isolated invalid pulse/unmatched edge retains last valid command
+PASS continuous invalid pulses stop all motors at last-valid timeout
+PASS valid non-neutral signal cannot resume after timeout
+PASS neutral recovery requires full 300 ms dwell
+PASS total signal loss stops all four outputs
+PASS timer rollover preserves timeout
+PASS invalid-only startup cannot enable source
+PASS PWM initialization failure keeps all motors stopped
+PASS diagnostics include rejection/stop/uptime/reset fields
+test_power-api2
+PASS immediate first step; full-duty ramp exactly 32 ticks (~160 ms)
+PASS reversal crosses zero then drives next tick; no added dwell or dual PWM
+PASS 60 ms scheduler jitter keeps control active without catch-up burst
+PASS late control loop latches off despite fresh pulses
+PASS neutral recovery and explicit brownout diagnostics
+test_dropouts-api2
+PASS 2000 rapid differential ticks and isolated bad edges keep control active
+PASS M6 timeout record survives recovery and diagnostics do not overflow
+test_noise_recovery-api2
+PASS 20 us low notch inside valid PWM cannot become a false reverse command
+PASS 3000 noisy differential frames retain correct commands without a neutral latch
+PASS real timeout and 300 ms neutral recovery remain; noise cannot fake neutral
+PASS contended USB diagnostics stay bounded and cannot create a 150 ms loop stop
+test_converter-api3
+PASS startup without valid input stays stopped
+PASS isolated invalid pulse/unmatched edge retains last valid command
+PASS continuous invalid pulses stop all motors at last-valid timeout
+PASS valid non-neutral signal cannot resume after timeout
+PASS neutral recovery requires full 300 ms dwell
+PASS total signal loss stops all four outputs
+PASS timer rollover preserves timeout
+PASS invalid-only startup cannot enable source
+PASS PWM initialization failure keeps all motors stopped
+PASS diagnostics include rejection/stop/uptime/reset fields
+test_power-api3
+PASS immediate first step; full-duty ramp exactly 32 ticks (~160 ms)
+PASS reversal crosses zero then drives next tick; no added dwell or dual PWM
+PASS 60 ms scheduler jitter keeps control active without catch-up burst
+PASS late control loop latches off despite fresh pulses
+PASS neutral recovery and explicit brownout diagnostics
+test_dropouts-api3
+PASS 2000 rapid differential ticks and isolated bad edges keep control active
+PASS M6 timeout record survives recovery and diagnostics do not overflow
+test_noise_recovery-api3
+PASS 20 us low notch inside valid PWM cannot become a false reverse command
+PASS 3000 noisy differential frames retain correct commands without a neutral latch
+PASS real timeout and 300 ms neutral recovery remain; noise cannot fake neutral
+PASS contended USB diagnostics stay bounded and cannot create a 150 ms loop stop
+bridge-mode0
+PASS PC sparse CH1/CH2 and startup neutral gate
+PASS CRC, length, mixed release rejection
+PASS timeout stops only owned channels and rejects non-neutral recovery
+PASS sparse release and monitor-only duplicate release
+PASS original four-channel format and explicit disconnect
+PASS explicit normal ARM and heartbeat whitelist; force params rejected
+PASS short UART write latches control off
+PASS blocked USB does not suspend timeout; millis wrap handled
+bridge-mode1
+PASS ELRS exclusivity, uplink, signed maximum telemetry, partial timeout, disconnected USB
+wifi-recovery
+PASS mode/IP/AP failures retry; UDP retry preserves visible channel-1 AP
+PASS healthy AP never restarted for zero clients or connected idle clients
+PASS detected AP loss recovers network with control released and neutral required
+PASS fixed password; no application Preferences storage needed
+SX1262 role 1: provisioning, 2000 rapid input cycles, neutral gate, ownership, timeout, FC loss, UART retry, authentication, replay, radio path, CDC stalls and CAD deadline passed
+SX1262 role 3: provisioning, 2000 rapid input cycles, neutral gate, ownership, timeout, FC loss, UART retry, authentication, replay, radio path, CDC stalls and CAD deadline passed
+PASS Wi-Fi startup, pins/AP identity, FC CRC, startup neutral, ARM neutral, drive/RC6 validation, 500 ms timeout, blocked USB, release/disconnect, pending stops, UART short write, AP/client loss and FC timeout
+PASS local endpoint/port lock, inactive peer handover, oversized datagram, heartbeat independent of command timeout, LED freshness, stale client queue purge and millis rollover
+PASS mode/IP/AP/UDP retries and idle AP preservation
+PASS LoRa role 3 host compilation, unconfigured maintenance and search LED
+PASS LoRa role 1 host compilation, unconfigured maintenance and search LED
+PASS: LED search, valid receipt, 500 ms expiry, recovery, radio disable, reboot and rollover

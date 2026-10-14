@@ -1,3 +1,11 @@
+# v0.1.1 — stable
+
+- Consolidates LilyGO Wi-Fi/LoRa 0.3.1 with link indication and PWM converter 1.0.5 glitch filtering.
+- Independent steering and throttle sensitivity retained.
+- Bounded USB diagnostics retained across all current board roles.
+- Separate compiled LilyGO rover Wi-Fi/LoRa targets and BASE, plus PWM and original ESP32 Wi-Fi/ELRS bridge builds.
+- Stable publication follows successful regression, target-build and download checks.
+
 # v0.1.1rc7
 
 - PWM converter 1.0.5 confirms falling edges after 30 us of low level; short in-pulse noise no longer splits valid commands.
