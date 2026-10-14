@@ -436,10 +436,10 @@ class MainWindow(QMainWindow):
         self.connection_form.setRowVisible(self.elrs_port, mode == "elrs_serial")
         self.refresh_ports_btn.setVisible(mode != "telerc_udp")
         self.lora_setup_btn.setVisible(mode == "lora_usb")
-        self.guide.setText("Verify the DIRECT motor watchdog and radio-loss stop before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
+        self.guide.setText("Verify radio-loss stop and transmitter takeover before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
         self.link_hint.setText({
             "telerc_udp": "Join the ESP32 Wi-Fi network. MAVLink UDP uses port 14550.",
-            "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Requires TeleRC LoRa firmware and the DIRECT motor controller.",
+            "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Use the matching BASE/ROVER firmware; supports ArduRover MANUAL or the legacy DIRECT motor controller.",
             "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
         }[mode])
 

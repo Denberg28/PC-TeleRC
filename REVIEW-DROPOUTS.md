@@ -1,3 +1,9 @@
+# Field clarification and rc5 continuation
+
+The user reports that the ground/bump stop clears after approximately three seconds once steering and pedals return to neutral, without manually re-enabling PC control. This matches neutral-gated bridge/converter recovery; it does not establish bridge overload or a measured brownout. The reported PC snapshot has HB0.9s/input0.032s and ACTIVE, so it does not capture the triggering event. The transmitter comparison remains ambiguous between powered/connected and transmitter-driven operation.
+
+rc5 adds a direct SX1262 BASE-to-ROVER path to test the suspected Wi-Fi interruption and gives the PC authenticated rover stop/boot information. It retains the motor converter and existing safety thresholds. Hardware results are still required. The full rc4 review follows as historical baseline evidence.
+
 # PC TeleRC — rapid steer/drive and bump dropout review
 
 Date: 14 October 2026. Candidate: PC source 0.1.1rc4, bridge 0.1.4, PWM converter 1.0.4.

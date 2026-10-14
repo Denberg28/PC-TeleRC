@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[1]
 output = root / 'release-dist'
 output.mkdir(exist_ok=True)
 excluded = {'__pycache__', '.git', '.pytest_cache', 'release-dist', 'dist', 'build',
-            'installer-dist', 'pc_telerc.egg-info'}
+            'installer-dist', 'firmware-build', 'windows-release', 'pc_telerc.egg-info'}
 files = sorted(p for p in root.rglob('*') if p.is_file() and not excluded.intersection(p.relative_to(root).parts))
 files = [p for p in files if p.suffix not in {'.pyc', '.pyo'}]
 
