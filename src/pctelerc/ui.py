@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import replace
 import time
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog,
+    QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog, QScrollArea, QTabWidget,
 )
 
 from . import __version__
@@ -19,22 +21,33 @@ from .core import LinkState
 from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
 from .lora_setup_widget import LoRaSetupWidget, refresh_ports
+from .camera import CameraView, stored_camera_url
+from .percent_slider import PercentSlider
+from .rover_map import RoverMap, position_fresh
 
 STYLE = """
-QWidget { background:#11161d; color:#e7edf5; font-family:'Segoe UI'; font-size:10pt; }
-QFrame#Card { background:#18202a; border:1px solid #2a3645; border-radius:10px; }
-QLabel#Title { font-size:18pt; font-weight:700; }
+QWidget { background:#10151c; color:#e7edf5; font-family:'Segoe UI'; font-size:9pt; }
+QLabel { background:transparent; }
+QFrame#Card { background:#17202b; border:1px solid #2a3645; border-radius:8px; }
+QLabel#Title { font-size:13pt; font-weight:700; }
 QLabel#Muted { color:#91a0b2; }
 QLabel#Good { color:#64d98b; font-weight:700; }
 QLabel#Warn { color:#ffc857; font-weight:700; }
 QLabel#Bad { color:#ff6b6b; font-weight:700; }
-QPushButton { background:#253244; border:1px solid #3b4d65; padding:7px 12px; border-radius:7px; }
+QPushButton { background:#253244; border:1px solid #3b4d65; padding:5px 9px; border-radius:6px; min-height:18px; }
 QPushButton:hover { border-color:#5c7392; }
 QPushButton:disabled { color:#677587; background:#1a222d; border-color:#273342; }
 QPushButton#Primary { background:#1677ff; font-weight:700; }
 QPushButton#Danger { background:#7a2831; }
 QComboBox QAbstractItemView { background:#18202a; color:#e7edf5; selection-background-color:#1677ff; selection-color:#ffffff; }
 QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox { background:#0f141a; border:1px solid #344458; border-radius:6px; padding:5px; }
+QSlider::groove:horizontal { height:4px; background:#344458; border-radius:2px; }
+QSlider::sub-page:horizontal { background:#38bdf8; border-radius:2px; }
+QSlider::handle:horizontal { background:#e2e8f0; width:12px; margin:-4px 0; border-radius:6px; }
+QTabWidget::pane { border:0; }
+QTabBar::tab { background:#17202b; padding:7px 10px; }
+QTabBar::tab:selected { color:#38bdf8; border-bottom:2px solid #38bdf8; }
+QScrollArea { border:0; }
 """
 
 def card(title: str):
@@ -50,10 +63,12 @@ def card(title: str):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, *, start_services=True):
         super().__init__()
         self.setWindowTitle(f"PC TeleRC {__version__}")
         self.resize(1180, 720)
+        self.setMinimumSize(900, 580)
+        self.setWindowIcon(QIcon(str(Path(__file__).parent / "assets" / "telerc.ico")))
         self.settings = load_settings()
         self._settings_dirty = False
         self._network_dirty = False
@@ -76,9 +91,11 @@ class MainWindow(QMainWindow):
 
         self.wheel.configure(self.settings)
         self.inputs.configure(self.settings)
-        self.wheel.start()
+        if start_services:
+            self.wheel.start()
         self.mav.configure(self.settings)
-        self.mav.start()
+        if start_services:
+            self.mav.start()
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._refresh)
@@ -224,17 +241,13 @@ class MainWindow(QMainWindow):
         wheel_form.addRow("Throttle axis", axis_row(self.throttle_axis, self.invert_throttle))
         wheel_form.addRow("Brake axis", axis_row(self.brake_axis, self.invert_brake))
 
-        self.deadzone = QDoubleSpinBox()
-        self.deadzone.setRange(0, .30)
-        self.deadzone.setSingleStep(.01)
-        self.expo = QDoubleSpinBox()
-        self.expo.setRange(0, 1)
-        self.expo.setSingleStep(.05)
-        self.steering_sensitivity = QSpinBox()
+        self.deadzone = PercentSlider(0,30)
+        self.expo = PercentSlider(0,100)
+        self.steering_sensitivity = PercentSlider()
         self.steering_sensitivity.setRange(25, 100)
         self.steering_sensitivity.setSuffix(" %")
         self.steering_sensitivity.setToolTip("Scale steering authority. 100% = full steering command; lower values reduce steering gain.")
-        self.throttle_sensitivity = QSpinBox()
+        self.throttle_sensitivity = PercentSlider()
         self.throttle_sensitivity.setRange(25, 100)
         self.throttle_sensitivity.setSuffix(" %")
         self.throttle_sensitivity.setToolTip("Scale forward/reverse pedal commands independently of steering, before the throttle limit. Neutral checks use the unscaled pedal input.")
@@ -260,7 +273,7 @@ class MainWindow(QMainWindow):
 
         safety_card, safety = card("3. Safety & Control")
         safety_form = QFormLayout()
-        self.throttle_limit = QSpinBox()
+        self.throttle_limit = PercentSlider()
         self.throttle_limit.setRange(5, 100)
         self.throttle_limit.setSuffix(" %")
         self.steer_channel = QSpinBox()
@@ -316,9 +329,167 @@ class MainWindow(QMainWindow):
         status.addWidget(guide)
         grid.addWidget(status_card, 1, 0, 1, 3)
 
-        self.setCentralWidget(root)
+        # Rehome the established controls into a compact flight-view shell.
+        # Their handlers and control-worker paths remain the same.
+        old_keyboard_pad = self.keyboard_pad
+        old_keyboard_pad.hide()
+        old_keyboard_pad.deleteLater()
+        self.keyboard_pad = CameraView()
+        self.camera_view = self.keyboard_pad
+        self.camera_view.setToolTip("Click the camera area for keyboard driving. WASD / arrows; hold Space for neutral brake. Focus loss disables PC Control.")
+        for layout, widget in ((wheel_form, self.steering_sensitivity),
+                               (wheel_form, self.throttle_sensitivity),
+                               (safety_form, self.throttle_limit), (form, self.link_mode)):
+            row = layout.takeRow(widget)
+            if row.labelItem and row.labelItem.widget():
+                row.labelItem.widget().deleteLater()
+        for widget in (self.input_source, self.arm_btn, self.disarm_btn, self.control_btn,
+                       self.diagnostics_btn, self.global_status, self.link_label,
+                       self.vehicle_label, self.controller_label, self.axis_label,
+                       self.safety_label, self.output_label, self.message, self.settings_state):
+            widget.setParent(None)
+        screen = QWidget()
+        screen_layout = QVBoxLayout(screen)
+        screen_layout.setContentsMargins(10, 8, 10, 8)
+        screen_layout.setSpacing(8)
+        header = QHBoxLayout()
+        self.brand_logo = QLabel()
+        self.brand_logo.setPixmap(QPixmap(str(Path(__file__).parent / "assets" / "telerc.png")).scaled(36,36,Qt.AspectRatioMode.KeepAspectRatio,Qt.TransformationMode.SmoothTransformation))
+        self.brand_logo.setFixedSize(36,36)
+        header.addWidget(self.brand_logo)
+        brand = QLabel(f"PC TeleRC\n{__version__}")
+        brand.setObjectName("Title")
+        header.addWidget(brand)
+        header.addSpacing(14)
+        self.link_mode.setMaximumWidth(220)
+        self.input_source.setMaximumWidth(190)
+        header.addWidget(self.link_mode)
+        header.addWidget(self.input_source)
+        header.addStretch()
+        header.addWidget(self.global_status)
+        self.global_status.setMinimumWidth(105)
+        self.settings_btn = QPushButton("Settings")
+        self.settings_btn.setCheckable(True)
+        self.settings_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        header.addWidget(self.settings_btn)
+        screen_layout.addLayout(header)
+        health = QHBoxLayout()
+        self.link_label.setMinimumWidth(220)
+        health.addWidget(self.link_label, 1)
+        self.telemetry_label = QLabel("GPS —   Speed —   Battery —")
+        health.addWidget(self.telemetry_label)
+        self.camera_status = QLabel("Camera off")
+        self.camera_status.setObjectName("Muted")
+        health.addStretch()
+        health.addWidget(self.camera_status)
+        screen_layout.addLayout(health)
+        self.camera_view.statusChanged.connect(self._camera_status_changed)
+        body = QHBoxLayout()
+        self.camera_surface = QWidget()
+        self.camera_surface.setMinimumWidth(480)
+        viewport = QGridLayout(self.camera_surface)
+        viewport.setContentsMargins(0,0,0,0)
+        viewport.addWidget(self.camera_view, 0, 0)
+        self.map_panel = QFrame()
+        self.map_panel.setObjectName("Card")
+        self.map_panel.setFixedSize(282,214)
+        map_layout = QVBoxLayout(self.map_panel)
+        map_layout.setContentsMargins(3,3,3,3)
+        map_layout.setSpacing(2)
+        self.rover_map = RoverMap()
+        map_layout.addWidget(self.rover_map,1)
+        map_buttons = QHBoxLayout()
+        map_buttons.addWidget(QLabel("Rover map"),1)
+        for text, step in (("−",-1),("+",1)):
+            button = QPushButton(text)
+            button.setFixedWidth(28)
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.clicked.connect(lambda _checked=False, value=step:self.rover_map.zoom(value))
+            map_buttons.addWidget(button)
+        map_layout.addLayout(map_buttons)
+        viewport.addWidget(self.map_panel,0,0,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignBottom)
+        body.addWidget(self.camera_surface,1)
+        self.settings_panel = QWidget()
+        self.settings_panel.setFixedWidth(338)
+        panel_layout = QVBoxLayout(self.settings_panel)
+        panel_layout.setContentsMargins(0,0,0,0)
+        self.settings_tabs = QTabWidget()
+        def tab(widget, title):
+            scroll=QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(widget)
+            self.settings_tabs.addTab(scroll,title)
+        tab(connection_card,"Link")
+        self.guide.setParent(connection_card)
+        connection.addWidget(self.guide)
+        input_page=QWidget(); input_layout=QVBoxLayout(input_page)
+        input_layout.setContentsMargins(0,0,0,0)
+        input_layout.addWidget(wheel_card)
+        input_layout.addWidget(safety_card)
+        tab(input_page,"Input")
+        camera_card, camera_layout=card("Camera & map")
+        camera_form=QFormLayout()
+        self.camera_form=camera_form
+        self.camera_mode=QComboBox()
+        self.camera_mode.addItem("USB camera","usb")
+        self.camera_mode.addItem("RTSP / HTTP video","network")
+        self.camera_mode.addItem("HTTP MJPEG","mjpeg")
+        self.camera_device=QComboBox()
+        self.camera_url=QLineEdit()
+        self.camera_url.setPlaceholderText("rtsp://camera/stream or http://camera:81/stream")
+        self.camera_url.setEchoMode(QLineEdit.EchoMode.PasswordEchoOnEdit)
+        camera_form.addRow("Source",self.camera_mode)
+        camera_form.addRow("USB device",self.camera_device)
+        camera_form.addRow("Stream URL",self.camera_url)
+        camera_layout.addLayout(camera_form)
+        camera_row=QHBoxLayout()
+        self.camera_refresh_btn=QPushButton("Refresh")
+        self.camera_start_btn=QPushButton("Start")
+        self.camera_stop_btn=QPushButton("Stop")
+        for button in (self.camera_refresh_btn,self.camera_start_btn,self.camera_stop_btn):
+            camera_row.addWidget(button)
+        camera_layout.addLayout(camera_row)
+        camera_note=QLabel("Video needs its own USB or network camera connection. LoRa carries driving commands, not video. Camera starts only when requested.")
+        camera_note.setWordWrap(True); camera_note.setObjectName("Muted")
+        camera_layout.addWidget(camera_note)
+        self.map_online=QCheckBox("Online map tiles")
+        camera_layout.addWidget(self.map_online)
+        camera_layout.addStretch()
+        tab(camera_card,"Camera")
+        panel_layout.addWidget(self.settings_tabs)
+        panel_layout.addWidget(self.settings_state)
+        self.settings_panel.hide()
+        body.addWidget(self.settings_panel)
+        screen_layout.addLayout(body,1)
+        adjustments=QHBoxLayout()
+        for title, widget in (("Steer",self.steering_sensitivity),("Drive",self.throttle_sensitivity),("Limit",self.throttle_limit)):
+            adjustments.addWidget(QLabel(title))
+            widget.setMinimumWidth(140)
+            adjustments.addWidget(widget,1)
+        screen_layout.addLayout(adjustments)
+        controls=QHBoxLayout()
+        for button in (self.control_btn,self.arm_btn,self.disarm_btn,self.diagnostics_btn):
+            controls.addWidget(button)
+        controls.addWidget(self.safety_label,1)
+        self.keyboard_hint=QLabel("WASD / arrows • Space brake")
+        self.keyboard_hint.setObjectName("Muted")
+        controls.addWidget(self.keyboard_hint)
+        screen_layout.addLayout(controls)
+        footer=QHBoxLayout()
+        footer.addWidget(self.message,1)
+        footer.addWidget(self.axis_label)
+        footer.addWidget(self.output_label)
+        screen_layout.addLayout(footer)
+        self.vehicle_label.hide()
+        self.controller_label.hide()
+        self.setCentralWidget(screen)
+        root.deleteLater()
 
     def _wire_buttons_and_fields(self):
+        self.settings_btn.toggled.connect(self._toggle_settings_panel)
+        self.camera_mode.currentIndexChanged.connect(self._update_camera_fields)
+        self.camera_refresh_btn.clicked.connect(self._refresh_cameras)
+        self.camera_start_btn.clicked.connect(self._start_camera)
+        self.camera_stop_btn.clicked.connect(self.camera_view.stop)
+        self.map_online.toggled.connect(self._set_map_online)
         self.input_source.currentIndexChanged.connect(self._update_input_fields)
         self.control_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.arm_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -360,7 +531,7 @@ class MainWindow(QMainWindow):
 
     def _update_input_fields(self, *_):
         keyboard = self.input_source.currentData() == "keyboard"
-        self.keyboard_pad.setVisible(keyboard)
+        self.keyboard_hint.setVisible(keyboard)
         for row in range(6):
             self.wheel_form.setRowVisible(row, not keyboard)
         for widget in (self.device_combo, self.select_btn, self.calibrate_btn, self.raw_axes):
@@ -370,6 +541,49 @@ class MainWindow(QMainWindow):
                        self.brake_axis, self.invert_steer, self.invert_throttle,
                        self.invert_brake, self.deadzone, self.expo):
             widget.setEnabled(not keyboard)
+
+    def _toggle_settings_panel(self, visible):
+        if visible:
+            self._stop_keyboard()
+        self.settings_panel.setVisible(visible)
+
+    def _camera_status_changed(self, text):
+        self.camera_status.setText(text if len(text) <= 32 else text[:29]+"…")
+        self.camera_status.setToolTip(text)
+
+    def _refresh_cameras(self):
+        selected=self.camera_device.currentData() or self.settings.camera_device
+        self.camera_device.clear()
+        for device_id, name in self.camera_view.devices():
+            self.camera_device.addItem(name,device_id)
+        index=self.camera_device.findData(selected)
+        if index >= 0:
+            self.camera_device.setCurrentIndex(index)
+
+    def _update_camera_fields(self, *_):
+        usb=self.camera_mode.currentData() == "usb"
+        self.camera_form.setRowVisible(self.camera_device,usb)
+        self.camera_form.setRowVisible(self.camera_url,not usb)
+
+    def _start_camera(self):
+        mode=self.camera_mode.currentData()
+        url=self.camera_url.text()
+        if self.camera_view.start(mode,device_id=self.camera_device.currentData() or "",url=url):
+            self.settings.camera_mode=mode
+            self.settings.camera_device=self.camera_device.currentData() or ""
+            self.settings.camera_url=stored_camera_url(url) if mode != "usb" else self.settings.camera_url
+            try:
+                save_settings(self.settings)
+            except OSError:
+                self.camera_status.setText("Camera started; preferences could not be saved")
+
+    def _set_map_online(self, enabled):
+        self.rover_map.set_online(enabled)
+        self.settings.map_online=enabled
+        try:
+            save_settings(self.settings)
+        except OSError:
+            self.message.setText("Map preference could not be saved")
 
     def _stop_keyboard(self):
         self.keyboard.set_active(False)
@@ -430,6 +644,12 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_to_widgets(self):
         s = self.settings
+        self.camera_mode.setCurrentIndex(max(0,self.camera_mode.findData(s.camera_mode)))
+        self.camera_url.setText(s.camera_url)
+        self._update_camera_fields()
+        self._refresh_cameras()
+        self.map_online.setChecked(s.map_online)
+        self.rover_map.set_online(s.map_online)
         self.input_source.setCurrentIndex(max(0, self.input_source.findData(s.input_source)))
         self.link_mode.setCurrentIndex(max(0, self.link_mode.findData(s.link_mode)))
         self.lora_port.setCurrentText(s.lora_port)
@@ -446,8 +666,8 @@ class MainWindow(QMainWindow):
         self.invert_steer.setChecked(s.invert_steer)
         self.invert_throttle.setChecked(s.invert_throttle)
         self.invert_brake.setChecked(s.invert_brake)
-        self.deadzone.setValue(s.deadzone)
-        self.expo.setValue(s.expo)
+        self.deadzone.setValue(round(s.deadzone*100))
+        self.expo.setValue(round(s.expo*100))
         self.steering_sensitivity.setValue(round(s.steering_sensitivity * 100))
         self.throttle_sensitivity.setValue(round(s.throttle_sensitivity * 100))
         self.throttle_limit.setValue(round(s.throttle_limit * 100))
@@ -474,8 +694,8 @@ class MainWindow(QMainWindow):
             invert_steer=self.invert_steer.isChecked(),
             invert_throttle=self.invert_throttle.isChecked(),
             invert_brake=self.invert_brake.isChecked(),
-            deadzone=self.deadzone.value(),
-            expo=self.expo.value(),
+            deadzone=self.deadzone.value()/100,
+            expo=self.expo.value()/100,
             steering_sensitivity=self.steering_sensitivity.value() / 100,
             throttle_sensitivity=self.throttle_sensitivity.value() / 100,
             throttle_limit=self.throttle_limit.value() / 100,
@@ -483,6 +703,10 @@ class MainWindow(QMainWindow):
             throttle_channel=self.throttle_channel.value(),
             heartbeat_timeout=self.settings.heartbeat_timeout,
             controller_timeout=self.settings.controller_timeout,
+            camera_mode=self.settings.camera_mode,
+            camera_device=self.settings.camera_device,
+            camera_url=self.settings.camera_url,
+            map_online=self.settings.map_online,
         ).validate()
 
     def _persist_and_configure(self):
@@ -697,6 +921,11 @@ class MainWindow(QMainWindow):
     def _refresh(self):
         wheel = self.inputs.snapshot()
         mav = self.mav.snapshot()
+        self.rover_map.set_snapshot(mav)
+        gps=f"GPS {mav.satellites or '—'}" if position_fresh(mav) else "GPS —"
+        speed=f"{mav.speed:.1f} m/s" if position_fresh(mav) and mav.speed is not None else "—"
+        battery=f"{mav.voltage:.1f} V" if mav.state == LinkState.CONNECTED and mav.voltage is not None else "—"
+        self.telemetry_label.setText(f"{gps}   Speed {speed}   Battery {battery}")
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
@@ -747,7 +976,7 @@ class MainWindow(QMainWindow):
             self.safety_label.setStyleSheet("color:#64d98b;font-weight:700;")
             self.control_btn.setText("Disable PC Control")
         elif mav.failsafe_latched:
-            self.safety_label.setText("CONTROL STOPPED — manual re-enable required")
+            self.safety_label.setText("Stopped • re-enable manually")
             self.safety_label.setStyleSheet("color:#ff6b6b;font-weight:700;")
             self.control_btn.setText("Re-enable PC Control")
         else:
@@ -778,6 +1007,8 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        self.camera_view.shutdown()
+        self.rover_map.shutdown()
         QApplication.instance().removeEventFilter(self)
         self.keyboard_timer.stop()
         self.keyboard.set_active(False)

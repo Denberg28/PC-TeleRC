@@ -6,7 +6,19 @@ on:
 permissions:
   contents: write
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      value: ${{ steps.detect.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        run: |
+          value=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "value=$value" >> "$GITHUB_OUTPUT"
   windows:
+    needs: version
+    if: needs.version.outputs.value == '0.1.2rc3'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

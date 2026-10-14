@@ -10,6 +10,11 @@ from .ui import MainWindow, STYLE
 
 
 def main() -> int:
+    if len(sys.argv) == 3 and sys.argv[1] == "--self-test-ui":
+        import os
+        os.environ.setdefault("QT_QPA_PLATFORM","offscreen")
+        from .self_test import run
+        return run(sys.argv[2])
     setup_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("PC TeleRC")
@@ -35,3 +40,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

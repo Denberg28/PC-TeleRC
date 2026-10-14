@@ -1,0 +1,13 @@
+PC TeleRC v0.1.2 UI/media release
+Application baseline: 03129e3a26552bca9cbc895d2fbb584013439149 (keyboard rc3).
+Firmware baseline: f07d310b6fedf855a50ed788bb5f8c13456359f2 (LilyGO 0.5.0 / rc2 target builds).
+Local pinned regression: 181 tests passed, including all prior 164 tests plus 17 media/display/layout cases.
+Actual HTTP H.264 playback and HTTP MJPEG frames decoded through the application's media paths.
+Offscreen packaged-mode UI/media contract passed with driving/radio services disabled.
+Visual inspection: 1180 x 720 camera view, lower-left 282 x 214 map, closed drawer and camera settings drawer. Small 900 x 580 layout verified.
+Exact TeleRC Android logo reused, ICO generated from original bytes.
+Source compilation and whitespace checks passed.
+Windows workflow requires full regression, Qt/FFmpeg/assets verification, frozen application media/UI check and installer/portable/source checksums.
+Firmware workflow requires all five host fault suites, unchanged-source verification and per-asset SHA256 checks before copying existing target builds.
+Stable publication is gated on complete uploaded Windows/firmware downloads matching the tested commit.
+Physical rover/camera/link HIL remains unverified; unchanged timeouts and manual control gates retained.

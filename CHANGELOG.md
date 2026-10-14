@@ -1,3 +1,13 @@
+# v0.1.2 — live camera desktop stable
+
+- Central live camera with USB, RTSP/HTTP and HTTP MJPEG sources; explicit start/stop and stale/error indication.
+- Lower-left GPS map, measured route/heading, optional cached online tiles and read-only battery/speed telemetry.
+- Compact camera-oriented layout, collapsible Link/Input/Camera settings and percentage sliders.
+- Exact TeleRC Android logo for title bar and Windows executable/installer.
+- Existing wheel/keyboard input, brake priority, ownership, neutral acquisition and deadlines retained.
+- Actual media decoding, layout, source isolation and locked telemetry tests; packaged Windows media/UI verification.
+- Stable package includes unchanged source-matched firmware and SHA256-verified existing target builds.
+
 # v0.1.2rc3 — keyboard driving
 
 - Added selectable keyboard input: WASD / arrows, simultaneous steer/drive, and Space brake priority.

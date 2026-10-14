@@ -35,9 +35,18 @@ class AppSettings:
     throttle_channel: int = 2
     heartbeat_timeout: float = 3.0
     controller_timeout: float = 0.35
+    camera_mode: str = "usb"
+    camera_device: str = ""
+    camera_url: str = ""
+    map_online: bool = True
 
     def validate(self) -> "AppSettings":
         self.settings_version = CURRENT_SETTINGS_VERSION
+        if self.camera_mode not in {"usb", "network", "mjpeg"}:
+            self.camera_mode = "usb"
+        self.camera_device = str(self.camera_device)
+        self.camera_url = str(self.camera_url).strip()
+        self.map_online = bool(self.map_online)
         if self.input_source not in {"wheel", "keyboard"}:
             self.input_source = "wheel"
         if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial"}:

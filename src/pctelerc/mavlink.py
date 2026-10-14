@@ -35,6 +35,15 @@ class MavlinkSnapshot:
     ignored_heartbeats: int = 0
     error: str = ""
     radio_status: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
+    heading: float | None = None
+    speed: float | None = None
+    voltage: float | None = None
+    battery_remaining: int | None = None
+    gps_fix: int = 0
+    satellites: int | None = None
+    position_timestamp: float | None = None
 
 
 class MavlinkService:
@@ -509,6 +518,39 @@ class MavlinkService:
                 rx_messages=self._snapshot.rx_messages + 1,
             )
 
+            # Display telemetry is accepted only from the locked autopilot.
+            # It never creates or renews a heartbeat and never changes control.
+            if typ in ("GPS_RAW_INT", "GLOBAL_POSITION_INT", "SYS_STATUS"):
+                if (snap.vehicle_system, snap.vehicle_component) != (msg.get_srcSystem(), msg.get_srcComponent()):
+                    self._snapshot = snap
+                    return
+                if typ == "GPS_RAW_INT":
+                    fix = int(getattr(msg, "fix_type", 0))
+                    sats = int(getattr(msg, "satellites_visible", 255))
+                    snap = replace(snap, gps_fix=fix, satellites=None if sats == 255 else sats)
+                    lat, lon = msg.lat / 1e7, msg.lon / 1e7
+                    if fix >= 3 and -90 <= lat <= 90 and -180 <= lon <= 180:
+                        speed = getattr(msg, "vel", 65535)
+                        heading = getattr(msg, "cog", 65535)
+                        snap = replace(snap, latitude=lat, longitude=lon, position_timestamp=now,
+                                       speed=None if speed == 65535 else speed / 100,
+                                       heading=None if heading == 65535 else heading / 100)
+                elif typ == "GLOBAL_POSITION_INT" and snap.gps_fix >= 3:
+                    lat, lon = msg.lat / 1e7, msg.lon / 1e7
+                    if -90 <= lat <= 90 and -180 <= lon <= 180:
+                        import math
+                        heading = getattr(msg, "hdg", 65535)
+                        snap = replace(snap, latitude=lat, longitude=lon, position_timestamp=now,
+                                       speed=math.hypot(msg.vx, msg.vy) / 100,
+                                       heading=None if heading == 65535 else heading / 100)
+                elif typ == "SYS_STATUS":
+                    voltage = getattr(msg, "voltage_battery", 65535)
+                    remaining = getattr(msg, "battery_remaining", -1)
+                    snap = replace(snap, voltage=None if voltage == 65535 else voltage / 1000,
+                                   battery_remaining=remaining if 0 <= remaining <= 100 else None)
+                self._snapshot = snap
+                return
+
             if typ == "HEARTBEAT" and self._settings.link_mode == "elrs_serial":
                 # Only the ArduRover autopilot can claim this rover session.
                 if (getattr(msg, "type", None) != 10 or getattr(msg, "autopilot", None) != 3
@@ -889,4 +931,5 @@ class MavlinkService:
                     reason = "Neutral/release USB writes failed; verify rover failsafe and handover."
                     self._snapshot = replace(self._snapshot, error=(self._snapshot.error + " " + reason).strip())
         return delivered
+
 

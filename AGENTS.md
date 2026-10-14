@@ -4,7 +4,11 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.2rc3 — selectable keyboard WASD/arrows and Space neutral brake; retains rc2 LilyGO 0.5.0. Stable v0.1.1 remains Latest.
+0.1.2 — camera-first stable desktop with lower-left GPS map, compact controls, percentage sliders and TeleRC branding. Retains keyboard rc3 and rc2 LilyGO 0.5.0.
+
+User explicitly authorized stable v0.1.2 publication on 15 October 2026 after UI optimization. The stable-desktop workflow validates application/frozen media, firmware host checks and unchanged-source target provenance, then verifies complete draft assets before publishing Latest. Preserve v0.1.1 and v0.1.0a10 rollback downloads.
+
+Camera/tiles/telemetry are display-only. No media operation may arm, enable, redirect the radio or fabricate input/heartbeat/GPS. Camera starts manually; lost/stalled video is indicated independently of control. Read telemetry only from the locked autopilot. Map requires confirmed fresh GPS and labels stale/waiting states. Keep camera credentials/tokens out of saved settings and diagnostics. Use the exact original TeleRC logo. Keyboard focus is now the central camera area. Sliders still require Apply and manual re-enable. Never route wheel snapshots through the GUI timer.
 
 Keyboard requires focus in its driving area, all keys released for enable/ARM, and manual enable after focus loss or a GUI stall. Space has neutral priority and blocks held directions until release/repress. Never refresh keyboard timestamps in snapshot reads. The dedicated keyboard event-loop timer intentionally expires if the GUI stalls; recovered acquisition changes session. Wheel input still comes directly from WheelService.snapshot through InputService without GUI polling. Source/settings changes disable control. The keyboard candidate workflow builds application packages only; firmware is unchanged and remains the rc2 baseline.
 
@@ -56,7 +60,7 @@ Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lor
 
 ## Known limitations
 - Exact PXN behavior still depends on Windows driver/mode.
-- No force feedback or map/mission planner.
+- No force feedback or mission upload/planner; map is display-only.
 - Unsigned Windows test executable.
 - Hardware fail-safe timing remains unverified.
 

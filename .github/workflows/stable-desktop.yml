@@ -1,0 +1,155 @@
+name: Stable v0.1.2 camera desktop
+on:
+  push:
+    branches: [main, dev/stable-v0.1.2]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: stable-v0.1.2
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install and validate application
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip check
+          python -m compileall -q src tests main.py
+          python -m pytest -q
+      - name: Build Windows application and verify camera backend
+        run: |
+          pyinstaller --noconfirm --clean PC-TeleRC.spec
+          python scripts/verify_desktop_package.py
+      - name: Run frozen application media and UI check
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $p = Start-Process -FilePath ".\dist\PC-TeleRC\PC-TeleRC.exe" -ArgumentList "--self-test-ui", "frozen-ui-check.json" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Frozen camera/UI self-test failed" }
+          $report = Get-Content frozen-ui-check.json -Raw | ConvertFrom-Json
+          if (!$report.passed) { throw "Frozen camera/UI self-test did not pass" }
+          Get-Content frozen-ui-check.json
+      - name: Package portable and source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-dist | Out-Null
+          Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
+          Copy-Item docs\CAMERA-DESKTOP.md dist\PC-TeleRC\CAMERA-DESKTOP.md
+          Copy-Item docs\KEYBOARD.md dist\PC-TeleRC\KEYBOARD.md
+          Copy-Item docs\LILYGO-SKETCH-RELAYS.md dist\PC-TeleRC\LILYGO-SKETCH-RELAYS.md
+          Copy-Item docs\THIRD-PARTY.md dist\PC-TeleRC\THIRD-PARTY.md
+          Copy-Item frozen-ui-check.json release-dist\frozen-ui-check.json
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath release-dist\PC-TeleRC-portable-v0.1.2.zip
+          git archive --format=zip --output=release-dist/PC-TeleRC-source-v0.1.2.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build installer and checksums
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.2.exe release-dist\
+          Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
+      - name: Stage validated Windows release as draft
+        if: github.ref == 'refs/heads/dev/stable-v0.1.2'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.2
+          target_commitish: ${{ github.sha }}
+          name: PC TeleRC v0.1.2 — Live camera desktop
+          draft: true
+          prerelease: false
+          make_latest: false
+          body_path: docs/releases/v0.1.2.md
+          files: release-dist/*
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Confirm unchanged firmware and rerun host fault checks
+        run: |
+          git diff --exit-code f07d310b6fedf855a50ed788bb5f8c13456359f2 HEAD -- firmware
+          sudo apt-get update
+          sudo apt-get install -y g++ libssl-dev
+          python3 firmware/tests/run_tests.py
+          python3 firmware/lora-tests/run_tests.py
+          python3 firmware/lilygo-tests/run_host_tests.py
+          python3 firmware/runtime-tests/run_tests.py
+          python3 firmware/relay-tests/run_tests.py
+      - name: Reuse source-matched target builds with SHA256 verification
+        if: github.ref == 'refs/heads/dev/stable-v0.1.2'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const fs=require('fs'); const crypto=require('crypto');
+            fs.mkdirSync('firmware-release',{recursive:true});
+            const release=await github.rest.repos.getRelease({...context.repo,release_id:412702560});
+            if (release.data.target_commitish !== 'f07d310b6fedf855a50ed788bb5f8c13456359f2') throw new Error('Firmware baseline changed');
+            const assets=await github.rest.repos.listReleaseAssets({...context.repo,release_id:412702560});
+            const expected=['TeleRC-Firmware-v0.1.2rc2-LilyGO-BASE-targets.zip','TeleRC-Firmware-v0.1.2rc2-LilyGO-NODE-targets.zip',
+                            'TeleRC-Firmware-v0.1.2rc2-LilyGO-ROVER-targets.zip','TeleRC-Firmware-v0.1.2rc2-original-target-builds.zip',
+                            'TeleRC-Firmware-v0.1.2rc2-sketches.zip'];
+            const checksums=[];
+            for (const name of expected) {
+              const asset=assets.data.find(a=>a.name===name);
+              if (!asset || !asset.digest || asset.state!=='uploaded') throw new Error('Firmware artifact unavailable: '+name);
+              const response=await fetch(asset.url,{headers:{Authorization:'Bearer '+process.env.RELEASE_TOKEN,Accept:'application/octet-stream'}});
+              if (!response.ok) throw new Error('Firmware download failed: '+response.status);
+              const bytes=Buffer.from(await response.arrayBuffer());
+              const digest=crypto.createHash('sha256').update(bytes).digest('hex');
+              if ('sha256:'+digest !== asset.digest || bytes.length !== asset.size) throw new Error('Firmware checksum mismatch: '+name);
+              const renamed=name.replace('v0.1.2rc2','v0.1.2');
+              fs.writeFileSync('firmware-release/'+renamed,bytes);
+              checksums.push(digest+'  '+renamed);
+            }
+            fs.writeFileSync('firmware-release/SHA256-firmware.txt',checksums.join('\n')+'\n');
+            fs.writeFileSync('firmware-release/FIRMWARE-PROVENANCE.txt','Unchanged LilyGO 0.5.0 / PWM converter baseline f07d310b6fedf855a50ed788bb5f8c13456359f2. Target binaries reused from verified rc2 builds after source equality and SHA256 checks.\n');
+      - name: Stage unchanged firmware downloads as draft
+        if: github.ref == 'refs/heads/dev/stable-v0.1.2'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.2
+          target_commitish: ${{ github.sha }}
+          draft: true
+          prerelease: false
+          make_latest: false
+          files: firmware-release/*
+  publish:
+    needs: [windows, firmware]
+    if: github.ref == 'refs/heads/dev/stable-v0.1.2'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify complete stable package and publish Latest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases=await github.rest.repos.listReleases({...context.repo});
+            const release=releases.data.find(r=>r.tag_name==='v0.1.2');
+            if (!release || !release.draft || release.target_commitish !== context.sha) throw new Error('Stable draft does not match tested commit');
+            const assets=await github.rest.repos.listReleaseAssets({...context.repo,release_id:release.id});
+            const expected=['PC-TeleRC-portable-v0.1.2.zip','PC-TeleRC-Setup-v0.1.2.exe','PC-TeleRC-source-v0.1.2.zip','SHA256-windows.txt','frozen-ui-check.json',
+                            'TeleRC-Firmware-v0.1.2-LilyGO-BASE-targets.zip','TeleRC-Firmware-v0.1.2-LilyGO-NODE-targets.zip',
+                            'TeleRC-Firmware-v0.1.2-LilyGO-ROVER-targets.zip','TeleRC-Firmware-v0.1.2-original-target-builds.zip',
+                            'TeleRC-Firmware-v0.1.2-sketches.zip','SHA256-firmware.txt','FIRMWARE-PROVENANCE.txt'];
+            for (const name of expected) {
+              const asset=assets.data.find(a=>a.name===name);
+              if (!asset || asset.size<=0 || asset.state!=='uploaded' || !asset.digest) throw new Error('Missing verified download: '+name);
+            }
+            const published=await github.rest.repos.updateRelease({...context.repo,release_id:release.id,
+              tag_name:'v0.1.2',name:'PC TeleRC v0.1.2 — Live camera desktop',target_commitish:context.sha,
+              draft:false,prerelease:false,make_latest:'true'});
+            core.info('Published stable Latest: '+published.data.html_url);

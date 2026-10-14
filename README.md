@@ -1,4 +1,10 @@
-# PC TeleRC v0.1.2rc3 — keyboard driving candidate
+# PC TeleRC v0.1.2 — live camera desktop
+
+Camera-first driving screen with a live USB/network camera, lower-left GPS map, compact controls, collapsible settings and percentage sliders. Uses the TeleRC Android logo. See [camera desktop setup](docs/CAMERA-DESKTOP.md).
+
+The camera needs a USB or network video source; the LoRa radio does not carry video. Map position requires fresh rover GPS telemetry. Wheel and WASD/arrows/Space control retain their manual-enable and fail-safe behavior. Stable downloads are available in [v0.1.2](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.2).
+
+## Previous keyboard candidate
 
 Adds selectable keyboard WASD / arrows and Space neutral brake. Focus loss stops keyboard control and requires manual re-enable. See [keyboard instructions](docs/KEYBOARD.md). Existing v0.1.2rc2 firmware remains compatible.
 
