@@ -123,7 +123,7 @@ def setup_request(mhz: str, power: int, key: str) -> bytes:
 
 RESULTS = {
     b'SAVED_RESTART_BOARD': 'Saved. Close USB and restart this board. Provision its partner with the same frequency, power and key.',
-    b'ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST': 'Active radio unchanged. On firmware 0.4.0, hold BOOT to pause, then read again. Older firmware may require NVS erase and reflash.',
+    b'ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST': 'Active radio unchanged. Hold BOOT after startup to pause supported firmware, then read again. For older boards, follow the firmware setup guide.',
     b'STORAGE_FAILED': 'Board storage failed. Read settings before retrying.',
     b'INVALID': 'Board rejected the values. Settings were not saved.',
 }

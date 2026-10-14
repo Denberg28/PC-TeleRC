@@ -27,7 +27,7 @@ The data link is paused throughout setup. ROVER sends neutral/release for owned 
 ## Set the eight-character LoRa password without a PC app
 
 1. On BASE, hold BOOT to enter the menu, tap to Link Settings, then hold to select.
-2. Join Wi-Fi **TeleRC-Setup-BASE**, password **telerc123**. Open **http://192.168.4.1**. This setup network has no internet.
+2. Join Wi-Fi **TeleRC-Setup-BASE**, password **telerc123**. Open **http://192.168.4.1**. Use lower-case `telerc123`; the uppercase OLED font labels it PW LOWER. This setup network has no internet.
 3. Set the correct LoRa frequency for the hardware and permitted band, power 2–17 dBm, and exactly eight visible ASCII characters. Letters are case sensitive; spaces, Unicode and control characters are rejected. Generate a random password and keep it for the partner board.
 4. Save. The board stores the derived pairing key and restarts after the setup pause. Passwords are never read back.
 5. Repeat on ROVER using **TeleRC-Setup-ROVER** and the same frequency/password. Select LoRa as its transport. Use the PC application's LilyGO LoRa USB profile with BASE connected by native USB.

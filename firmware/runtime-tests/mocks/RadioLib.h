@@ -5,9 +5,9 @@
 #define RADIOLIB_LORA_DETECTED -702
 struct Module {Module(int,int,int,int){}};
 struct RadioMock {
- std::vector<uint8_t> rx;std::vector<std::vector<uint8_t>> tx;int result=0,receiveResult=0,scanResult=RADIOLIB_CHANNEL_FREE;
+ std::vector<uint8_t> rx;std::vector<std::vector<uint8_t>> tx;int standbyCalls=0,result=0,receiveResult=0,scanResult=RADIOLIB_CHANNEL_FREE;
  RadioMock(Module*){}
- int startReceive(){return receiveResult;}int standby(){rx.clear();return 0;}
+ int startReceive(){return receiveResult;}int standby(){++standbyCalls;rx.clear();return 0;}
  size_t getPacketLength(){return rx.size();}
  int readData(uint8_t*p,size_t n){if(n>rx.size())return -1;memcpy(p,rx.data(),n);rx.clear();return result;}
  float getRSSI(){return -70;}int startChannelScan(){return result;}int getChannelScanResult(){return scanResult;}int finishTransmit(){return 0;}int startTransmit(uint8_t*p,size_t n){tx.emplace_back(p,p+n);return result;}

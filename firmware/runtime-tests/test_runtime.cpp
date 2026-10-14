@@ -6,6 +6,14 @@
 #include "Runtime.h"
 void tick(uint32_t ms,bool pressed){testMs=ms;pins[0]=pressed?LOW:HIGH;runtime::loop();}
 int main(){
+ // Blank NVS must allow BOOT setup without touching an uninitialized SPI radio.
+ runtime::setup();assert(!lora::radioOK);
+ runtime::pause();assert(runtime::menu&&lora::radio.standbyCalls==0);
+ runtime::menu=false; // simulate the next startup with a provisioned key below
+
+#if TELERC_ROLE==1
+ Preferences::storage["telerc-ui/mode"]={1}; // BASE must ignore unsupported Wi-Fi data mode
+#endif
  lora::cfg.khz=915000;memset(lora::cfg.key,1,32);
  runtime::setup();
  assert(Wire.timeout==1&&Wire.maxBytes<=32);

@@ -60,7 +60,7 @@ void paint(){
   uint32_t elapsed=millis()-pausedAt;uint32_t remaining=elapsed<RESTART_MIN_PAUSE_MS?(RESTART_MIN_PAUSE_MS-elapsed+999)/1000:0;
   snprintf(count,sizeof(count),"RESTART IN %lu S",(unsigned long)remaining);
   rows[2]="CONTROL STOPPED";rows[3]=count;rows[4]="REENABLE PC MANUALLY";
- }else if(portal){rows[2]="SETUP WIFI:";rows[3]=TELERC_ROLE==1?"TELERC-SETUP-BASE":"TELERC-SETUP-ROVER";rows[4]="PW: TELERC123";rows[5]="192.168.4.1";rows[6]="HOLD BOOT TO EXIT";
+ }else if(portal){rows[2]="SETUP WIFI:";rows[3]=TELERC_ROLE==1?"TELERC-SETUP-BASE":"TELERC-SETUP-ROVER";rows[4]="PW LOWER: TELERC123";rows[5]="192.168.4.1";rows[6]="HOLD BOOT TO EXIT";
  }else if(menu&&!statusPage){
   const char*selected;
   if(TELERC_ROLE==3){const char*items[]={"> WI-FI","> LORA","> LINK SETTINGS","> STATUS","> EXIT / RESTART"};selected=items[choice];}
@@ -84,7 +84,7 @@ void pause(){
  if(mode==WIFI_MODE){wifi::stopControl("setup");wifi::udp.stop();wifi::udpReady=false;}
  else
 #endif
- {lora::stopControl(4);lora::radio.standby();lora::radioOK=false;lora::transmitting=lora::scanning=false;}
+ {lora::stopControl(4);if(lora::radioOK)lora::radio.standby();lora::radioOK=false;lora::transmitting=lora::scanning=false;}
  lora::maintenance=true;lora::radioOK=false;paint();
 }
 bool restart(uint8_t selected){
