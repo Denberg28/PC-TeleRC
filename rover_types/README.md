@@ -6,7 +6,7 @@ not add a rover selector to the Windows app or change the main app version.
 
 | Folder | Meaning | Status | Current sub-release |
 |---|---|---|---|
-| [mini](mini/README.md) | Small four-motor TT skid-steer baseline | Test candidate; hardware validation pending | [v0.1.0-test-candidate](mini/releases/v0.1.0-test-candidate/RELEASE.md) |
+| [mini](mini/README.md) | Small four-motor TT skid-steer baseline | Test candidate; hardware validation pending | [v0.2.0 FS-iA6](mini/releases/v0.2.0-test-candidate/RELEASE.md) |
 | [balancing](balancing/README.md) | Vehicle requiring active balance control | Planned; requirements only | None |
 | [mono](mono/README.md) | Reserved mono concept; architecture undecided | Planned; definition needed | None |
 | [four_wheel_steering](four_wheel_steering/README.md) | Four wheels with controlled steering geometry | Planned; requirements only | None |
@@ -59,3 +59,4 @@ control and safety design.
 
 See [ROADMAP.md](ROADMAP.md) for per-type milestones. No stable-release claim
 is made for any new rover type in this catalog.
+

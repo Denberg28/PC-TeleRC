@@ -1,0 +1,51 @@
+name: Mini rover FS-iA6 firmware
+
+on:
+  push:
+    branches: [main, 'firmware/mini-fsia6-*']
+    paths:
+      - 'rover_types/mini/releases/v0.2.0-test-candidate/package/TeleRC_MiniRover/**'
+      - 'rover_types/mini/releases/v0.2.0-test-candidate/package/tests/**'
+      - '.github/workflows/mini-rover-fsia6.yml'
+  pull_request:
+    paths:
+      - 'rover_types/mini/releases/v0.2.0-test-candidate/package/TeleRC_MiniRover/**'
+      - 'rover_types/mini/releases/v0.2.0-test-candidate/package/tests/**'
+      - '.github/workflows/mini-rover-fsia6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise real sketch with PWM and network API doubles
+        run: bash rover_types/mini/releases/v0.2.0-test-candidate/package/tests/run_tests.sh
+  esp32s3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        core: ['2.0.17', '3.3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: mini-fsia6-esp32-${{ matrix.core }}
+      - name: Install pinned Espressif core
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@${{ matrix.core }} --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Compile ESP32-S3 target
+        run: arduino-cli compile --fqbn esp32:esp32:esp32s3 --warnings all --output-dir build/mini-fsia6 rover_types/mini/releases/v0.2.0-test-candidate/package/TeleRC_MiniRover
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TeleRC-MiniRover-FS-iA6-ESP32S3-core-${{ matrix.core }}
+          path: build/mini-fsia6/

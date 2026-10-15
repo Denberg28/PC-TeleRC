@@ -130,10 +130,11 @@ Experimental ELRS external TX USB MAVLink mode uses a selected COM port at 46080
 ## Rover types and vehicle sub-releases
 
 See the [rover catalog](rover_types/README.md) for versioned firmware, wiring
-and development plans. [Mini v0.1.0 test candidate](rover_types/mini/README.md)
+and development plans. [Mini v0.2.0 FS-iA6 test candidate](rover_types/mini/README.md)
 is the first documented standalone ESP32-S3 build. Balancing, mono, four-wheel
 steering, two-wheel drive, tracked and Ackermann folders contain future
 requirements only. These vehicle sub-releases do not change the PC app version.
 For the mini, follow its neutral-stream-before-ARM procedure rather than the
 ArduRover operator example above.
+
 

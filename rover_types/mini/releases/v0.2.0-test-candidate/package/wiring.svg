@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1210" viewBox="0 0 1500 1210">
+<rect width="1500" height="1210" fill="#f5f8fc"/>
+<style>text{font-family:Arial,sans-serif;fill:#18334b}.title{font-size:30px;font-weight:bold}.h{font-size:22px;font-weight:bold}.t{font-size:18px}.s{font-size:16px}</style>
+<text x="45" y="50" class="title">TeleRC Mini Rover v0.2.0 | FS-iA6 PWM + ESP32-S3 + 2 MX1508</text>
+<text x="45" y="81" class="s">Exact IO labels below; match the receiver and driver PCB markings. Both buck inputs use the same 2S battery.</text>
+<rect x="45" y="120" width="390" height="120" rx="12" fill="#e8f1fc" stroke="#bbcddd" stroke-width="2"/>
+<text x="63" y="152" class="h">Logic buck: regulated 5 V</text>
+<text x="63" y="182" class="t">Powers ESP32-S3 + FS-iA6</text>
+<text x="63" y="209" class="t">Separate positive from motor buck.</text>
+<rect x="880" y="120" width="570" height="120" rx="12" fill="#fff0e4" stroke="#bbcddd" stroke-width="2"/>
+<text x="898" y="152" class="h">Motor buck: regulated 5 V</text>
+<text x="898" y="182" class="t">Sized for four motors starting together</text>
+<text x="898" y="209" class="t">Fuse + switch -&gt; D1 and D2 power inputs</text>
+<rect x="45" y="315" width="350" height="210" rx="12" fill="#eaf6ef" stroke="#bbcddd" stroke-width="2"/>
+<text x="63" y="347" class="h">FlySky FS-iA6</text>
+<text x="63" y="377" class="t">CH1 S: steering</text>
+<text x="63" y="404" class="t">CH2 S: centered drive</text>
+<text x="63" y="431" class="t">CH5 S: ARM OFF / ON</text>
+<text x="63" y="458" class="t">CH6 S: TX / STOP / PC</text>
+<text x="63" y="485" class="t">Receiver power: logic 5 V</text>
+<rect x="470" y="315" width="470" height="210" rx="12" fill="#fff6d9" stroke="#bbcddd" stroke-width="2"/>
+<text x="488" y="347" class="h">Signal voltage conditioning</text>
+<text x="488" y="377" class="t">SN74LVC125A at ESP32 3V3</text>
+<text x="488" y="404" class="t">CH1 -&gt; 1A/1Y -&gt; GPIO12</text>
+<text x="488" y="431" class="t">CH2 -&gt; 2A/2Y -&gt; GPIO13</text>
+<text x="488" y="458" class="t">CH5 -&gt; 3A/3Y -&gt; GPIO14</text>
+<text x="488" y="485" class="t">CH6 -&gt; 4A/4Y -&gt; GPIO15</text>
+<path d="M395,418L470,418" stroke="#24659a" stroke-width="3" fill="none"/>
+<text x="475" y="553" class="s">Buffer accepts 3.3 V / 5 V inputs; outputs are 3.3 V.</text>
+<text x="475" y="579" class="s">Direct only if receiver PWM HIGH is verified 3.3 V safe.</text>
+<rect x="1020" y="315" width="430" height="280" rx="12" fill="#e8f1fc" stroke="#bbcddd" stroke-width="2"/>
+<text x="1038" y="347" class="h">ESP32-S3 DevKitC-1</text>
+<text x="1038" y="377" class="t">GPIO12: CH1 steering</text>
+<text x="1038" y="404" class="t">GPIO13: CH2 drive</text>
+<text x="1038" y="431" class="t">GPIO14: CH5 ARM</text>
+<text x="1038" y="458" class="t">GPIO15: CH6 selector</text>
+<text x="1038" y="485" class="t"></text>
+<text x="1038" y="512" class="t">GPIO4/5 + 6/7 -&gt; D1</text>
+<text x="1038" y="539" class="t">GPIO8/9 + 10/11 -&gt; D2</text>
+<text x="1038" y="566" class="t">5V input &lt;- logic buck</text>
+<path d="M940,418L1020,418" stroke="#24659a" stroke-width="3" fill="none"/>
+<path d="M435,180L700,180" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M700,180L700,280" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M700,280L1230,280" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M1230,280L1230,315" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M185,240L185,315" stroke="#bc632b" stroke-width="4" fill="none"/>
+<rect x="45" y="665" width="550" height="205" rx="12" fill="#fff" stroke="#bbcddd" stroke-width="2"/>
+<text x="63" y="697" class="h">D1 MX1508 — LEFT</text>
+<text x="63" y="727" class="t">IN1 / IN2 &lt;- GPIO4 / GPIO5</text>
+<text x="63" y="754" class="t">IN3 / IN4 &lt;- GPIO6 / GPIO7</text>
+<text x="63" y="781" class="t">Motor A outputs -&gt; left-front motor</text>
+<text x="63" y="808" class="t">Motor B outputs -&gt; left-rear motor</text>
+<text x="63" y="835" class="t">Power input &lt;- motor buck 5 V</text>
+<rect x="900" y="665" width="550" height="205" rx="12" fill="#fff" stroke="#bbcddd" stroke-width="2"/>
+<text x="918" y="697" class="h">D2 MX1508 — RIGHT</text>
+<text x="918" y="727" class="t">IN1 / IN2 &lt;- GPIO8 / GPIO9</text>
+<text x="918" y="754" class="t">IN3 / IN4 &lt;- GPIO10 / GPIO11</text>
+<text x="918" y="781" class="t">Motor A outputs -&gt; right-front motor</text>
+<text x="918" y="808" class="t">Motor B outputs -&gt; right-rear motor</text>
+<text x="918" y="835" class="t">Power input &lt;- motor buck 5 V</text>
+<path d="M1140,595L1140,625" stroke="#24659a" stroke-width="3" fill="none"/>
+<path d="M1140,625L320,625" stroke="#24659a" stroke-width="3" fill="none"/>
+<path d="M320,625L320,665" stroke="#24659a" stroke-width="3" fill="none"/>
+<path d="M1290,595L1290,665" stroke="#24659a" stroke-width="3" fill="none"/>
+<path d="M1450,180L1475,180" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M1475,180L1475,625" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M1475,625L1450,625" stroke="#bc632b" stroke-width="4" fill="none"/>
+<path d="M1450,625L1450,680" stroke="#bc632b" stroke-width="4" fill="none"/>
+<text x="615" y="707" class="h">CH6 selector</text>
+<text x="615" y="743" class="t">~1000 us = TX</text>
+<text x="615" y="772" class="t">~1500 us = STOP</text>
+<text x="615" y="801" class="t">~2000 us = PC</text>
+<text x="615" y="841" class="s">CH5 low = OFF</text>
+<rect x="45" y="930" width="1405" height="100" rx="12" fill="#e3ebf2" stroke="#bbcddd" stroke-width="2"/>
+<text x="63" y="962" class="h">COMMON GND — separate return wires to star point</text>
+<text x="63" y="992" class="t">Battery/bucks, ESP32, receiver, buffer and both drivers share GND. Motor return current bypasses ESP32 headers.</text>
+<path d="M180,870L180,930" stroke="#586c7d" stroke-width="3" fill="none"/>
+<path d="M1200,870L1200,930" stroke="#586c7d" stroke-width="3" fill="none"/>
+<text x="45" y="1071" class="h">Receiver failsafe: CH1/CH2 CENTER, CH5 OFF, CH6 STOP. Test with transmitter switched OFF.</text>
+<text x="45" y="1106" class="t">8x motor-input pulldowns (10 kohm). Buffer details and receiver-input pulldowns: see WIRING.md.</text>
+<text x="45" y="1137" class="t">100 nF across each motor; bulk + ceramic capacitors at drivers and logic power. Stops coast, not holding brake.</text>
+<text x="45" y="1168" class="s">PC mode still requires healthy FS-iA6 + radio permission. Wi-Fi failure does not interrupt healthy TX control.</text>
+<path d="M1475,610 L70,610 L70,665" stroke="#bc632b" stroke-width="4" fill="none"/></svg>

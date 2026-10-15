@@ -1,0 +1,2 @@
+PASS FS-iA6: real ISR pulse capture; held-ARM lock; neutral edge arming; missing CH5/CH6; glitch rejection; STOP failsafe recovery; TX/PC handover; PC isolation; Wi-Fi isolation; PC watchdog; BOOT; reversal; timer wrap; mix bounds; independent CRC; 50000 malformed frames
+PASS FS-iA6: real ISR pulse capture; held-ARM lock; neutral edge arming; missing CH5/CH6; glitch rejection; STOP failsafe recovery; TX/PC handover; PC isolation; Wi-Fi isolation; PC watchdog; BOOT; reversal; timer wrap; mix bounds; independent CRC; 50000 malformed frames

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "release_id": "rover-mini-v0.2.0-test-candidate",
+  "rover_type": "mini",
+  "version": "0.2.0",
+  "status": "test-candidate",
+  "documented_date": "2026-10-15",
+  "timezone": "Asia/Manila",
+  "firmware_version_string": "0.2.0-test-candidate-fsia6",
+  "package_directory": "package",
+  "archive": {
+    "path": "archives/TeleRC-MiniRover-FS-iA6-v0.2.0-sketch-and-wiring.zip",
+    "sha256": "5cf83b16af8b5e08d421be0267fad00699a1d771b6f50cfb5035633fe8d2aaa1",
+    "size_bytes": 370208
+  },
+  "pc_application_changed": false,
+  "keyboard_implementation_added": false,
+  "receiver": {
+    "model": "FlySky FS-iA6",
+    "protocol": "individual PWM",
+    "channel_gpio": {
+      "CH1": 12,
+      "CH2": 13,
+      "CH5": 14,
+      "CH6": 15
+    },
+    "required_in_pc_mode": true
+  },
+  "validation": {
+    "host_simulation": "passed",
+    "esp32_cross_compile": "pending-at-packaging",
+    "hardware": "pending",
+    "pc_wheel_integration": "pending",
+    "pc_keyboard_integration": "pending"
+  }
+}

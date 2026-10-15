@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "mini",
   "status": "test-candidate",
-  "latest_release": "v0.1.0-test-candidate",
+  "latest_release": "v0.2.0-test-candidate",
   "form_factor": "mini",
   "motor_count": 4,
   "driven_wheel_count": 4,
@@ -12,5 +12,15 @@
   "driver": "2x MX1508 dual-channel",
   "firmware_present": true,
   "hardware_validated": false,
-  "metadata_only": true
+  "metadata_only": true,
+  "receiver": {
+    "model": "FS-iA6",
+    "protocol": "PWM",
+    "required_in_pc_mode": true
+  },
+  "input_sources": [
+    "FlySky PWM",
+    "PC TeleRC Wi-Fi"
+  ]
 }
+
