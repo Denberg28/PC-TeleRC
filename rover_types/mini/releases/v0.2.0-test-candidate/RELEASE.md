@@ -32,5 +32,7 @@ Stops coast, not hold. Signal-level checks and motor-power isolation are require
 Host simulation with real ISR edge capture passes under both LEDC API branches.
 A dedicated Actions workflow compiles the actual ESP32-S3 target using pinned
 cores 2.0.17 and 3.3.12; its result is separate from package-time host evidence.
-No compiled binary is embedded in the source ZIP. The workflow publishes binaries
-as build artifacts when successful. No Git release tag or Windows release is made.
+Both target compile steps passed; see [actual build evidence](TARGET_BUILD.md).
+No compiled binary is embedded in the source ZIP. GitHub's artifact-storage quota
+blocked binary uploads; the workflow now attempts upload as an optional step.
+No Git release tag or Windows release is made.

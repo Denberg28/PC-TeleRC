@@ -2,7 +2,7 @@ name: Mini rover FS-iA6 firmware
 
 on:
   push:
-    branches: [main, 'firmware/mini-fsia6-*']
+    branches: [main]
     paths:
       - 'rover_types/mini/releases/v0.2.0-test-candidate/package/TeleRC_MiniRover/**'
       - 'rover_types/mini/releases/v0.2.0-test-candidate/package/tests/**'
@@ -46,6 +46,7 @@ jobs:
       - name: Compile ESP32-S3 target
         run: arduino-cli compile --fqbn esp32:esp32:esp32s3 --warnings all --output-dir build/mini-fsia6 rover_types/mini/releases/v0.2.0-test-candidate/package/TeleRC_MiniRover
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: TeleRC-MiniRover-FS-iA6-ESP32S3-core-${{ matrix.core }}
           path: build/mini-fsia6/

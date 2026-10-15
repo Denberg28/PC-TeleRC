@@ -28,9 +28,15 @@
   },
   "validation": {
     "host_simulation": "passed",
-    "esp32_cross_compile": "pending-at-packaging",
+    "esp32_cross_compile": "passed-2.0.17-and-3.3.12",
     "hardware": "pending",
     "pc_wheel_integration": "pending",
     "pc_keyboard_integration": "pending"
+  },
+  "build_evidence": {
+    "source_commit": "eedfa9713f2332cfba7bdc63d3022bf8d9816963",
+    "run_id": 38657826368,
+    "binary_upload": "blocked-by-GitHub-artifact-storage-quota",
+    "record": "TARGET_BUILD.md"
   }
 }
