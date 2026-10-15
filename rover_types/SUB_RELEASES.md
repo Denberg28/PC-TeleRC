@@ -10,6 +10,10 @@ application release. No Git tag is created by this documentation change.
 - Record ID: `rover-<type>-v<version>-<status>`.
 - Status progression: `planned` -> `source-candidate` -> `test-candidate` ->
   `hardware-validated` -> `stable`, only when the corresponding evidence exists.
+- `standard-source` is an additional software-baseline label, independent of
+  hardware maturity. It requires a reviewed configurable contract, automated
+  checks and actual target compilation; it does not skip hardware/stable gates.
+  Mini `v1.0.0-standard` uses this label with `hardware_validated: false`.
 - Version increments: patch for compatible corrections, minor for compatible
   features/hardware variants, major for incompatible control or wiring contracts.
 - A future published tag can use `rover-mini-v0.1.0-test-candidate`. Check CI tag
@@ -52,5 +56,7 @@ do not rewrite old results into claims of hardware verification.
 5. PC wheel and any advertised keyboard paths are tested with named app versions.
 6. Review remaining limitations before a stable label or public stable release.
 
-The mini currently meets only the documented source/package and host simulation
-checks. Exact-board compilation and all hardware promotion gates remain open.
+The mini standard meets documented source/package, host matrix and generic
+ESP32-S3 target compilation gates; actual board upload and hardware promotion
+gates remain open. Consult its dated TARGET_BUILD.md.
+

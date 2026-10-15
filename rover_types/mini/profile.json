@@ -1,15 +1,15 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "mini",
-  "status": "test-candidate",
-  "latest_release": "v0.2.0-test-candidate",
+  "status": "standard-source",
+  "latest_release": "v1.0.0-standard",
   "form_factor": "mini",
   "motor_count": 4,
   "driven_wheel_count": 4,
   "steering": "differential-skid",
   "requires_active_balance": false,
   "controller": "ESP32-S3 DevKitC-1",
-  "driver": "2x MX1508 dual-channel",
+  "driver": "Default: 2x MX1508 dual-channel",
   "firmware_present": true,
   "hardware_validated": false,
   "metadata_only": true,
@@ -21,6 +21,16 @@
   "input_sources": [
     "FlySky PWM",
     "PC TeleRC Wi-Fi"
+  ],
+  "supported_motor_counts": [
+    2,
+    4
+  ],
+  "supported_driver_interfaces": [
+    "MX1508",
+    "DRV8833",
+    "TB6612FNG",
+    "BTS7960-module",
+    "L298N-module"
   ]
 }
-

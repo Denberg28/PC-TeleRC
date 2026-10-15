@@ -6,7 +6,7 @@ not add a rover selector to the Windows app or change the main app version.
 
 | Folder | Meaning | Status | Current sub-release |
 |---|---|---|---|
-| [mini](mini/README.md) | Small four-motor TT skid-steer baseline | Test candidate; hardware validation pending | [v0.2.0 FS-iA6](mini/releases/v0.2.0-test-candidate/RELEASE.md) |
+| [mini](mini/README.md) | Two/four-motor brushed DC skid steer | Standard source; hardware validation pending | [v1.0.0 standard](mini/releases/v1.0.0-standard/RELEASE.md) |
 | [balancing](balancing/README.md) | Vehicle requiring active balance control | Planned; requirements only | None |
 | [mono](mono/README.md) | Reserved mono concept; architecture undecided | Planned; definition needed | None |
 | [four_wheel_steering](four_wheel_steering/README.md) | Four wheels with controlled steering geometry | Planned; requirements only | None |
@@ -20,8 +20,9 @@ architecture. They can overlap. Each profile records motor count, driven wheels,
 steering architecture and balance requirements explicitly; the folder name
 alone must never select a mixer or a safety behavior.
 
-The current mini has **four driven wheels with skid steering**. It is not the
-four-wheel-steering profile, and it is not a two-wheel-drive implementation.
+The mini standard supports **two or four brushed motor channels with skid steering**.
+The separate two-wheel-drive folder still reserves future steering layouts;
+four-wheel steering and active balance are outside the mini mixer.
 
 ## Folder convention
 
@@ -57,6 +58,7 @@ control and safety design.
 4. Select the next vehicle architecture and document its hardware before firmware.
 5. Add app profile selection only after the per-type contracts are defined.
 
-See [ROADMAP.md](ROADMAP.md) for per-type milestones. No stable-release claim
+See [ROADMAP.md](ROADMAP.md) for per-type milestones. The mini has a standard software baseline; no hardware-qualified stable claim
 is made for any new rover type in this catalog.
+
 

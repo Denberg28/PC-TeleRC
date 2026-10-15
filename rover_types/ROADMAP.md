@@ -4,7 +4,7 @@ This file tracks planned work, not implemented features or promised deadlines.
 
 | Type | Definition / hardware decisions | Controller work later | Evidence needed next |
 |---|---|---|---|
-| Mini | Confirm TT voltage/stall current, MX1508 board and ESP32-S3 variant | Keep existing CH1/CH2 skid mixer; fix only from evidence | Target compile, wheels-up bench, supply/thermal and disconnect tests |
+| Mini | v1.0.0 standard: 2/4 motors, five driver interfaces; confirm exact motor/module/S3 and power budget | Preserve CH1/CH2 skid mixer and source safety; future feedback only from requirements | Wheels-up bench, exact-board upload, supply/thermal and measured stop tests |
 | Balancing | Chassis, IMU, motor/encoder feedback, balance axis and power | Local estimator and closed-loop balance; bounded remote setpoints | Sensor validation, restrained rig, measured loop timing and loss-of-link response |
 | Mono | Confirm whether monowheel, unicycle or another architecture | Undecided until architecture is selected | Agreed definition and mechanical feasibility |
 | Four-wheel steering | Steering actuator count, wheelbase, track, sensors and drive count | Geometry/angle limits; later mode options if supported mechanically | Steering bench rig, endpoints, direction and alignment |
@@ -25,3 +25,4 @@ This file tracks planned work, not implemented features or promised deadlines.
 
 No automatic range estimate, camera integration, autonomy or return-to-home
 capability is implied by this folder structure.
+

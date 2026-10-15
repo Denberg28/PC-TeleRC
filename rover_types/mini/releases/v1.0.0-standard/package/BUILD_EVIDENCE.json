@@ -1,0 +1,87 @@
+{
+  "source_commit": "9a8a52ca3b01ab95bfbc2ab88e4027b890885b9e",
+  "run_id": 38659722284,
+  "url": "https://github.com/Denberg28/PC-TeleRC/actions/runs/38659722284",
+  "jobs": [
+    {
+      "id": 116177849959,
+      "name": "host",
+      "conclusion": "success",
+      "compile_success": null,
+      "flash_bytes": null,
+      "ram_bytes": null,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": false
+    },
+    {
+      "id": 116177850142,
+      "name": "esp32s3 (3.3.12, 3, 4)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893324,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850184,
+      "name": "esp32s3 (3.3.12, 1, 2)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893376,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850259,
+      "name": "esp32s3 (3.3.12, 2, 4)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893356,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850308,
+      "name": "esp32s3 (3.3.12, 5, 4)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893144,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850323,
+      "name": "esp32s3 (2.0.17, 1, 4)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 698829,
+      "ram_bytes": 45856,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850331,
+      "name": "esp32s3 (3.3.12, 4, 4, -DTELERC_SUPPLY_MAX_MV=12000 -DTELERC_MOTOR_RATED_MV=12000 -DTELERC_BTS_LO...",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893276,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    },
+    {
+      "id": 116177850395,
+      "name": "esp32s3 (3.3.12, 1, 4)",
+      "conclusion": "success",
+      "compile_success": true,
+      "flash_bytes": 893184,
+      "ram_bytes": 47360,
+      "compiler_warnings": [],
+      "artifact_quota_blocked": true
+    }
+  ]
+}

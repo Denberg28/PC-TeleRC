@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "id": "rover-mini-v1.0.0-standard",
+  "version": "1.0.0-standard",
+  "status": "standard-source",
+  "hardware_validated": false,
+  "date": "2026-10-15",
+  "source_commit": "9a8a52ca3b01ab95bfbc2ab88e4027b890885b9e",
+  "workflow_run": 38659722284,
+  "workflow_url": "https://github.com/Denberg28/PC-TeleRC/actions/runs/38659722284",
+  "controller": "ESP32-S3 DevKitC-1",
+  "motor_counts": [
+    2,
+    4
+  ],
+  "steering": "differential-skid",
+  "driver_interfaces": [
+    "MX1508",
+    "DRV8833",
+    "TB6612FNG",
+    "BTS7960-module",
+    "L298N-module"
+  ],
+  "default_driver": "MX1508",
+  "default_motor_count": 4,
+  "receiver": "FS-iA6 PWM; required in PC mode",
+  "archive": "archives/TeleRC-MiniRover-v1.0.0-standard.zip",
+  "sha256": "e80b24bdf600b48b9fe38992105c17ce512d7445e8d59244b1bea690c8835143",
+  "archive_bytes": 333352,
+  "host_configurations_passed": 20,
+  "invalid_configurations_rejected": 6,
+  "actual_target_builds_passed": 7,
+  "binary_included": false,
+  "pc_app_changed": false
+}
