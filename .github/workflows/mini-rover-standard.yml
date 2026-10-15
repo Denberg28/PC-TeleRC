@@ -1,0 +1,55 @@
+name: Mini rover standard
+on:
+  push:
+    branches: [main, firmware/mini-standard-v1.0.0]
+    paths:
+      - 'rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover/**'
+      - 'rover_types/mini/releases/v1.0.0-standard/package/tests/**'
+      - '.github/workflows/mini-rover-standard.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: All driver, motor-count, API and rejection tests
+        run: bash rover_types/mini/releases/v1.0.0-standard/package/tests/run_tests.sh
+  esp32s3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { core: '3.3.12', driver: 1, motors: 4, extra: '' }
+          - { core: '3.3.12', driver: 1, motors: 2, extra: '' }
+          - { core: '3.3.12', driver: 2, motors: 4, extra: '' }
+          - { core: '3.3.12', driver: 3, motors: 4, extra: '' }
+          - { core: '3.3.12', driver: 4, motors: 4, extra: '-DTELERC_SUPPLY_MAX_MV=12000 -DTELERC_MOTOR_RATED_MV=12000 -DTELERC_BTS_LOGIC_VERIFIED=1' }
+          - { core: '3.3.12', driver: 5, motors: 4, extra: '' }
+          - { core: '2.0.17', driver: 1, motors: 4, extra: '' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: mini-fsia6-esp32-${{ matrix.core }}
+      - name: Install pinned Espressif core
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@${{ matrix.core }} --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Compile ESP32-S3 target
+        run: >-
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 --warnings all
+          --build-property 'compiler.cpp.extra_flags=-DTELERC_DRIVER=${{ matrix.driver }} -DTELERC_MOTOR_COUNT=${{ matrix.motors }} ${{ matrix.extra }}'
+          --output-dir build/mini-standard
+          rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: mini-standard-core-${{ matrix.core }}-driver-${{ matrix.driver }}-motors-${{ matrix.motors }}
+          path: build/mini-standard/
