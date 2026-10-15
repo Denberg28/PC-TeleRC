@@ -24,7 +24,7 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip check
           python -m compileall -q src tests main.py
-          python -m pytest -q
+          python -m pytest -v
       - name: Build Windows application and verify camera backend
         run: |
           pyinstaller --noconfirm --clean PC-TeleRC.spec
