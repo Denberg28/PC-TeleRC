@@ -122,6 +122,9 @@ struct Bank {
     for(uint8_t i=0;i<4;++i) if(hardware::active(i) && demands[i]) any=true;
     if(!any) { stopAll(); return true; }
     if(hardware::GLOBAL_ENABLE>=0 && !awake) {
+      // TB must enter Hi-Z before STBY rises, including during wake delay.
+      if(TELERC_DRIVER==3) for(uint8_t i=0;i<4;++i) if(hardware::active(i))
+        pwm(hardware::MOTORS[i].extra,channel(i),255);
       digitalWrite(hardware::GLOBAL_ENABLE,HIGH); awake=true; awakeSince=now;
       for(uint8_t i=0;i<4;++i) written[i]=32767;
     }

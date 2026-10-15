@@ -175,7 +175,9 @@ int main() {
   }
   // Driver-specific stop truth: one stopped side must COAST while the other drives.
   int16_t demands[4]={90,90,0,0};
-  motorBank.stopAll(); motorBank.apply(demands,10000); motorBank.apply(demands,10005);
+  motorBank.stopAll(); motorBank.apply(demands,10000);
+  assert(coasting(2)); // Includes TB/DRV wake before drive starts.
+  motorBank.apply(demands,10005);
   assert(outputPWM(0)==90 && coasting(2)); exclusive();
   if(TELERC_DRIVER==3) assert(duties[hardware::MOTORS[2].extra]==255);
   if(TELERC_DRIVER==4) assert(pins[hardware::MOTORS[2].extra]==LOW);
