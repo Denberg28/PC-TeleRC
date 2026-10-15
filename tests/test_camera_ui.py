@@ -151,3 +151,15 @@ def test_gps_freshness_and_projection_without_network(window):
     assert window.rover_map._center == (13.62,123.19)
     assert not window.rover_map._pending
     assert len(window.rover_map._track) == 1
+
+
+
+def test_self_test_uses_packaged_assets_without_repeating_map_toggle(tmp_path,monkeypatch):
+    import shutil
+    import pctelerc.self_test as self_test
+    package=tmp_path/'frozen'/'pctelerc'
+    assets=package/'assets'; assets.mkdir(parents=True)
+    shutil.copyfile(Path(__file__).parent/'fixtures'/'test-pattern.mp4',assets/'test-pattern.mp4')
+    monkeypatch.setattr(self_test,'__file__',str(package/'self_test.py'))
+    report=tmp_path/'packaged-report.json'
+    assert self_test.run(report)==0, report.read_text()

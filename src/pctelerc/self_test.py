@@ -60,29 +60,8 @@ def run(report_path):
             window._load_offline_map('', persist=False)
         fixture = Path(__file__).parent / "assets" / "test-pattern.mp4"
         if not fixture.exists():
-            window.map_minimize_btn.click(); app.processEvents()
-        checks["map_minimize"] = not window.map_panel.isVisible() and window.map_restore_btn.isVisible()
-        checks["map_restore_anchor"] = window.map_restore_btn.x() == 0 and window.map_restore_btn.y() > 0
-        window.map_restore_btn.click(); app.processEvents()
-        checks["map_restore"] = window.map_panel.isVisible() and not window.map_restore_btn.isVisible()
-        from PySide6.QtCore import QBuffer, QIODevice
-        from PySide6.QtGui import QImage
-        tile = QImage(256,256,QImage.Format.Format_RGB32); tile.fill(0xff2468ac)
-        encoded = QBuffer(); encoded.open(QIODevice.OpenModeFlag.WriteOnly); tile.save(encoded,'PNG')
-        with tempfile.TemporaryDirectory() as folder:
-            offline = Path(folder) / 'self-test.mbtiles'
-            with closing(sqlite3.connect(offline)) as db, db:
-                db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
-                db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','0,0,1'),('name','Diagnostic tiles')])
-                db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')
-                db.execute('INSERT INTO tiles VALUES (1,1,0,?)',(bytes(encoded.data()),))
-            checks["offline_map_load"] = window._load_offline_map(str(offline), persist=False)
-            image = window.rover_map._tile((1,1,1))
-            checks["offline_tile_decode"] = image is not None and image.pixelColor(0,0).name() == '#2468ac'
-            checks["offline_no_network"] = not window.rover_map._online and not window.rover_map._pending
-            checks["offline_no_fake_gps"] = window.rover_map._last_position is None and not window.rover_map._track
-            window._load_offline_map('', persist=False)
-        fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"
+            fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"
+        checks["video_fixture"] = fixture.is_file()
         class Handler(SimpleHTTPRequestHandler):
             def log_message(self, *_args):
                 pass
