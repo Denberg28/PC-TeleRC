@@ -61,12 +61,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.3rc1.exe release-dist\
           Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
-      - name: Retain verified Windows build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: PC-TeleRC-v0.1.3rc1-Windows
-          path: release-dist/*
-          if-no-files-found: error
       - name: Stage validated application as draft candidate
         if: github.ref == 'refs/heads/dev/lora-usb-v0.1.3rc1'
         uses: softprops/action-gh-release@v2
