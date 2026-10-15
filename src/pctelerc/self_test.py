@@ -6,6 +6,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import threading
+import sqlite3
+import tempfile
 import time
 
 from PySide6.QtWidgets import QApplication
@@ -16,7 +18,9 @@ def run(report_path):
     from .config import AppSettings
     app = QApplication.instance() or QApplication([])
     app.setStyleSheet(ui.STYLE)
-    saved_load, saved_save = ui.load_settings, ui.save_settings
+    saved_load, saved_save, saved_map = ui.load_settings, ui.save_settings, ui.RoverMap
+    map_cache = tempfile.TemporaryDirectory()
+    ui.RoverMap = partial(saved_map, cache_dir=Path(map_cache.name) / "cache")
     ui.load_settings = lambda: AppSettings(map_online=False)
     ui.save_settings = lambda *_args, **_kwargs: None
     window = ui.MainWindow(start_services=False)
@@ -30,9 +34,53 @@ def run(report_path):
         checks["logo"] = not window.windowIcon().isNull() and not window.brand_logo.pixmap().isNull()
         checks["control_disabled"] = not window.mav.snapshot().control_enabled and not window.mav.snapshot().running
         checks["sliders"] = window.steering_sensitivity.label.text() == "100%" and window.throttle_limit.label.text() == "25%"
+        window.map_minimize_btn.click(); app.processEvents()
+        checks["map_minimize"] = not window.map_panel.isVisible() and window.map_restore_btn.isVisible()
+        checks["map_restore_anchor"] = window.map_restore_btn.x() == 0 and window.map_restore_btn.y() > 0
+        window.map_restore_btn.click(); app.processEvents()
+        checks["map_restore"] = window.map_panel.isVisible() and not window.map_restore_btn.isVisible()
+        from PySide6.QtCore import QBuffer, QIODevice
+        from PySide6.QtGui import QImage
+        tile = QImage(256,256,QImage.Format.Format_RGB32); tile.fill(0xff2468ac)
+        encoded = QBuffer(); encoded.open(QIODevice.OpenModeFlag.WriteOnly); tile.save(encoded,'PNG')
+        with tempfile.TemporaryDirectory() as folder:
+            offline = Path(folder) / 'self-test.mbtiles'
+            with sqlite3.connect(offline) as db:
+                db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
+                db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','0,0,1'),('name','Diagnostic tiles')])
+                db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')
+                db.execute('INSERT INTO tiles VALUES (1,1,0,?)',(bytes(encoded.data()),))
+            checks["offline_map_load"] = window._load_offline_map(str(offline), persist=False)
+            image = window.rover_map._tile((1,1,1))
+            checks["offline_tile_decode"] = image is not None and image.pixelColor(0,0).name() == '#2468ac'
+            checks["offline_no_network"] = not window.rover_map._online and not window.rover_map._pending
+            checks["offline_no_fake_gps"] = window.rover_map._last_position is None and not window.rover_map._track
+            window._load_offline_map('', persist=False)
         fixture = Path(__file__).parent / "assets" / "test-pattern.mp4"
         if not fixture.exists():
-            fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"
+            window.map_minimize_btn.click(); app.processEvents()
+        checks["map_minimize"] = not window.map_panel.isVisible() and window.map_restore_btn.isVisible()
+        checks["map_restore_anchor"] = window.map_restore_btn.x() == 0 and window.map_restore_btn.y() > 0
+        window.map_restore_btn.click(); app.processEvents()
+        checks["map_restore"] = window.map_panel.isVisible() and not window.map_restore_btn.isVisible()
+        from PySide6.QtCore import QBuffer, QIODevice
+        from PySide6.QtGui import QImage
+        tile = QImage(256,256,QImage.Format.Format_RGB32); tile.fill(0xff2468ac)
+        encoded = QBuffer(); encoded.open(QIODevice.OpenModeFlag.WriteOnly); tile.save(encoded,'PNG')
+        with tempfile.TemporaryDirectory() as folder:
+            offline = Path(folder) / 'self-test.mbtiles'
+            with sqlite3.connect(offline) as db:
+                db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
+                db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','0,0,1'),('name','Diagnostic tiles')])
+                db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')
+                db.execute('INSERT INTO tiles VALUES (1,1,0,?)',(bytes(encoded.data()),))
+            checks["offline_map_load"] = window._load_offline_map(str(offline), persist=False)
+            image = window.rover_map._tile((1,1,1))
+            checks["offline_tile_decode"] = image is not None and image.pixelColor(0,0).name() == '#2468ac'
+            checks["offline_no_network"] = not window.rover_map._online and not window.rover_map._pending
+            checks["offline_no_fake_gps"] = window.rover_map._last_position is None and not window.rover_map._track
+            window._load_offline_map('', persist=False)
+        fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"
         class Handler(SimpleHTTPRequestHandler):
             def log_message(self, *_args):
                 pass
@@ -54,7 +102,9 @@ def run(report_path):
         app.processEvents()
         if server is not None:
             server.shutdown(); server.server_close()
-        ui.load_settings, ui.save_settings = saved_load, saved_save
+        ui.load_settings, ui.save_settings, ui.RoverMap = saved_load, saved_save, saved_map
+        map_cache.cleanup()
     result = {"passed":bool(checks) and all(value is True for value in checks.values()),"checks":checks}
     Path(report_path).write_text(json.dumps(result,indent=2),encoding="utf-8")
     return 0 if result["passed"] else 1
+

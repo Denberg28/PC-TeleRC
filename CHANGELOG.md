@@ -1,3 +1,10 @@
+## 0.1.3 — 2026-10-15
+
+- Offline raster MBTiles, retained stale cache in offline mode, drag/zoom/follow and saved map view.
+- Lower-left map minimize/restore with persisted preference.
+- LoRa USB/password fixes from 0.1.3rc1 and exact user-confirmed 915 MHz direct preset.
+- Automated regression, packaged Windows media/offline-map checks and preset target compilation.
+
 # v0.1.2 — live camera desktop stable
 
 - Central live camera with USB, RTSP/HTTP and HTTP MJPEG sources; explicit start/stop and stale/error indication.
@@ -116,5 +123,6 @@
 
 ## 0.1.0a6 — 2026-10-01
 - Full code-review baseline with dependency integrity and UI symmetry checks.
+
 
 

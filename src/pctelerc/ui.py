@@ -9,7 +9,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog, QScrollArea, QTabWidget,
+    QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog, QScrollArea, QTabWidget, QFileDialog,
 )
 
 from . import __version__
@@ -401,14 +401,33 @@ class MainWindow(QMainWindow):
         map_layout.addWidget(self.rover_map,1)
         map_buttons = QHBoxLayout()
         map_buttons.addWidget(QLabel("Rover map"),1)
+        self.map_locate_btn = QPushButton("◎")
+        self.map_locate_btn.setToolTip("Follow rover GPS")
+        self.map_locate_btn.setFixedWidth(28)
+        self.map_locate_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.map_locate_btn.clicked.connect(self.rover_map.locate_rover)
+        map_buttons.addWidget(self.map_locate_btn)
         for text, step in (("−",-1),("+",1)):
             button = QPushButton(text)
             button.setFixedWidth(28)
             button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             button.clicked.connect(lambda _checked=False, value=step:self.rover_map.zoom(value))
             map_buttons.addWidget(button)
+        self.map_minimize_btn = QPushButton("▁")
+        self.map_minimize_btn.setToolTip("Minimize map")
+        self.map_minimize_btn.setFixedWidth(28)
+        self.map_minimize_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.map_minimize_btn.clicked.connect(lambda: self._set_map_minimized(True))
+        map_buttons.addWidget(self.map_minimize_btn)
         map_layout.addLayout(map_buttons)
         viewport.addWidget(self.map_panel,0,0,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignBottom)
+        self.map_restore_btn = QPushButton("Map  ▣")
+        self.map_restore_btn.setToolTip("Restore rover map")
+        self.map_restore_btn.setFixedSize(92, 32)
+        self.map_restore_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.map_restore_btn.clicked.connect(lambda: self._set_map_minimized(False))
+        viewport.addWidget(self.map_restore_btn,0,0,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignBottom)
+        self.map_restore_btn.hide()
         body.addWidget(self.camera_surface,1)
         self.settings_panel = QWidget()
         self.settings_panel.setFixedWidth(338)
@@ -453,6 +472,19 @@ class MainWindow(QMainWindow):
         camera_layout.addWidget(camera_note)
         self.map_online=QCheckBox("Online map tiles")
         camera_layout.addWidget(self.map_online)
+        offline_row = QHBoxLayout()
+        self.map_load_btn = QPushButton("Open offline map…")
+        self.map_clear_btn = QPushButton("Clear")
+        offline_row.addWidget(self.map_load_btn,1)
+        offline_row.addWidget(self.map_clear_btn)
+        camera_layout.addLayout(offline_row)
+        self.map_file_label = QLabel("Offline: cached tiles only")
+        self.map_file_label.setWordWrap(True)
+        self.map_file_label.setObjectName("Muted")
+        camera_layout.addWidget(self.map_file_label)
+        map_note = QLabel("Open raster MBTiles for offline coverage. Viewed online tiles stay cached. Drag to browse; ◎ follows rover GPS.")
+        map_note.setWordWrap(True); map_note.setObjectName("Muted")
+        camera_layout.addWidget(map_note)
         camera_layout.addStretch()
         tab(camera_card,"Camera")
         panel_layout.addWidget(self.settings_tabs)
@@ -490,6 +522,8 @@ class MainWindow(QMainWindow):
         self.camera_start_btn.clicked.connect(self._start_camera)
         self.camera_stop_btn.clicked.connect(self.camera_view.stop)
         self.map_online.toggled.connect(self._set_map_online)
+        self.map_load_btn.clicked.connect(self._open_offline_map)
+        self.map_clear_btn.clicked.connect(lambda: self._load_offline_map(""))
         self.input_source.currentIndexChanged.connect(self._update_input_fields)
         self.control_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.arm_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -577,6 +611,40 @@ class MainWindow(QMainWindow):
             except OSError:
                 self.camera_status.setText("Camera started; preferences could not be saved")
 
+    def _save_map_preferences(self):
+        try:
+            save_settings(self.settings)
+        except OSError:
+            self.message.setText("Map preference could not be saved")
+
+    def _set_map_minimized(self, minimized, *, persist=True):
+        self.map_panel.setVisible(not minimized)
+        self.map_restore_btn.setVisible(minimized)
+        self.settings.map_minimized = bool(minimized)
+        if persist:
+            self._save_map_preferences()
+
+    def _open_offline_map(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Open offline raster map", self.settings.map_file, "Raster MBTiles (*.mbtiles)")
+        if filename:
+            self._load_offline_map(filename)
+
+    def _load_offline_map(self, filename, *, persist=True):
+        try:
+            self.rover_map.set_offline_map(filename)
+        except (ValueError, OSError) as exc:
+            self.message.setText(str(exc))
+            return False
+        self.settings.map_file = str(filename)
+        self.map_file_label.setText("Offline: " + Path(filename).name if filename else "Offline: cached tiles only")
+        self.map_file_label.setToolTip(str(filename))
+        self.map_clear_btn.setEnabled(bool(filename))
+        if filename:
+            self.map_online.setChecked(False)
+        if persist:
+            self._save_map_preferences()
+        return True
+
     def _set_map_online(self, enabled):
         self.rover_map.set_online(enabled)
         self.settings.map_online=enabled
@@ -650,6 +718,8 @@ class MainWindow(QMainWindow):
         self._refresh_cameras()
         self.map_online.setChecked(s.map_online)
         self.rover_map.set_online(s.map_online)
+        self._load_offline_map(s.map_file, persist=False)
+        self._set_map_minimized(s.map_minimized, persist=False)
         self.input_source.setCurrentIndex(max(0, self.input_source.findData(s.input_source)))
         self.link_mode.setCurrentIndex(max(0, self.link_mode.findData(s.link_mode)))
         self.lora_port.setCurrentText(s.lora_port)
@@ -707,6 +777,8 @@ class MainWindow(QMainWindow):
             camera_device=self.settings.camera_device,
             camera_url=self.settings.camera_url,
             map_online=self.settings.map_online,
+            map_file=self.settings.map_file,
+            map_minimized=self.settings.map_minimized,
         ).validate()
 
     def _persist_and_configure(self):
@@ -1033,5 +1105,6 @@ class MainWindow(QMainWindow):
         if not self._settings_dirty:
             save_settings(self.settings)
         event.accept()
+
 
 

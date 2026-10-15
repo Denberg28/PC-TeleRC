@@ -1,10 +1,15 @@
-# PC TeleRC 0.1.3rc1
+# PC TeleRC v0.1.3
 
-Live camera desktop: open Settings → Camera, choose USB / RTSP-HTTP video / HTTP MJPEG and Start. A separate video connection is required; LoRa does not carry video. The lower-left map displays fresh rover GPS telemetry. See CAMERA-DESKTOP.md in the portable package, or docs/CAMERA-DESKTOP.md in source.
+Use PC-TeleRC.exe from the portable package or install PC-TeleRC-Setup-v0.1.3.exe.
 
-Keyboard: select **Keyboard — WASD / arrows**, Apply Settings, click the driving area, release all keys and manually enable PC Control. W/Up forward, S/Down reverse, A/Left and D/Right steer; hold Space for neutral brake. See KEYBOARD.md in the portable build or docs/KEYBOARD.md in source. Focus loss stops control. No firmware update is required for keyboard input.
+## Your working LoRa setup
 
-Read docs/LILYGO-SKETCH-RELAYS.md. Edit password/frequency and matching relay count at the top of BASE, ROVER and NODE sketches before uploading. NODE index 1 is nearest BASE; index 2 nearest ROVER. OLED sleeps after 30 seconds; the first BOOT press wakes only. A second hold enters setup and stops PC control. Manual enable/ARM at neutral remain separate. Hardware testing required. v0.1.1 remains stable.
+Keep your existing 915 MHz / telerc123 BASE and ROVER firmware. Select LilyGO T3S3 SX1262 · LoRa and BASE's actual COM port, then Apply Connect. If LoRa setup has the port open, click Close USB first and close that window. The compiled preset needs no Save to board step. The included preset sketches/target builds are for reinstallation only; no reflash is required for the map update.
 
+## Offline maps and compact map
 
-For LoRa USB connection, pairing and compiled-password presets, read LORA-USB-SETUP.md supplied with the portable app, or docs/LORA-USB-SETUP.md in the source.
+Settings → Camera → Open offline map… accepts raster MBTiles. PNG/JPEG/WebP tiles are supported; vector MapLibre offline databases are not. Viewed online tiles also remain cached for offline use. No regional map is bundled. See OFFLINE-MAPS.md for coverage, browsing and offline setup.
+
+Click ▁ in the map bar to minimize it to the lower-left Map button; click Map ▣ to restore.
+
+Driving still requires fresh input, neutral acquisition and manual Enable PC Control. ARM is separate. Confirm link-loss stopping and receiver takeover with wheels raised before ground operation.

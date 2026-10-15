@@ -4,7 +4,9 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.3rc1 — LoRa/USB application candidate based on stable v0.1.2. Accept 8–32 visible ASCII password characters without silently accepting truncated input. The telerc123 preset uses all nine characters. Keep the PBKDF2 salt/iterations and USB wire protocol unchanged. Classify serial errors without displaying/logging raw driver buffers. A failed setup-port close must retain ownership and block reconnect; invalidate any previously scheduled restart. Compiled-password presets need no provisioning. Keep future candidates draft and preserve v0.1.2 stable.
+0.1.3 — stable offline maps, compact map minimize/restore and LoRa USB fixes. User explicitly authorized the stable release and offline/minimize additions on 15 October 2026 after confirming the direct 915 MHz LoRa link works. Publish only after automated/frozen Windows checks and packaged preset target compilation pass. Preserve earlier stable rollback releases.
+
+The PC map uses native raster rendering, supports raster MBTiles and persistent cached tiles in offline mode. Vector PBF/Android MapLibre caches are unsupported. Keep local maps read-only, validate failures without replacing a working map, bound tile decoding/SQL work, and never fabricate GPS from map metadata or cached view. Map minimize/restore and preferences are display-only. Preserve LoRa 8–32 ASCII password support and compiled-pairing behavior. The exact tested preset is under stable_config/LoRa-915-PnP-v1; do not silently change its password, frequency or wire protocol.
 
 User explicitly authorized stable v0.1.2 publication on 15 October 2026 after UI optimization. The stable-desktop workflow validates application/frozen media, firmware host checks and unchanged-source target provenance, then verifies complete draft assets before publishing Latest. Preserve v0.1.1 and v0.1.0a10 rollback downloads.
 
@@ -79,4 +81,5 @@ LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys
 
 
 PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.
+
 

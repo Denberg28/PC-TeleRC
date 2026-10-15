@@ -1,3 +1,7 @@
+# PC TeleRC v0.1.3
+
+Offline maps and a minimizable lower-left rover map, with the working 915 MHz LoRa preset. Open raster MBTiles in Settings → Camera, or reuse previously viewed online tiles offline. See [offline map guide](docs/OFFLINE-MAPS.md) and [release notes](docs/releases/v0.1.3.md).
+
 # PC TeleRC v0.1.3rc1 — LoRa setup and USB connection candidate
 
 Updates the v0.1.2 camera desktop with 8–32-character LoRa passwords, USB failure explanations, visible frequency guidance and stricter setup/reconnect port ownership. The stable release remains [v0.1.2](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.2). See [LoRa USB setup](docs/LORA-USB-SETUP.md) and [candidate changes](docs/releases/v0.1.3rc1.md).
@@ -142,4 +146,5 @@ PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing 
 # Keyboard driving
 
 Select **Keyboard — WASD / arrows**, Apply Settings, then focus the keyboard driving area and enable PC Control with all keys released. W/Up moves forward, S/Down reverses, A/Left and D/Right steer, and Space commands neutral brake. Existing sensitivity and throttle-limit settings apply. Focus loss stops control; no automatic re-enable. No joystick or firmware change is required. See [keyboard instructions](docs/KEYBOARD.md).
+
 

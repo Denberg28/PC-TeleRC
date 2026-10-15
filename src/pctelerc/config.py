@@ -39,6 +39,8 @@ class AppSettings:
     camera_device: str = ""
     camera_url: str = ""
     map_online: bool = True
+    map_file: str = ""
+    map_minimized: bool = False
 
     def validate(self) -> "AppSettings":
         self.settings_version = CURRENT_SETTINGS_VERSION
@@ -47,6 +49,8 @@ class AppSettings:
         self.camera_device = str(self.camera_device)
         self.camera_url = str(self.camera_url).strip()
         self.map_online = bool(self.map_online)
+        self.map_file = str(self.map_file or "")
+        self.map_minimized = bool(self.map_minimized)
         if self.input_source not in {"wheel", "keyboard"}:
             self.input_source = "wheel"
         if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial"}:
@@ -118,5 +122,6 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> Path:
     tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
     return target
+
 
 
