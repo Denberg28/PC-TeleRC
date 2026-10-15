@@ -1,0 +1,94 @@
+name: LoRa USB v0.1.3rc1 application candidate
+on:
+  push:
+    branches: [dev/lora-usb-v0.1.3rc1]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lora-usb-v0.1.3rc1
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install and validate application
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip check
+          python -m compileall -q src tests main.py
+          python -m pytest -q
+      - name: Build Windows application and verify camera backend
+        run: |
+          pyinstaller --noconfirm --clean PC-TeleRC.spec
+          python scripts/verify_desktop_package.py
+      - name: Run frozen application media and UI check
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $p = Start-Process -FilePath ".\dist\PC-TeleRC\PC-TeleRC.exe" -ArgumentList "--self-test-ui", "frozen-ui-check.json" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Frozen camera/UI self-test failed" }
+          $report = Get-Content frozen-ui-check.json -Raw | ConvertFrom-Json
+          if (!$report.passed) { throw "Frozen camera/UI self-test did not pass" }
+          Get-Content frozen-ui-check.json
+      - name: Package portable and source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-dist | Out-Null
+          Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
+          Copy-Item docs\CAMERA-DESKTOP.md dist\PC-TeleRC\CAMERA-DESKTOP.md
+          Copy-Item docs\KEYBOARD.md dist\PC-TeleRC\KEYBOARD.md
+          Copy-Item docs\LORA-USB-SETUP.md dist\PC-TeleRC\LORA-USB-SETUP.md
+          Copy-Item docs\LILYGO-SKETCH-RELAYS.md dist\PC-TeleRC\LILYGO-SKETCH-RELAYS.md
+          Copy-Item docs\THIRD-PARTY.md dist\PC-TeleRC\THIRD-PARTY.md
+          Copy-Item frozen-ui-check.json release-dist\frozen-ui-check.json
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath release-dist\PC-TeleRC-portable-v0.1.3rc1.zip
+          git archive --format=zip --output=release-dist/PC-TeleRC-source-v0.1.3rc1.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build installer and checksums
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.3rc1.exe release-dist\
+          Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
+      - name: Retain verified Windows build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-v0.1.3rc1-Windows
+          path: release-dist/*
+          if-no-files-found: error
+      - name: Stage validated application as draft candidate
+        if: github.ref == 'refs/heads/dev/lora-usb-v0.1.3rc1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.3rc1
+          target_commitish: ${{ github.sha }}
+          name: PC TeleRC v0.1.3rc1 — LoRa setup and USB connection
+          draft: true
+          prerelease: true
+          make_latest: false
+          body_path: docs/releases/v0.1.3rc1.md
+          files: release-dist/*
+      - name: Verify draft candidate files and tested commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases=await github.rest.repos.listReleases({...context.repo});
+            const release=releases.data.find(r=>r.tag_name==='v0.1.3rc1');
+            if (!release || !release.draft || release.target_commitish!==context.sha) throw new Error('Candidate draft does not match tested commit');
+            const assets=await github.rest.repos.listReleaseAssets({...context.repo,release_id:release.id});
+            for (const name of ['PC-TeleRC-portable-v0.1.3rc1.zip','PC-TeleRC-Setup-v0.1.3rc1.exe','PC-TeleRC-source-v0.1.3rc1.zip','SHA256-windows.txt','frozen-ui-check.json']) {
+              const asset=assets.data.find(a=>a.name===name);
+              if (!asset || asset.size<=0 || asset.state!=='uploaded' || !asset.digest) throw new Error('Missing candidate download: '+name);
+            }
+            core.info('Verified draft candidate: '+release.html_url);

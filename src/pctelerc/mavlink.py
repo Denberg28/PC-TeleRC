@@ -10,6 +10,7 @@ from .config import AppSettings
 from .core import ControlFrame, LinkState, apply_sensitivity, heartbeat_link_state, normalized_to_pwm, PWM_NEUTRAL
 from .field_safety import can_arm, can_continue_control, can_enable_control
 from .network_errors import describe_mavlink_start_error
+from .serial_errors import RadioConnectionError, describe_serial_error
 
 logger = logging.getLogger(__name__)
 
@@ -394,14 +395,14 @@ class MavlinkService:
                 from .transport import VehicleLoRa, VehicleSerial
                 port = self._serial_port(settings)
                 if not port:
-                    raise ValueError("Select the radio COM port before connecting.")
+                    raise RadioConnectionError("Select the radio COM port before connecting.")
                 if settings.link_mode == "lora_usb":
                     link = VehicleLoRa(port)
                     board = link.require_active_base(self._stop)
                     self._lora_backend = board.backend
                     self._lora_stop_baseline = None
                     if board.chip != 1262:
-                        raise ValueError("Select a LilyGO T3S3 SX1262 BASE for this profile.")
+                        raise RadioConnectionError("Select a LilyGO T3S3 SX1262 BASE for this profile.")
                 else:
                     link = VehicleSerial(port)
                 if self._stop.is_set():
@@ -479,9 +480,14 @@ class MavlinkService:
                     state=LinkState.DISCONNECTED,
                     control_enabled=False,
                     failsafe_latched=self._failsafe_latched,
-                    error=describe_mavlink_start_error(exc, settings.listen_port),
+                    error=(describe_serial_error(exc, self._serial_port(settings), "open" if link is None else "communicate")
+                           if settings.link_mode != "telerc_udp" and not isinstance(exc, RadioConnectionError)
+                           else describe_mavlink_start_error(exc, settings.listen_port)),
                 )
-            logger.exception("MAVLink worker stopped")
+            if settings.link_mode == "telerc_udp":
+                logger.exception("MAVLink worker stopped")
+            else:
+                logger.error("%s", self.snapshot().error)
 
         finally:
             self._send_neutral_then_release()

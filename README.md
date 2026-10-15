@@ -1,32 +1,24 @@
-# PC TeleRC v0.1.2 — live camera desktop
+# PC TeleRC v0.1.3rc1 — LoRa setup and USB connection candidate
 
-Camera-first driving screen with a live USB/network camera, lower-left GPS map, compact controls, collapsible settings and percentage sliders. Uses the TeleRC Android logo. See [camera desktop setup](docs/CAMERA-DESKTOP.md).
+Updates the v0.1.2 camera desktop with 8–32-character LoRa passwords, USB failure explanations, visible frequency guidance and stricter setup/reconnect port ownership. The stable release remains [v0.1.2](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.2). See [LoRa USB setup](docs/LORA-USB-SETUP.md) and [candidate changes](docs/releases/v0.1.3rc1.md).
 
-The camera needs a USB or network video source; the LoRa radio does not carry video. Map position requires fresh rover GPS telemetry. Wheel and WASD/arrows/Space control retain their manual-enable and fail-safe behavior. Stable downloads are available in [v0.1.2](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.2).
-
-## Previous keyboard candidate
-
-Adds selectable keyboard WASD / arrows and Space neutral brake. Focus loss stops keyboard control and requires manual re-enable. See [keyboard instructions](docs/KEYBOARD.md). Existing v0.1.2rc2 firmware remains compatible.
-
-LilyGO 0.5.0 adds an eight-character password in each sketch, 30-second OLED timeout with BOOT wake, and one/two ordered relay nodes. Wi-Fi/LoRa selection, independent sensitivities and PWM converter 1.0.5 remain available.
-
-Read [the sketch/relay guide](docs/LILYGO-SKETCH-RELAYS.md). This remains a draft for bench testing; v0.1.1 stays Latest. Physical range, power and motor timing are unverified.
+The driving screen retains live USB/network camera, lower-left GPS map, compact controls, percentage sliders, wheel input and keyboard WASD/arrows/Space. Video needs its own USB/network source; LoRa does not carry video. Map position requires fresh rover GPS telemetry. See [camera setup](docs/CAMERA-DESKTOP.md) and [keyboard controls](docs/KEYBOARD.md).
 
 # PC TeleRC
 
-## ELRS reliability candidate — v0.1.1rc2
+## Connection profiles
 
-Built directly from the stable [v0.1.0a10](https://github.com/Denberg28/PC-TeleRC/releases/tag/v0.1.0a10) commit `7b84b7882c4010c34f158304cc9c8c8cc4cba77b`. The stable release remains the recommended download. This candidate adds three connection profiles without importing later controller or UDP implementations.
+Select one connection profile. The radio port and pairing setup are separate from vehicle heartbeat reception. Existing firmware protocols and watchdog timings are preserved.
 
 | Connection dropdown | PC connection | Required radio path |
 | --- | --- | --- |
 | ESP32-S3 · Wi-Fi | Existing MAVLink UDP, port 14550 | PC Wi-Fi → ESP32-S3 bridge → rover |
-| LilyGO T3S3 SX1262 · LoRa | Native USB CDC, 115200 | PC → paired BASE → LoRa → paired ROVER → TeleRC DIRECT motor controller |
+| LilyGO T3S3 SX1262 · LoRa | Native USB CDC, 115200 | PC → paired BASE → LoRa → paired ROVER → ArduRover or legacy DIRECT controller |
 | HGLRC T ONE 900 MHz · ELRS | USB MAVLink, 460800 | PC → compatible ELRS TX → bound MAVLink RX → flight controller |
 
 Choose a profile, set its endpoint, then **Apply & Reconnect**. Wi-Fi remains the default for existing a10 settings. Each radio has its own saved COM port. Changing a field disables PC Control; Apply Settings saves a connection draft without switching the live link. Disconnect cancels a pending reconnect. Every reopened session requires a fresh vehicle heartbeat and manual control enable.
 
-**LoRa:** Use current [TeleRC paired firmware](https://github.com/Denberg28/TeleRC/tree/67b2cf5137989c1a6a65a4b02af960105d04afa3/bridge), not Meshtastic or transparent serial firmware. The app verifies an active SX1262 BASE before driving. LoRa Setup reads/provisions one board at a time; pairing secrets are masked and kept in memory only. The driving profile requires CH1 steering / CH2 drive and DIRECT motor control; AUTOPILOT driving through this LoRa profile is not implemented. Center the wheel and release pedals before enabling. Initial motor FAILSAFE allows only neutral commands while waiting for DIRECT; ARM remains blocked until DIRECT and PC Control are confirmed.
+**LoRa:** Use matching TeleRC SX1262 BASE/ROVER firmware, not Meshtastic or transparent serial firmware. The app verifies an active SX1262 BASE before waiting for the actual rover heartbeat. LilyGO 0.5.0 supports the ArduRover backend; legacy INFO_V1 boards remain DIRECT-only. For two boards without a relay, both must use relay count 0. Compiled-password presets connect directly and lock pairing edits; saved pairing can be configured one board at a time in LoRa setup. Passwords stay in memory and are never sent as plaintext USB setup data. Center steering, release pedals and manually enable control after a fresh heartbeat. ArduRover requires MANUAL mode. See [step-by-step USB and pairing setup](docs/LORA-USB-SETUP.md).
 
 **ELRS:** This is a USB MAVLink transport, not CRSF output to a module bay. Both radios need compatible ExpressLRS 3.5+ firmware and MAVLink mode; the T ONE's exact USB data path must be verified physically. No RF flashing or transmitter arbitration is performed. Controls run at 5 Hz to reduce 900 MHz traffic. Select a sufficiently fast RF packet mode and keep vehicle telemetry low; a fast USB baud rate does not increase RF capacity. The [official ExpressLRS MAVLink guide](https://www.expresslrs.org/software/mavlink/) documents setup and throughput. Pocket takeover has not been validated.
 
@@ -38,11 +30,11 @@ See [candidate notes](docs/releases/v0.1.1rc2.md) for test evidence and hardware
 
 PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes from the ESP32-S3 Wi-Fi bridge, and a PXN or compatible steering wheel provides steering/pedal input.
 
-**Current candidate:** `0.1.2rc2`; latest stable: `0.1.1` — Android-aligned CH1 steering / CH2 drive mapping.
+**Current candidate:** `0.1.3rc1`; latest stable: `0.1.2` — Android-aligned CH1 steering / CH2 drive mapping.
 
 ## Operator flow
-1. Connect the PC to the ESP32-S3 rover network.
-2. Start PC TeleRC; it listens on UDP 14550 by default.
+1. Join the rover Wi-Fi or connect the intended BASE/TX module by USB.
+2. Start PC TeleRC, choose the radio profile and endpoint, then Apply & Connect. Wi-Fi uses UDP 14550 by default.
 3. Select the intended PXN/controller. Once a controller GUID is selected, PC TeleRC will not silently fall back to another joystick.
 4. Run **Calibrate wheel & pedals**. Capture neutral, steering extremes, and pedal extremes.
 5. Verify live Steer/Drive values and apply settings.
@@ -147,7 +139,7 @@ The installed build now uses PyInstaller **onedir** inside the Inno Setup instal
 PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing control traffic (GCS heartbeat, ARM/DISARM, RC override, neutral and release) is deliberately encoded as MAVLink 1 from system 255 / component 190 so it remains compatible with the TeleRC ESP32-S3 command filter and Android TeleRC control envelope.
 
 
-# Keyboard driving (v0.1.2rc3 candidate)
+# Keyboard driving
 
 Select **Keyboard — WASD / arrows**, Apply Settings, then focus the keyboard driving area and enable PC Control with all keys released. W/Up moves forward, S/Down reverses, A/Left and D/Right steer, and Space commands neutral brake. Existing sensitivity and throttle-limit settings apply. Focus loss stops control; no automatic re-enable. No joystick or firmware change is required. See [keyboard instructions](docs/KEYBOARD.md).
 

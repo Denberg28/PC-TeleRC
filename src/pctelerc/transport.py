@@ -1,6 +1,7 @@
 """USB radio transports. Stable a10 Wi-Fi remains in MavlinkService."""
 from pymavlink import mavutil
 import time
+from .serial_errors import RadioConnectionError
 
 
 class VehicleSerial(mavutil.mavfile):
@@ -20,7 +21,11 @@ class VehicleSerial(mavutil.mavfile):
             self.port.reset_output_buffer()
             super().__init__(None, port_name, source_system=255, source_component=190, input=True)
         except Exception:
-            self.port.close()
+            # Cleanup must not hide the original USB opening/configuration error.
+            try:
+                self.port.close()
+            except Exception:
+                pass
             raise
 
     @property
@@ -107,7 +112,11 @@ class VehicleLoRa(VehicleSerial):
             self.port.reset_input_buffer()
             mavutil.mavfile.__init__(self, None, port_name, source_system=255, source_component=190, input=True)
         except Exception:
-            self.port.close()
+            # Cleanup must not hide the original USB opening/configuration error.
+            try:
+                self.port.close()
+            except Exception:
+                pass
             raise
 
     def read_packet(self):
@@ -163,9 +172,10 @@ class VehicleLoRa(VehicleSerial):
             board = Board.parse(self.read_packet())
             if board:
                 if board.role != 'BASE':
-                    raise ValueError('This is the ROVER board. Connect the LoRa BASE to the PC for driving.')
+                    raise RadioConnectionError('This is the ROVER board. Connect the LoRa BASE to the PC for driving.')
                 if not board.active:
-                    raise ValueError('LoRa BASE radio is inactive. Provision and restart it in LoRa Setup.')
+                    raise RadioConnectionError('LoRa BASE is unconfigured (0 MHz). Configure matching pairing on BASE/ROVER or upload the matching preset.' if not board.khz else 'LoRa BASE radio is inactive. Exit the BOOT/setup menu and restart; if it stays inactive, check the matching SX1262 firmware and radio.')
                 return board
             stop_event.wait(.005)
-        raise ValueError('No TeleRC LoRa board reply. Check native USB, firmware and COM port.')
+        raise RadioConnectionError('No TeleRC LoRa board reply. Check native USB, firmware and COM port.')
+
