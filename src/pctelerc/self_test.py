@@ -1,6 +1,8 @@
 """Frozen-package UI/media verification: no wheel or radio services start."""
 from __future__ import annotations
 
+from contextlib import closing
+
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -45,7 +47,7 @@ def run(report_path):
         encoded = QBuffer(); encoded.open(QIODevice.OpenModeFlag.WriteOnly); tile.save(encoded,'PNG')
         with tempfile.TemporaryDirectory() as folder:
             offline = Path(folder) / 'self-test.mbtiles'
-            with sqlite3.connect(offline) as db:
+            with closing(sqlite3.connect(offline)) as db, db:
                 db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
                 db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','0,0,1'),('name','Diagnostic tiles')])
                 db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')
@@ -69,7 +71,7 @@ def run(report_path):
         encoded = QBuffer(); encoded.open(QIODevice.OpenModeFlag.WriteOnly); tile.save(encoded,'PNG')
         with tempfile.TemporaryDirectory() as folder:
             offline = Path(folder) / 'self-test.mbtiles'
-            with sqlite3.connect(offline) as db:
+            with closing(sqlite3.connect(offline)) as db, db:
                 db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
                 db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','0,0,1'),('name','Diagnostic tiles')])
                 db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)')

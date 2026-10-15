@@ -1,3 +1,4 @@
+from contextlib import closing
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 from dataclasses import replace
@@ -22,7 +23,7 @@ import pctelerc.ui as ui
 def make_map(path, *, scheme='tms', fmt='png'):
     image=QImage(256,256,QImage.Format.Format_RGB32); image.fill(0xff2468ac)
     buffer=QBuffer(); buffer.open(QIODevice.OpenModeFlag.WriteOnly); assert image.save(buffer,'PNG')
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
         db.executemany('INSERT INTO metadata VALUES (?,?)', [('format',fmt),('name','Field map'),('center','0,0,1'),('attribution','Test tiles'),('scheme',scheme)])
         db.execute('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY(zoom_level,tile_column,tile_row))')
