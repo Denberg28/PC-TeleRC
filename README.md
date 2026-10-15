@@ -39,7 +39,7 @@ PC TeleRC is a Windows-first rover control bridge based on TeleRC: MAVLink comes
 4. Run **Calibrate wheel & pedals**. Capture neutral, steering extremes, and pedal extremes.
 5. Verify live Steer/Drive values and apply settings.
 6. Confirm MAVLink heartbeat and neutral pedals.
-7. ARM explicitly if needed, then enable PC control.
+7. Enable PC control at neutral, then ARM explicitly if needed.
 8. Drive. Stale controller data or heartbeat latches PC control OFF.
 9. Disable/exit sends neutral, then releases steering/throttle overrides when the link is still available.
 
