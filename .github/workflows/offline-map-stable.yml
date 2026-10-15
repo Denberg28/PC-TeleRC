@@ -33,8 +33,10 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          $p = Start-Process -FilePath ".\dist\PC-TeleRC\PC-TeleRC.exe" -ArgumentList "--self-test-ui", "frozen-ui-check.json" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "Frozen application check failed" }
+          $p = Start-Process -FilePath ".\dist\PC-TeleRC\PC-TeleRC.exe" -ArgumentList "--self-test-ui", "frozen-ui-check.json" -Wait -PassThru -RedirectStandardOutput frozen-stdout.txt -RedirectStandardError frozen-stderr.txt
+          if (Test-Path frozen-ui-check.json) { Get-Content frozen-ui-check.json }
+          if (Test-Path frozen-stderr.txt) { Get-Content frozen-stderr.txt }
+          if ($p.ExitCode -ne 0) { throw "Frozen application check failed (exit $($p.ExitCode))" }
           $report = Get-Content frozen-ui-check.json -Raw | ConvertFrom-Json
           if (!$report.passed) { throw "Frozen offline map/media check did not pass" }
           Get-Content frozen-ui-check.json
