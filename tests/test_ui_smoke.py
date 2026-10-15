@@ -40,3 +40,19 @@ def test_camera_first_window_with_modeless_diagnostics(monkeypatch):
         window.close()
         app.processEvents()
 
+
+def test_repeated_window_destruction_releases_native_map_manager(monkeypatch, qt_application):
+    import gc
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from shiboken6 import isValid
+    monkeypatch.setattr(ui, 'load_settings', lambda: AppSettings())
+    monkeypatch.setattr(ui, 'save_settings', lambda *args, **kwargs: None)
+    for _ in range(12):
+        window = ui.MainWindow(start_services=False)
+        manager = window.rover_map._manager
+        window.close()
+        window.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        qt_application.processEvents()
+        assert not isValid(manager)
+        gc.collect()

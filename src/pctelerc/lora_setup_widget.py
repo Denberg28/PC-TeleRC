@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QComboBox, QFormLayout, QHBoxLayout, QLabel, QLine
 
 from .lora import SetupExchange, password_pairing_key
 from .transport import VehicleLoRa
+from .serial_errors import describe_serial_error
 
 
 def refresh_ports(combo):
@@ -39,7 +40,7 @@ class LoRaSetupWidget(QWidget):
         title = QLabel('LoRa Setup')
         title.setStyleSheet('font-size:12pt;font-weight:700;')
         layout.addWidget(title)
-        hint = QLabel('Disconnect motor power. On LilyGO firmware 0.4.0, hold BOOT after startup to pause the link. Plug in native USB, read the board, then save. Use the same frequency and password on BASE and ROVER. Exit the BOOT menu to restart.')
+        hint = QLabel('Configure one board at a time with motor power disconnected. Hold BOOT after startup to pause the board, then open native USB and read it. Set the same frequency and password on BASE and ROVER. Compiled-password presets need no setup: connect BASE directly from the main window. Their pairing can only be changed in the sketches.')
         hint.setWordWrap(True)
         layout.addWidget(hint)
         form = QFormLayout()
@@ -59,14 +60,16 @@ class LoRaSetupWidget(QWidget):
         row.addWidget(self.close_button)
         form.addRow('Board port', port_row)
         self.mhz = QLineEdit()
-        self.mhz.setPlaceholderText('MHz, matching your board and permitted band')
+        self.mhz.setPlaceholderText('MHz, e.g. 915.000 for appropriate 915 MHz hardware')
+        self.mhz.setAccessibleName('LoRa frequency in MHz')
+        self.mhz.setToolTip('Enter MHz, not kHz. Zero means the board has no saved pairing frequency.')
         self.power = QSpinBox()
         self.power.setRange(2, 17)
         self.power.setSuffix(' dBm')
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
         self.key_type = QComboBox()
-        self.key_type.addItems(['8-character password', 'Advanced hex key'])
+        self.key_type.addItems(['Password (8–32 characters)', 'Advanced hex key'])
         self.key_type.setAccessibleName('LoRa credential type')
         self._credential_type()
         key_row = QWidget()
@@ -78,7 +81,7 @@ class LoRaSetupWidget(QWidget):
         row.addWidget(self.show_key)
         self.generate = QPushButton('Generate')
         row.addWidget(self.generate)
-        form.addRow('Frequency', self.mhz)
+        form.addRow('Frequency (MHz)', self.mhz)
         form.addRow('Power', self.power)
         form.addRow('Credential type', self.key_type)
         form.addRow('Password / key', key_row)
@@ -94,7 +97,7 @@ class LoRaSetupWidget(QWidget):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         layout.addStretch()
-        self.scan.clicked.connect(lambda: refresh_ports(self.port))
+        self.scan.clicked.connect(self.refresh_usb_ports)
         self.open_button.clicked.connect(self.open_usb)
         self.close_button.clicked.connect(self.close_usb)
         self.read_button.clicked.connect(self.read_board)
@@ -107,11 +110,19 @@ class LoRaSetupWidget(QWidget):
         self.timer.timeout.connect(self.poll)
         self._buttons()
 
+    def refresh_usb_ports(self):
+        try:
+            refresh_ports(self.port)
+        except OSError:
+            self.status.setText('Could not list USB ports. Enter the COM number from Device Manager manually.')
+
     def _credential_type(self):
         self.key.clear()
         password = self.key_type.currentIndex() == 0
-        self.key.setMaxLength(8 if password else 64)
-        self.key.setPlaceholderText('Exactly 8 visible ASCII characters' if password else '64 hexadecimal characters')
+        # Keep one excess character so overlong input fails validation instead of
+        # silently becoming a different valid password/key.
+        self.key.setMaxLength(33 if password else 65)
+        self.key.setPlaceholderText('8–32 visible ASCII characters; no spaces' if password else '64 hexadecimal characters')
         self.key.setAccessibleName('LoRa link password' if password else 'LoRa pairing key')
 
     def _generate(self):
@@ -143,37 +154,46 @@ class LoRaSetupWidget(QWidget):
         if not self.stop_link():
             self.status.setText('Driving link did not stop. Close PC TeleRC before provisioning.')
             return
-        self.close_usb()
+        if not self.close_usb():
+            return
         try:
             self.link = VehicleLoRa(port)
             self.exchange = SetupExchange()
             self.timer.start()
             self.read_board()
-        except Exception:
-            # No exception text is displayed: serial driver errors may include buffers.
-            self.close_usb()
-            self.status.setText('USB open failed. Check the selected native USB port and close other serial applications.')
+        except Exception as exc:
+            if self.close_usb():
+                self.status.setText(describe_serial_error(exc, port, 'open'))
         self._buttons()
 
     def close_usb(self):
         self.timer.stop()
-        if self.link:
-            self.link.close()
+        if self.link is not None:
+            try:
+                self.link.close()
+            except Exception:
+                self.deadline = None
+                self.exchange = SetupExchange()
+                self.exchange.blocked = True
+                self.status.setText('USB close failed. Unplug the board and retry Close USB, or exit PC TeleRC before reconnecting.')
+                self._buttons()
+                return False
         self.link = None
         self.deadline = None
         self.exchange = SetupExchange()
         self.show_key.setChecked(False)
         self.status.setText('USB closed. Pairing draft retained in memory for the partner board.')
         self._buttons()
+        return True
 
     def _send(self, request):
         try:
             self.link.write(request)
             self.deadline = time.monotonic() + 2.0
             self.status.setText('Waiting for board reply…')
-        except Exception:
-            self.close_usb()
-            self.status.setText('USB write failed. Reopen and read the board before retrying.')
+        except Exception as exc:
+            if self.close_usb():
+                self.status.setText(describe_serial_error(exc, self.port.currentText(), 'write'))
         self._buttons()
 
     def read_board(self):
@@ -212,20 +232,23 @@ class LoRaSetupWidget(QWidget):
                     self.deadline = None
                     self.status.setText(message)
                     board = self.exchange.board
-                    if board and board.khz:
-                        self.mhz.setText(f'{board.khz / 1000:g}')
+                    if board:
+                        self.mhz.setText(f'{board.khz / 1000:g}' if board.khz else '')
                         self.power.setValue(board.power)
+                        if not board.khz:
+                            self.status.setText(message + '\nPairing is not configured. Enter the hardware frequency in MHz and a matching password on both boards, or upload the matching compiled preset.')
                     self._buttons()
             if self.deadline is not None and time.monotonic() >= self.deadline:
                 self.exchange.timeout()
                 self.deadline = None
                 self.status.setText('Reply timed out. Close and reopen USB before retrying; delayed replies are ignored.')
                 self._buttons()
-        except Exception:
-            self.close_usb()
-            self.status.setText('USB disconnected or unreadable. Reopen the selected board to continue.')
+        except Exception as exc:
+            if self.close_usb():
+                self.status.setText(describe_serial_error(exc, self.port.currentText(), 'read'))
 
     def clear_secret(self):
         self.key.clear()
         self.show_key.setChecked(False)
+
 

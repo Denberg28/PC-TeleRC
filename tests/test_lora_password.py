@@ -14,7 +14,7 @@ def test_password_matches_firmware_known_vector_and_is_case_sensitive():
     assert password_pairing_key('ab12Cd34') != VECTOR
 
 
-@pytest.mark.parametrize('password', ['', 'short', '123456789', '1234 678', '1234567\n', '1234567é', '1234567\x7f'])
+@pytest.mark.parametrize('password', ['', 'short', 'x' * 33, '1234 678', '1234567\n', '1234567é', '1234567\x7f'])
 def test_password_rejects_invalid_length_and_characters_without_echo(password):
     with pytest.raises(ValueError) as error:
         password_pairing_key(password)
@@ -35,7 +35,7 @@ def test_setup_password_and_advanced_key_send_derived_key_only():
     ready()
     widget.mhz.setText('915')
     widget.key.setText('Ab12Cd34')
-    assert widget.key.maxLength() == 8 and widget.key.echoMode() == QLineEdit.EchoMode.Password
+    assert widget.key.maxLength() == 33 and widget.key.echoMode() == QLineEdit.EchoMode.Password
     widget.save_board()
     assert sent == [f'TELERC_LORA_SET_V1,915000,2,{VECTOR}'.encode()]
     assert b'Ab12Cd34' not in sent[0]
@@ -45,7 +45,7 @@ def test_setup_password_and_advanced_key_send_derived_key_only():
     widget.generate.click()
     assert len(widget.key.text()) == 8
     widget.key_type.setCurrentIndex(1)
-    assert widget.key.text() == '' and widget.key.maxLength() == 64
+    assert widget.key.text() == '' and widget.key.maxLength() == 65
     widget.key.setText('12' * 32)
     widget.link = Link()
     ready()
@@ -67,3 +67,4 @@ def test_sketch_pairing_lock_is_reported_without_echoing_a_secret():
     message = state.receive(b'TELERC_LORA_RESULT_V1,SKETCH_PAIRING_LOCKED')
     assert 'sketch' in message and VECTOR not in message
     assert state.board is None and not state.pending and not state.can_save
+

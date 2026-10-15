@@ -4,7 +4,7 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
-0.1.2 — camera-first stable desktop with lower-left GPS map, compact controls, percentage sliders and TeleRC branding. Retains keyboard rc3 and rc2 LilyGO 0.5.0.
+0.1.3rc1 — LoRa/USB application candidate based on stable v0.1.2. Accept 8–32 visible ASCII password characters without silently accepting truncated input. The telerc123 preset uses all nine characters. Keep the PBKDF2 salt/iterations and USB wire protocol unchanged. Classify serial errors without displaying/logging raw driver buffers. A failed setup-port close must retain ownership and block reconnect; invalidate any previously scheduled restart. Compiled-password presets need no provisioning. Keep future candidates draft and preserve v0.1.2 stable.
 
 User explicitly authorized stable v0.1.2 publication on 15 October 2026 after UI optimization. The stable-desktop workflow validates application/frozen media, firmware host checks and unchanged-source target provenance, then verifies complete draft assets before publishing Latest. Preserve v0.1.1 and v0.1.0a10 rollback downloads.
 

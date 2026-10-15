@@ -101,8 +101,8 @@ class Board:
 
 def password_pairing_key(password: str) -> str:
     """Matches LilyGO Pairing.h; raw passwords never enter the USB protocol."""
-    if len(password) != 8 or any(not 33 <= ord(c) <= 126 for c in password):
-        raise ValueError('LoRa password must contain exactly 8 visible ASCII characters, without spaces.')
+    if not 8 <= len(password) <= 32 or any(not 33 <= ord(c) <= 126 for c in password):
+        raise ValueError('LoRa password must contain 8–32 visible ASCII characters, without spaces.')
     return hashlib.pbkdf2_hmac('sha256', password.encode('ascii'),
                                b'TeleRC-LoRa-Link-v1', 10000, dklen=32).hex()
 
@@ -216,4 +216,5 @@ class RemoteStatus:
         reasons = ('boot', 'command-timeout', 'FC-heartbeat-timeout', 'release',
                    'disconnect', 'UART-write-failure', 'radio-fault', 'disarm')
         return f'LoRa rover: ready={int(self.ready)} owned={self.owned} stops={self.stops} last={reasons[self.reason]} command age={self.command_age_ms}ms'
+
 

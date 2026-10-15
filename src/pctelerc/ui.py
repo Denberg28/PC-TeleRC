@@ -759,7 +759,7 @@ class MainWindow(QMainWindow):
         self.guide.setText("Verify radio-loss stop and transmitter takeover before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
         self.link_hint.setText({
             "telerc_udp": "Join TeleRC-Rover Wi-Fi. ESP32-S3 and LilyGO use UDP 14550.",
-            "lora_usb": "Connect the paired SX1262 BASE using native USB (115200). Use the matching BASE/ROVER firmware; supports ArduRover MANUAL or the legacy DIRECT motor controller.",
+            "lora_usb": "Connect BASE by native USB (115200), select its COM port, then Apply & Connect. Matching compiled-password presets need no LoRa setup. BASE and ROVER must share frequency, password and relay count; supports ArduRover MANUAL or legacy DIRECT.",
             "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
         }[mode])
 
@@ -791,12 +791,21 @@ class MainWindow(QMainWindow):
             layout.addWidget(dialog.setup)
             dialog.finished.connect(lambda *_: (dialog.setup.close_usb(), dialog.setup.clear_secret()))
             self._lora_dialog = dialog
+        if self._lora_dialog.setup.link is None:
+            self._lora_dialog.setup.port.setCurrentText(self.lora_port.currentText())
+            self._lora_dialog.setup.refresh_usb_ports()
         self._lora_dialog.show()
         self._lora_dialog.raise_()
 
     def _apply_and_reconnect(self):
+        self._restart_pending = False
+        self._restart_generation += 1
         self.reconnect_btn.setEnabled(False)
         if self._lora_dialog is not None:
+            if not self._lora_dialog.setup.close_usb():
+                self.message.setText('LoRa setup USB did not close. Unplug the board and retry Close USB, or exit PC TeleRC before reconnecting.')
+                self.reconnect_btn.setEnabled(True)
+                return
             self._lora_dialog.close()
         # Old settings remain active until neutral/release and port close finish.
         if not self._disconnect_link():
@@ -959,6 +968,8 @@ class MainWindow(QMainWindow):
                 age = time.monotonic() - (mav.opened_at or time.monotonic())
                 self.link_label.setText("USB open — waiting for rover heartbeat…" if age < 10 else
                                         "USB open, no rover — check TX/RX MAVLink mode, power and UART")
+            elif self._connected_settings.link_mode == "lora_usb":
+                self.link_label.setText("BASE USB verified — waiting for rover heartbeat…")
             else:
                 self.link_label.setText("Waiting for MAVLink heartbeat…")
 

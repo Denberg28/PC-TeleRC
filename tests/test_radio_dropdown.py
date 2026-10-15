@@ -244,3 +244,37 @@ def test_elrs_usb_open_is_distinct_from_rover_connected_status(window):
     window._refresh()
     assert "Disconnected" in window.link_label.text()
 
+
+def test_setup_close_failure_blocks_reconnect_and_cancels_old_callback(window, monkeypatch):
+    scheduled, starts = [], []
+    monkeypatch.setattr(QTimer, 'singleShot', lambda delay, callback: scheduled.append(callback))
+    monkeypatch.setattr(window.mav, 'start', lambda: starts.append(True) or True)
+    window.link_mode.setCurrentIndex(1)
+    window.lora_port.setCurrentText('COM9')
+    window._apply_and_reconnect()
+    window._open_lora_setup()
+    widget = window._lora_dialog.setup
+    class Link:
+        def close(self):
+            raise OSError('private-driver-buffer')
+    widget.link = Link()
+    window._apply_and_reconnect()
+    scheduled[0]()
+    assert not starts and not window._restart_pending
+    assert 'did not close' in window.message.text()
+    assert window.reconnect_btn.isEnabled()
+    widget.link.close = lambda: None
+    window._apply_and_reconnect()
+    scheduled[-1]()
+    assert starts == [True] and widget.link is None
+
+
+def test_reopened_setup_uses_current_base_port_without_opening_it(window):
+    window.lora_port.setCurrentText('COM9')
+    window._open_lora_setup()
+    widget = window._lora_dialog.setup
+    assert widget.port.currentText() == 'COM9' and widget.link is None
+    window._lora_dialog.close()
+    window.lora_port.setCurrentText('COM10')
+    window._open_lora_setup()
+    assert widget.port.currentText() == 'COM10' and widget.link is None
