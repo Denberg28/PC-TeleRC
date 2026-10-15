@@ -174,5 +174,6 @@ jobs:
         with:
           script: |
             const publishStable = require('./scripts/publish_stable.cjs');
-            await publishStable({github, context: {...context, runAttempt: process.env.GITHUB_RUN_ATTEMPT}, core,
+            await publishStable({github, context: {repo: context.repo, sha: context.sha,
+              runId: context.runId, runAttempt: process.env.GITHUB_RUN_ATTEMPT}, core,
               token: process.env.RELEASE_TOKEN});
