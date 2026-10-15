@@ -24,6 +24,6 @@ for invalid in '-DTELERC_DRIVER=9' '-DTELERC_MOTOR_COUNT=6' '-DTELERC_PWM_HZ=300
   if g++ -std=c++17 -x c++ -fsyntax-only "${args[@]}" ../TeleRC_MiniRover/HardwareProfile.h >"$build_dir/negative.log" 2>&1; then
     echo "FAIL: invalid configuration accepted: $invalid"; exit 1
   fi
-  if ! rg -q 'static assertion failed' "$build_dir/negative.log"; then cat "$build_dir/negative.log"; exit 1; fi
+  if ! grep -q 'static assertion failed' "$build_dir/negative.log"; then cat "$build_dir/negative.log"; exit 1; fi
 done
 echo 'PASS: six invalid hardware configurations rejected at compile time'
