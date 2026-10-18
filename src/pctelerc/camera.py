@@ -82,6 +82,10 @@ class CameraView(QWidget):
         self._capture = None
         self._sink = None
         self._reply = None
+        self.auto_reconnect = True
+        self._requested_source = None
+        self._retry_at = None
+        self._retry_delay = 1.
         self._network = QNetworkAccessManager(self)
         self._mjpeg = MjpegBuffer()
         self._watchdog = QTimer(self)
@@ -92,8 +96,12 @@ class CameraView(QWidget):
     def devices():
         return [(bytes(d.id().toHex()).decode("ascii"), d.description()) for d in QMediaDevices.videoInputs()]
 
-    def start(self, mode: str, *, device_id="", url=""):
-        self.stop()
+    def start(self, mode: str, *, device_id="", url="", _retry=False):
+        self._release_backend()
+        if not _retry:
+            self._retry_delay = 1.
+        self._requested_source = (mode, device_id, url)
+        self._retry_at = None
         token = self._generation
         try:
             if mode == "usb":
@@ -139,11 +147,18 @@ class CameraView(QWidget):
                     raise ValueError("Select USB, network video or HTTP MJPEG.")
             return True
         except (ValueError, RuntimeError):
-            self.stop()
+            self._release_backend()
             self._set_status("Camera unavailable — check source, URL or device")
+            self._schedule_retry()
             return False
 
     def stop(self):
+        self._requested_source = None
+        self._retry_at = None
+        self._retry_delay = 1.
+        self._release_backend()
+
+    def _release_backend(self):
         self._generation += 1
         self._active = False
         if self._reply is not None:
@@ -204,6 +219,7 @@ class CameraView(QWidget):
             return
         self._image = image
         self._last_frame = time.monotonic()
+        self._retry_delay = 1.
         self._set_status("Live camera")
         self.update()
 
@@ -214,17 +230,35 @@ class CameraView(QWidget):
     def _error(self, token):
         if token != self._generation:
             return
-        self.stop()
+        self._release_backend()
         # Backend error strings can contain embedded camera credentials.
         self._set_status("Camera unavailable — check network, device and video format")
+        self._schedule_retry()
+
+    def _schedule_retry(self):
+        if self.auto_reconnect and self._requested_source is not None:
+            self._retry_at = time.monotonic() + self._retry_delay
+            self._retry_delay = min(8., self._retry_delay * 2)
+            self._set_status("Camera lost — reconnecting selected source…")
 
     def _check_age(self):
+        if not self.auto_reconnect:
+            self._retry_at = None
+        if self._retry_at is not None and time.monotonic() >= self._retry_at:
+            source = self._requested_source
+            self._retry_at = None
+            if source is not None:
+                self.start(source[0], device_id=source[1], url=source[2], _retry=True)
+            return
         if not self._active:
             return
         age = time.monotonic() - (self._last_frame if self._last_frame is not None else self._started)
         if age > 1.5:
             self._set_status("Video stale — waiting for frames" if self._last_frame is not None else "Waiting for camera frames…")
             self.update()
+        if age > 8 and self.auto_reconnect and self._requested_source is not None:
+            self._release_backend()
+            self._schedule_retry()
 
     def _set_status(self, text):
         if text != self._status:
@@ -257,3 +291,4 @@ class CameraView(QWidget):
                              self._status + ("\nChoose a camera source in Settings" if self._image.isNull() else ""))
         painter.setPen(QPen(QColor("#38bdf8" if self.hasFocus() else "#293544"), 2 if self.hasFocus() else 1))
         painter.drawRect(self.rect().adjusted(1, 1, -2, -2))
+

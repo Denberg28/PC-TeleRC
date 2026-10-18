@@ -4,6 +4,8 @@
 Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLink Wi-Fi link and a PXN steering wheel for ArduRover.
 
 ## Current milestone
+
+0.1.4rc1 — owner authorized TeleRC-to-PC workflow/connection/telemetry migration and release build on 18 October 2026. Baseline v0.1.3 is retained. New candidate workflow on dev/telerc-migration-v0.1.4rc1 must pass source, Windows regression, frozen media/cockpit and packaging checks before uploading draft release assets. Keep candidate draft pending physical qualification; do not promote stable without hardware evidence. Native Backpack is immutable PING-only telemetry with handset authority. No map action or camera retry may acquire control. See docs/releases/v0.1.4rc1.md and docs/MIGRATION-014-QA.md.
 0.1.3 — stable offline maps, compact map minimize/restore and LoRa USB fixes. User explicitly authorized the stable release and offline/minimize additions on 15 October 2026 after confirming the direct 915 MHz LoRa link works. Publish only after automated/frozen Windows checks and packaged preset target compilation pass. Preserve earlier stable rollback releases.
 
 The PC map uses native raster rendering, supports raster MBTiles and persistent cached tiles in offline mode. Vector PBF/Android MapLibre caches are unsupported. Keep local maps read-only, validate failures without replacing a working map, bound tile decoding/SQL work, and never fabricate GPS from map metadata or cached view. Map minimize/restore and preferences are display-only. Preserve LoRa 8–32 ASCII password support and compiled-pairing behavior. The exact tested preset is under stable_config/LoRa-915-PnP-v1; do not silently change its password, frequency or wire protocol.
@@ -81,5 +83,6 @@ LoRa ARDUROVER backend is advertised only by INFO_V2. Require real ArduRover sys
 
 
 PWM capture confirms the falling edge after 30 us of stable low, preserving the original rise across shorter notches. Keep lastValidPulseUs at the physical falling-edge time; noise never renews input age. USB CDC diagnostic waits are bounded to 1 ms, not zero. Retain 150 ms PWM loss, 500 ms bridge loss and 300 ms neutral recovery.
+
 
 

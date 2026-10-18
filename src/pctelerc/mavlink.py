@@ -44,6 +44,7 @@ class MavlinkSnapshot:
     battery_remaining: int | None = None
     battery_timestamp: float | None = None
     gps_fix: int = 0
+    gps_timestamp: float | None = None
     satellites: int | None = None
     position_timestamp: float | None = None
 
@@ -97,9 +98,9 @@ class MavlinkService:
         with self._lock:
             old = self._settings
             link = self._link
-        if validated != old and (old.link_mode == "elrs_serial" or validated.link_mode == "elrs_serial"):
+        if validated != old and (old.link_mode in ("elrs_serial", "elrs_backpack") or validated.link_mode in ("elrs_serial", "elrs_backpack")):
             self.disable_control()
-            routing = ("link_mode", "elrs_port", "lora_port", "bind_host", "listen_port", "target_host", "target_port")
+            routing = ("link_mode", "elrs_port", "lora_port", "bind_host", "listen_port", "target_host", "target_port", "backpack_host", "backpack_listen_port", "backpack_target_port")
             if link is not None and any(getattr(old, key) != getattr(validated, key) for key in routing):
                 raise ValueError("Disconnect before changing the radio connection.")
             with self._lock:
@@ -122,6 +123,8 @@ class MavlinkService:
             return True
         if self._bound_mode != settings.link_mode:
             return True
+        if settings.link_mode == "elrs_backpack":
+            return False  # Routing edits are rejected while this session is open.
         if settings.link_mode != "telerc_udp":
             return self._bound_serial != self._serial_port(settings)
         return bound_host != settings.bind_host or bound_port != settings.listen_port
@@ -201,6 +204,8 @@ class MavlinkService:
                 else LinkState.DISCONNECTED)
 
     def _enable_control(self):
+        if self._settings.link_mode == "elrs_backpack":
+            return False, "Handset control — Backpack provides telemetry and FPV only."
         self._refresh_control_source()
         with self._lock:
             snap = self._snapshot
@@ -272,6 +277,8 @@ class MavlinkService:
             return self._arm()
 
     def _arm(self):
+        if self._settings.link_mode == "elrs_backpack":
+            return False, "Use the ELRS handset to arm; Backpack is telemetry-only."
         self._refresh_control_source()
         with self._lock:
             snap = self._snapshot
@@ -309,6 +316,8 @@ class MavlinkService:
             return self._send_arm_command(False)
 
     def _send_arm_command(self, arm: bool):
+        if self._settings.link_mode == "elrs_backpack":
+            return False, "Use the ELRS handset to arm/disarm; Backpack is telemetry-only."
         with self._lock:
             snap = self._snapshot
             conn = self._link
@@ -386,7 +395,11 @@ class MavlinkService:
             with self._lock:
                 settings = AppSettings(**vars(self._settings)).validate()
 
-            if settings.link_mode == "telerc_udp":
+            if settings.link_mode == "elrs_backpack":
+                from .backpack import BackpackTelemetry
+                link = BackpackTelemetry(settings.backpack_host, settings.backpack_listen_port,
+                                         settings.backpack_target_port, settings.bind_host)
+            elif settings.link_mode == "telerc_udp":
                 link = mavutil.mavlink_connection(
                     f"udpin:{settings.bind_host}:{settings.listen_port}",
                     source_system=255, source_component=190, autoreconnect=True,
@@ -450,13 +463,22 @@ class MavlinkService:
             while not self._stop.is_set():
                 now = time.monotonic()
                 # A continuous malformed USB stream must not starve watchdogs.
-                msg = link.recv_msg() if settings.link_mode == "elrs_serial" else link.recv_match(blocking=False)
+                # Expire the old heartbeat before accepting a recovery packet.
+                # Otherwise a worker stall/outage ending with a heartbeat could
+                # hide the gap and leave previously enabled control active.
+                self._refresh_link_state(now)
+                msg = link.recv_msg() if settings.link_mode in ("elrs_serial", "elrs_backpack") else link.recv_match(blocking=False)
+                now = time.monotonic()
+                self._refresh_link_state(now)
                 if msg is not None and msg.get_type() != "BAD_DATA":
                     self._handle_message(msg, now)
 
                 if now >= next_hb:
-                    self._send_lora_discovery()
-                    self._send_gcs_heartbeat()
+                    if settings.link_mode == "elrs_backpack":
+                        self._send_backpack_registration(now)
+                    else:
+                        self._send_lora_discovery()
+                        self._send_gcs_heartbeat()
                     next_hb = now + 1.0
 
                 self._refresh_link_state(now)
@@ -481,7 +503,7 @@ class MavlinkService:
                     control_enabled=False,
                     failsafe_latched=self._failsafe_latched,
                     error=(describe_serial_error(exc, self._serial_port(settings), "open" if link is None else "communicate")
-                           if settings.link_mode != "telerc_udp" and not isinstance(exc, RadioConnectionError)
+                           if settings.link_mode in ("elrs_serial", "lora_usb") and not isinstance(exc, RadioConnectionError)
                            else describe_mavlink_start_error(exc, settings.listen_port)),
                 )
             if settings.link_mode == "telerc_udp":
@@ -534,7 +556,7 @@ class MavlinkService:
                 if typ == "GPS_RAW_INT":
                     fix = int(getattr(msg, "fix_type", 0))
                     sats = int(getattr(msg, "satellites_visible", 255))
-                    snap = replace(snap, gps_fix=fix, satellites=None if sats == 255 else sats)
+                    snap = replace(snap, gps_fix=fix, gps_timestamp=now, satellites=None if sats == 255 else sats)
                     lat, lon = msg.lat / 1e7, msg.lon / 1e7
                     if fix >= 3 and -90 <= lat <= 90 and -180 <= lon <= 180:
                         speed = getattr(msg, "vel", 65535)
@@ -542,7 +564,8 @@ class MavlinkService:
                         snap = replace(snap, latitude=lat, longitude=lon, position_timestamp=now,
                                        speed=None if speed == 65535 else speed / 100,
                                        heading=None if heading == 65535 else heading / 100)
-                elif typ == "GLOBAL_POSITION_INT" and snap.gps_fix >= 3:
+                elif (typ == "GLOBAL_POSITION_INT" and snap.gps_fix >= 3
+                      and snap.gps_timestamp is not None and 0 <= now - snap.gps_timestamp <= 5):
                     lat, lon = msg.lat / 1e7, msg.lon / 1e7
                     if -90 <= lat <= 90 and -180 <= lon <= 180:
                         import math
@@ -559,7 +582,7 @@ class MavlinkService:
                 self._snapshot = snap
                 return
 
-            if typ == "HEARTBEAT" and self._settings.link_mode == "elrs_serial":
+            if typ == "HEARTBEAT" and self._settings.link_mode in ("elrs_serial", "elrs_backpack"):
                 # Only the ArduRover autopilot can claim this rover session.
                 if (getattr(msg, "type", None) != 10 or getattr(msg, "autopilot", None) != 3
                         or msg.get_srcSystem() in (0, 255) or msg.get_srcComponent() != 1):
@@ -678,6 +701,8 @@ class MavlinkService:
             return self._serialized_control_tick(now)
 
     def _serialized_control_tick(self, now: float):
+        if self._settings.link_mode == "elrs_backpack":
+            return
         self._refresh_control_source()
         with self._lock:
             settings = AppSettings(**vars(self._settings)).validate()
@@ -815,6 +840,8 @@ class MavlinkService:
                 self._bridge_registered = False
 
     def _send_gcs_heartbeat(self):
+        if self._settings.link_mode == "elrs_backpack":
+            return
         with self._lock:
             conn = self._link
             control_mav = self._control_mav
@@ -848,6 +875,8 @@ class MavlinkService:
                 )
 
     def _send_override(self, steer_pwm: int, throttle_pwm: int) -> bool:
+        if self._settings.link_mode == "elrs_backpack":
+            return False
         with self._lock:
             conn = self._link
             control_mav = self._control_mav
@@ -879,6 +908,8 @@ class MavlinkService:
             return self._serialized_send_neutral_then_release()
 
     def _serialized_send_neutral_then_release(self):
+        if self._settings.link_mode == "elrs_backpack":
+            return True
         with self._lock:
             conn = self._link
             control_mav = self._control_mav
@@ -939,5 +970,21 @@ class MavlinkService:
                     reason = "Neutral/release USB writes failed; verify rover failsafe and handover."
                     self._snapshot = replace(self._snapshot, error=(self._snapshot.error + " " + reason).strip())
         return delivered
+
+    def _send_backpack_registration(self, now):
+        """Runs at 1 Hz regardless of heartbeat freshness; never grants control."""
+        with self._send_lock:
+            if self._stop.is_set() or self._bound_mode != "elrs_backpack" or self._control_mav is None:
+                return
+            try:
+                self._control_mav.ping_send(int(now * 1_000_000), 0, 0, 0)
+                with self._lock:
+                    self._snapshot = replace(self._snapshot, tx_messages=self._snapshot.tx_messages + 1)
+            except OSError:
+                # A temporary Wi-Fi route loss must not freeze registration
+                # recovery. The socket retains its fixed peer and next 1 Hz try.
+                with self._lock:
+                    self._snapshot = replace(self._snapshot, error="Backpack registration waiting — check Wi-Fi and peer address.")
+
 
 

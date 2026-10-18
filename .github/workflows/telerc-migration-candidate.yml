@@ -1,0 +1,82 @@
+name: PC TeleRC v0.1.4rc1 cockpit and telemetry
+on:
+  push:
+    branches: [dev/telerc-migration-v0.1.4rc1]
+permissions:
+  contents: write
+concurrency:
+  group: telerc-migration-v0.1.4rc1
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Validate unchanged firmware and full application regression
+        run: |
+          git diff --exit-code 0edd09475dd4668a8793caf1402b15d3f35d0a1b HEAD -- firmware stable_config
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -e ".[dev]"
+          python -m pip check
+          python -m compileall -q src tests main.py
+          python -m pytest -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test tests/test_publish_stable.cjs
+      - name: Build Windows application
+        run: |
+          pyinstaller --noconfirm --clean PC-TeleRC.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/verify_desktop_package.py
+      - name: Verify frozen video, offline maps, cockpit swap and command locks
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ".\dist\PC-TeleRC\PC-TeleRC.exe" -ArgumentList "--self-test-ui", "frozen-ui-check.json" -Wait -PassThru -RedirectStandardOutput frozen-stdout.txt -RedirectStandardError frozen-stderr.txt
+          if (Test-Path frozen-ui-check.json) { Get-Content frozen-ui-check.json }
+          if (Test-Path frozen-stderr.txt) { Get-Content frozen-stderr.txt }
+          if ($p.ExitCode -ne 0) { throw "Frozen application check failed" }
+          $report = Get-Content frozen-ui-check.json -Raw | ConvertFrom-Json
+          if (!$report.passed -or !$report.checks.map_swap -or !$report.checks.backpack_commands_locked -or !$report.checks.swap_no_media_restart) { throw "Frozen cockpit checks failed" }
+      - name: Build installer and stage reviewable packages
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-dist | Out-Null
+          Copy-Item START-HERE.md dist\PC-TeleRC\START-HERE.md
+          foreach ($name in @('OFFLINE-MAPS','CAMERA-DESKTOP','KEYBOARD','LORA-USB-SETUP','THIRD-PARTY')) {
+            Copy-Item "docs\$name.md" "dist\PC-TeleRC\$name.md"
+          }
+          Copy-Item docs\releases\v0.1.4rc1.md dist\PC-TeleRC\RELEASE.md
+          @{ commit = '${{ github.sha }}'; run_id = '${{ github.run_id }}'; run_attempt = '${{ github.run_attempt }}'; version = '0.1.4rc1'; firmware = 'unchanged from v0.1.3' } | ConvertTo-Json | Set-Content -Encoding utf8 release-dist\build-provenance.json
+          Copy-Item frozen-ui-check.json release-dist\frozen-ui-check.json
+          Copy-Item docs\releases\v0.1.4rc1.md release-dist\RELEASE.md
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath release-dist\PC-TeleRC-portable-v0.1.4rc1.zip
+          git archive --format=zip --output=release-dist/PC-TeleRC-source-v0.1.4rc1.zip HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.4rc1.exe release-dist\
+          Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-v0.1.4rc1-Windows
+          path: release-dist/*
+          if-no-files-found: error
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.4rc1
+          target_commitish: ${{ github.sha }}
+          name: PC TeleRC v0.1.4rc1 — Cockpit and telemetry
+          draft: true
+          prerelease: true
+          make_latest: false
+          body_path: docs/releases/v0.1.4rc1.md
+          files: release-dist/*
+          fail_on_unmatched_files: true

@@ -1,3 +1,7 @@
+# 0.1.4rc1 — 18 October 2026
+
+TeleRC operator workflow migration: persistent camera/map swap and collapse, cockpit telemetry tiles, selected-camera retry, native ELRS Backpack telemetry with handset authority and PING-only output, GPS fix freshness and recovered-heartbeat expiry. App-only candidate; firmware unchanged. See docs/releases/v0.1.4rc1.md.
+
 ## 0.1.3 — 2026-10-15
 
 - Offline raster MBTiles, retained stale cache in offline mode, drag/zoom/follow and saved map view.
@@ -123,6 +127,7 @@
 
 ## 0.1.0a6 — 2026-10-01
 - Full code-review baseline with dependency integrity and UI symmetry checks.
+
 
 
 

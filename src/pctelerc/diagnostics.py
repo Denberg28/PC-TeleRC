@@ -71,6 +71,14 @@ def build_targeted_status(
     else:
         link = _item("WARN", "Link", "Waiting for heartbeat.")
 
+    if settings.link_mode == "elrs_backpack":
+        return DiagnosticStatus(link,
+            _item("PASS", "Controller", "ELRS handset authority; PC input unused."),
+            _item("PASS", "Mapping", "Telemetry-only transport; no PC channel output."),
+            _item("WARN" if settings_dirty or network_dirty else "PASS", "Safety",
+                  "Settings pending reconnect." if settings_dirty or network_dirty else
+                  "PC commands blocked; verify FC RF-loss HOLD independently."))
+
     selected = settings.wheel_guid
     match = next((d for d in devices if d.guid == selected), None) if selected else None
     fresh = wheel.connected and control_is_fresh(
@@ -159,7 +167,7 @@ def build_diagnostic_report(
         status.safety,
         _item("INFO", "Vehicle", f"sys {mav.vehicle_system or '—'} / comp {mav.vehicle_component or '—'} • {mav.mode or '—'}"),
         _item("INFO", "Traffic", f"RX {mav.rx_messages} • TX {mav.tx_messages} • foreign HB {mav.ignored_heartbeats}"),
-        _item("INFO", "Endpoint", (f"Wi-Fi {settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}" if settings.link_mode == "telerc_udp" else f"LoRa SX1262 USB {settings.lora_port or 'unselected'} @115200" if settings.link_mode == "lora_usb" else f"ELRS USB {settings.elrs_port or 'unselected'} @460800")),
+        _item("INFO", "Endpoint", (f"Backpack {settings.bind_host}:{settings.backpack_listen_port} -> {settings.backpack_host}:{settings.backpack_target_port} (telemetry only)" if settings.link_mode == "elrs_backpack" else f"Wi-Fi {settings.bind_host}:{settings.listen_port} -> {settings.target_host or 'reply-peer'}:{settings.target_port}" if settings.link_mode == "telerc_udp" else f"LoRa SX1262 USB {settings.lora_port or 'unselected'} @115200" if settings.link_mode == "lora_usb" else f"ELRS USB {settings.elrs_port or 'unselected'} @460800")),
         _item("INFO", "Input", "Keyboard • WASD / arrows / Space" if settings.input_source == "keyboard" else
               f"steer {settings.steer_axis} • throttle {settings.throttle_axis} • brake {settings.brake_axis} • {settings.pedal_mode}"),
         _item("INFO", "Sensitivity", f"steering {settings.steering_sensitivity * 100:.0f}% • throttle {settings.throttle_sensitivity * 100:.0f}% • throttle limit {settings.throttle_limit * 100:.0f}%"),
@@ -173,7 +181,7 @@ def build_diagnostic_report(
     if wheel.frame is not None:
         items.append(_item("INFO", "Input sample",
                            f"age {max(0., now-wheel.frame.timestamp):.3f}s / limit {settings.controller_timeout:.3f}s; session {wheel.frame.session}"))
-    if wheel.error:
+    if wheel.error and settings.link_mode != "elrs_backpack":
         items.append(_item("FAIL", "Controller error", wheel.error))
 
     counts = {
@@ -190,5 +198,6 @@ def build_diagnostic_report(
     lines.extend(f"[{item.level}] {item.name}: {item.detail}" for item in items)
     lines.extend(["", "Diagnostics are read-only and do not alter control state."])
     return DiagnosticReport(tuple(items), "\n".join(lines))
+
 
 

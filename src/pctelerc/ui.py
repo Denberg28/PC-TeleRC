@@ -22,6 +22,7 @@ from .diagnostics_dialog import DiagnosticsDialog
 from .mavlink import MavlinkService
 from .lora_setup_widget import LoRaSetupWidget, refresh_ports
 from .camera import CameraView, stored_camera_url
+from .cockpit import Cockpit
 from .percent_slider import PercentSlider
 from .rover_map import RoverMap, position_fresh
 
@@ -106,6 +107,7 @@ class MainWindow(QMainWindow):
         self.keyboard_timer.start(20)
         QApplication.instance().installEventFilter(self)
         self._update_input_fields()
+        self._refresh()
 
     def _build(self):
         root = QWidget()
@@ -140,7 +142,8 @@ class MainWindow(QMainWindow):
         self.link_mode = QComboBox()
         self.link_mode.addItem("ESP32-S3 / LilyGO · Wi-Fi", "telerc_udp")
         self.link_mode.addItem("LilyGO T3S3 SX1262 · LoRa", "lora_usb")
-        self.link_mode.addItem("HGLRC T ONE 900 MHz · ELRS", "elrs_serial")
+        self.link_mode.addItem("ELRS · USB PC control", "elrs_serial")
+        self.link_mode.addItem("ELRS Backpack · handset control", "elrs_backpack")
         self.link_mode.setAccessibleName("Radio connection")
         form.addRow("Link", self.link_mode)
         self.bind_host = QLineEdit()
@@ -154,6 +157,14 @@ class MainWindow(QMainWindow):
         form.addRow("UDP port", self.listen_port)
         form.addRow("ESP32 target IP", self.target_host)
         form.addRow("Target port", self.target_port)
+        self.backpack_host = QLineEdit()
+        self.backpack_listen_port = QSpinBox()
+        self.backpack_target_port = QSpinBox()
+        for field in (self.backpack_listen_port, self.backpack_target_port):
+            field.setRange(1, 65535)
+        form.addRow("Backpack IPv4", self.backpack_host)
+        form.addRow("PC listen port", self.backpack_listen_port)
+        form.addRow("Backpack listen port", self.backpack_target_port)
         self.lora_port = QComboBox()
         self.elrs_port = QComboBox()
         for port in (self.lora_port, self.elrs_port):
@@ -357,7 +368,8 @@ class MainWindow(QMainWindow):
         self.brand_logo.setPixmap(QPixmap(str(Path(__file__).parent / "assets" / "telerc.png")).scaled(36,36,Qt.AspectRatioMode.KeepAspectRatio,Qt.TransformationMode.SmoothTransformation))
         self.brand_logo.setFixedSize(36,36)
         header.addWidget(self.brand_logo)
-        brand = QLabel(f"PC TeleRC\n{__version__}")
+        brand = QLabel("PC TeleRC")
+        brand.setToolTip(f"PC TeleRC {__version__}")
         brand.setObjectName("Title")
         header.addWidget(brand)
         header.addSpacing(14)
@@ -384,16 +396,45 @@ class MainWindow(QMainWindow):
         health.addStretch()
         health.addWidget(self.camera_status)
         screen_layout.addLayout(health)
+        hud = QHBoxLayout()
+        self.hud_values = {}
+        for key, title in (("speed", "GROUND SPEED"), ("battery", "BATTERY"),
+                           ("gps", "GPS FIX"), ("link", "ROVER TELEMETRY")):
+            tile = QFrame()
+            tile.setObjectName("Card")
+            tile_layout = QVBoxLayout(tile)
+            tile_layout.setContentsMargins(12, 7, 12, 7)
+            caption = QLabel(title)
+            caption.setStyleSheet("color:#91a0b2;font-size:8pt;")
+            value = QLabel("—")
+            value.setStyleSheet("font-size:16pt;font-weight:600;")
+            self.hud_values[key] = value
+            tile_layout.addWidget(caption)
+            tile_layout.addWidget(value)
+            hud.addWidget(tile, 1)
+        screen_layout.addLayout(hud)
+        view_tools = QHBoxLayout()
+        self.authority_label = QLabel("PC control · manual enable")
+        self.authority_label.setObjectName("Muted")
+        view_tools.addWidget(self.authority_label, 1)
+        self.quick_connect_btn = QPushButton("Connect")
+        self.quick_disconnect_btn = QPushButton("Disconnect")
+        for button in (self.quick_connect_btn, self.quick_disconnect_btn):
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            view_tools.addWidget(button)
+        self.quick_connect_btn.clicked.connect(self._apply_and_reconnect)
+        self.quick_disconnect_btn.clicked.connect(self._disconnect_link)
+        self.swap_view_btn = QPushButton("Map focus ⇄")
+        self.swap_view_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.swap_view_btn.setToolTip("Swap map and camera with a short transition; streams stay connected.")
+        self.swap_view_btn.clicked.connect(self._swap_views)
+        view_tools.addWidget(self.swap_view_btn)
+        screen_layout.addLayout(view_tools)
         self.camera_view.statusChanged.connect(self._camera_status_changed)
         body = QHBoxLayout()
-        self.camera_surface = QWidget()
-        self.camera_surface.setMinimumWidth(480)
-        viewport = QGridLayout(self.camera_surface)
-        viewport.setContentsMargins(0,0,0,0)
-        viewport.addWidget(self.camera_view, 0, 0)
+        self.camera_surface = Cockpit()
         self.map_panel = QFrame()
         self.map_panel.setObjectName("Card")
-        self.map_panel.setFixedSize(282,214)
         map_layout = QVBoxLayout(self.map_panel)
         map_layout.setContentsMargins(3,3,3,3)
         map_layout.setSpacing(2)
@@ -420,13 +461,12 @@ class MainWindow(QMainWindow):
         self.map_minimize_btn.clicked.connect(lambda: self._set_map_minimized(True))
         map_buttons.addWidget(self.map_minimize_btn)
         map_layout.addLayout(map_buttons)
-        viewport.addWidget(self.map_panel,0,0,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignBottom)
         self.map_restore_btn = QPushButton("Map  ▣")
         self.map_restore_btn.setToolTip("Restore rover map")
         self.map_restore_btn.setFixedSize(92, 32)
         self.map_restore_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.map_restore_btn.clicked.connect(lambda: self._set_map_minimized(False))
-        viewport.addWidget(self.map_restore_btn,0,0,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignBottom)
+        self.camera_surface.set_views(self.camera_view, self.map_panel, self.map_restore_btn)
         self.map_restore_btn.hide()
         body.addWidget(self.camera_surface,1)
         self.settings_panel = QWidget()
@@ -467,6 +507,8 @@ class MainWindow(QMainWindow):
         for button in (self.camera_refresh_btn,self.camera_start_btn,self.camera_stop_btn):
             camera_row.addWidget(button)
         camera_layout.addLayout(camera_row)
+        self.camera_auto_reconnect = QCheckBox("Reconnect this camera after signal loss")
+        camera_layout.addWidget(self.camera_auto_reconnect)
         camera_note=QLabel("Video needs its own USB or network camera connection. LoRa carries driving commands, not video. Camera starts only when requested.")
         camera_note.setWordWrap(True); camera_note.setObjectName("Muted")
         camera_layout.addWidget(camera_note)
@@ -521,6 +563,7 @@ class MainWindow(QMainWindow):
         self.camera_refresh_btn.clicked.connect(self._refresh_cameras)
         self.camera_start_btn.clicked.connect(self._start_camera)
         self.camera_stop_btn.clicked.connect(self.camera_view.stop)
+        self.camera_auto_reconnect.toggled.connect(self._set_camera_reconnect)
         self.map_online.toggled.connect(self._set_map_online)
         self.map_load_btn.clicked.connect(self._open_offline_map)
         self.map_clear_btn.clicked.connect(lambda: self._load_offline_map(""))
@@ -553,7 +596,8 @@ class MainWindow(QMainWindow):
         )
         for widget in non_network:
             self._connect_change(widget, network=False)
-        for widget in (self.link_mode, self.bind_host, self.listen_port, self.target_host, self.target_port):
+        for widget in (self.link_mode, self.bind_host, self.listen_port, self.target_host, self.target_port,
+                       self.backpack_host, self.backpack_listen_port, self.backpack_target_port):
             self._connect_change(widget, network=True)
 
     def _connect_change(self, widget, *, network: bool):
@@ -584,6 +628,11 @@ class MainWindow(QMainWindow):
     def _camera_status_changed(self, text):
         self.camera_status.setText(text if len(text) <= 32 else text[:29]+"…")
         self.camera_status.setToolTip(text)
+
+    def _set_camera_reconnect(self, enabled):
+        self.camera_view.auto_reconnect = bool(enabled)
+        self.settings.camera_auto_reconnect = bool(enabled)
+        self._save_map_preferences()
 
     def _refresh_cameras(self):
         selected=self.camera_device.currentData() or self.settings.camera_device
@@ -618,11 +667,24 @@ class MainWindow(QMainWindow):
             self.message.setText("Map preference could not be saved")
 
     def _set_map_minimized(self, minimized, *, persist=True):
-        self.map_panel.setVisible(not minimized)
-        self.map_restore_btn.setVisible(minimized)
+        if minimized:
+            self.settings.map_primary = False
+        self.camera_surface.primary_map = self.settings.map_primary
+        self.camera_surface.minimized = bool(minimized)
+        self.camera_surface.arrange()
+        self.swap_view_btn.setText("Camera focus ⇄" if self.settings.map_primary else "Map focus ⇄")
         self.settings.map_minimized = bool(minimized)
         if persist:
             self._save_map_preferences()
+
+    def _swap_views(self):
+        self.settings.map_primary = not self.settings.map_primary
+        self.settings.map_minimized = False
+        self.camera_surface.primary_map = self.settings.map_primary
+        self.camera_surface.minimized = False
+        self.camera_surface.arrange(animate=True)
+        self.swap_view_btn.setText("Camera focus ⇄" if self.settings.map_primary else "Map focus ⇄")
+        self._save_map_preferences()
 
     def _open_offline_map(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Open offline raster map", self.settings.map_file, "Raster MBTiles (*.mbtiles)")
@@ -712,6 +774,8 @@ class MainWindow(QMainWindow):
 
     def _apply_settings_to_widgets(self):
         s = self.settings
+        self.camera_auto_reconnect.setChecked(s.camera_auto_reconnect)
+        self.camera_view.auto_reconnect = s.camera_auto_reconnect
         self.camera_mode.setCurrentIndex(max(0,self.camera_mode.findData(s.camera_mode)))
         self.camera_url.setText(s.camera_url)
         self._update_camera_fields()
@@ -729,6 +793,9 @@ class MainWindow(QMainWindow):
         self.listen_port.setValue(s.listen_port)
         self.target_host.setText(s.target_host)
         self.target_port.setValue(s.target_port)
+        self.backpack_host.setText(s.backpack_host)
+        self.backpack_listen_port.setValue(s.backpack_listen_port)
+        self.backpack_target_port.setValue(s.backpack_target_port)
         self.pedal_mode.setCurrentIndex(max(0, self.pedal_mode.findData(s.pedal_mode)))
         self.steer_axis.setValue(s.steer_axis)
         self.throttle_axis.setValue(s.throttle_axis)
@@ -779,6 +846,11 @@ class MainWindow(QMainWindow):
             map_online=self.settings.map_online,
             map_file=self.settings.map_file,
             map_minimized=self.settings.map_minimized,
+            map_primary=self.settings.map_primary,
+            camera_auto_reconnect=self.settings.camera_auto_reconnect,
+            backpack_host=self.backpack_host.text(),
+            backpack_listen_port=self.backpack_listen_port.value(),
+            backpack_target_port=self.backpack_target_port.value(),
         ).validate()
 
     def _persist_and_configure(self):
@@ -799,7 +871,7 @@ class MainWindow(QMainWindow):
         active_settings = self.settings
         if self._network_dirty:
             # Save the radio draft without redirecting the live session.
-            fields = ("link_mode", "lora_port", "elrs_port", "bind_host", "listen_port", "target_host", "target_port")
+            fields = ("link_mode", "lora_port", "elrs_port", "bind_host", "listen_port", "target_host", "target_port", "backpack_host", "backpack_listen_port", "backpack_target_port")
             active_settings = replace(self.settings, **{name: getattr(self._connected_settings, name) for name in fields})
         self.mav.configure(active_settings)
         self._settings_dirty = False
@@ -824,12 +896,16 @@ class MainWindow(QMainWindow):
         mode = self.link_mode.currentData()
         for widget in (self.bind_host, self.listen_port, self.target_host, self.target_port):
             self.connection_form.setRowVisible(widget, mode == "telerc_udp")
+        self.connection_form.setRowVisible(self.bind_host, mode in ("telerc_udp", "elrs_backpack"))
         self.connection_form.setRowVisible(self.lora_port, mode == "lora_usb")
         self.connection_form.setRowVisible(self.elrs_port, mode == "elrs_serial")
-        self.refresh_ports_btn.setVisible(mode != "telerc_udp")
+        for widget in (self.backpack_host, self.backpack_listen_port, self.backpack_target_port):
+            self.connection_form.setRowVisible(widget, mode == "elrs_backpack")
+        self.refresh_ports_btn.setVisible(mode in ("lora_usb", "elrs_serial"))
         self.lora_setup_btn.setVisible(mode == "lora_usb")
         self.guide.setText("Verify radio-loss stop and transmitter takeover before driving." if mode == "lora_usb" else "ArduRover GCS/telemetry fail-safe remains mandatory for true link-loss protection.")
         self.link_hint.setText({
+            "elrs_backpack": "Join the Backpack telemetry Wi-Fi. ELRS MAVLink + Lua → Backpack → Telemetry → WiFi. PC listens on 14550; Backpack listens on 14555. Handset drives/arms; PC shows telemetry and FPV. Use the actual Backpack IPv4 in router mode.",
             "telerc_udp": "Join TeleRC-Rover Wi-Fi. ESP32-S3 and LilyGO use UDP 14550.",
             "lora_usb": "Connect BASE by native USB (115200), select its COM port, then Apply & Connect. Matching compiled-password presets need no LoRa setup. BASE and ROVER must share frequency, password and relay count; supports ArduRover MANUAL or legacy DIRECT.",
             "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
@@ -1008,6 +1084,16 @@ class MainWindow(QMainWindow):
         battery=f"{mav.voltage:.1f} V" if (mav.state == LinkState.CONNECTED and mav.voltage is not None
             and mav.battery_timestamp is not None and time.monotonic()-mav.battery_timestamp <= 5) else "—"
         self.telemetry_label.setText(f"{gps}   Speed {speed}   Battery {battery}")
+        self.telemetry_label.hide()  # Detailed values have dedicated cockpit tiles.
+        self.hud_values["speed"].setText(speed)
+        remaining = f" · {mav.battery_remaining}%" if battery != "—" and mav.battery_remaining is not None else ""
+        self.hud_values["battery"].setText(battery + remaining)
+        self.hud_values["gps"].setText(f"3D · {mav.satellites if mav.satellites is not None else '—'} sats" if position_fresh(mav) else "No fresh fix")
+        self.hud_values["link"].setText(f"{mav.heartbeat_age or 0:.1f} s" if mav.state == LinkState.CONNECTED else
+                                        "Stale" if mav.state == LinkState.STALE else "Waiting" if mav.running else "Offline")
+        backpack = self._connected_settings.link_mode == "elrs_backpack"
+        self.authority_label.setText("HANDSET CONTROL · telemetry only" if backpack else
+                                     "PC CONTROL · live input" if mav.control_enabled else "PC control · manual enable")
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
@@ -1045,7 +1131,8 @@ class MainWindow(QMainWindow):
             else:
                 self.link_label.setText("Waiting for MAVLink heartbeat…")
 
-        self.vehicle_label.setText(f"{'ARMED' if mav.armed else 'DISARMED'} • {mav.mode or 'mode —'}")
+        self.vehicle_label.setText(f"{'ARMED' if mav.armed else 'DISARMED'} • {mav.mode or 'mode —'}" if mav.state == LinkState.CONNECTED else
+                                   "Arm / mode unknown" + (" · last " + mav.mode if mav.mode else ""))
         self.vehicle_label.setStyleSheet("color:#fbbf24;font-weight:700;" if mav.armed else "color:#91a0b2;")
         self.traffic_label.setText(f"RX {mav.rx_messages} • TX {mav.tx_messages}")
         self.output_label.setText(
@@ -1062,7 +1149,7 @@ class MainWindow(QMainWindow):
             self.safety_label.setStyleSheet("color:#ff6b6b;font-weight:700;")
             self.control_btn.setText("Re-enable PC Control")
         else:
-            self.safety_label.setText("Control disabled")
+            self.safety_label.setText("Handset controls rover" if backpack else "Control disabled")
             self.safety_label.setStyleSheet("color:#91a0b2;")
             self.control_btn.setText("Enable PC Control")
 
@@ -1072,6 +1159,7 @@ class MainWindow(QMainWindow):
         link_ok = mav.running and mav.state == LinkState.CONNECTED
         wheel_ok = wheel.connected
         self.global_status.setText("Control stopped" if mav.failsafe_latched else
+                                  "Telemetry live" if backpack and link_ok else
                                   "Ready" if link_ok and wheel_ok and not self._settings_dirty and not self._network_dirty else "Setup required")
 
         self.select_btn.setEnabled(self.device_combo.count() > 0)
@@ -1082,11 +1170,20 @@ class MainWindow(QMainWindow):
         if self.settings.link_mode in ("telerc_udp", "lora_usb"):
             neutral_ok = neutral_ok and abs(wheel.frame.steering) <= .05
         self.reconnect_btn.setText("Apply & Reconnect" if mav.running else "Apply & Connect")
+        self.quick_connect_btn.setText("Reconnect" if mav.running else "Connect")
+        self.quick_connect_btn.setEnabled(not self._restart_pending)
+        self.quick_disconnect_btn.setEnabled(mav.running or self._restart_pending)
         self.arm_btn.setEnabled(link_ok and wheel_ok and neutral_ok and not mav.armed and not self._settings_dirty and not self._network_dirty)
         self.disarm_btn.setEnabled(link_ok and mav.armed)
         self.control_btn.setEnabled(
             mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty and not self._network_dirty)
         )
+        if backpack:
+            for button in (self.arm_btn, self.disarm_btn, self.control_btn):
+                button.setEnabled(False)
+                button.setToolTip("Use the ELRS handset; this Backpack profile is telemetry-only.")
+            if mav.running and mav.state != LinkState.CONNECTED:
+                self.link_label.setText("Backpack UDP open · " + ("F405 telemetry stale; retrying registration" if mav.last_heartbeat else "waiting for F405 telemetry"))
 
     def closeEvent(self, event):
         self.camera_view.shutdown()
@@ -1105,6 +1202,7 @@ class MainWindow(QMainWindow):
         if not self._settings_dirty:
             save_settings(self.settings)
         event.accept()
+
 
 
 

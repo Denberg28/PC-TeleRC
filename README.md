@@ -1,3 +1,11 @@
+# PC TeleRC 0.1.4rc1 candidate
+
+Camera-first Windows cockpit with persistent map/camera swap, offline map collapse/restore, fresh telemetry tiles and selected-camera reconnection. Four radio profiles include the new telemetry-only ELRS TX Backpack Wi-Fi option; the handset retains drive/arm authority on that profile. Connect/Disconnect is available above the camera. Existing wheel/keyboard, Wi-Fi, LoRa and USB ELRS control workflows are retained.
+
+[Release, installation, radio workflow and hardware checks](docs/releases/v0.1.4rc1.md). No firmware reflash is required. Native Backpack mission/drive/arm commands are blocked. Software-only evidence does not qualify hardware or stable promotion.
+
+## Earlier desktop documentation
+
 # PC TeleRC v0.1.3
 
 Offline maps and a minimizable lower-left rover map, with the working 915 MHz LoRa preset. Open raster MBTiles in Settings → Camera, or reuse previously viewed online tiles offline. See [offline map guide](docs/OFFLINE-MAPS.md) and [release notes](docs/releases/v0.1.3.md).
@@ -146,5 +154,6 @@ PC TeleRC receives MAVLink 1 or MAVLink 2 telemetry normally. All bridge-facing 
 # Keyboard driving
 
 Select **Keyboard — WASD / arrows**, Apply Settings, then focus the keyboard driving area and enable PC Control with all keys released. W/Up moves forward, S/Down reverses, A/Left and D/Right steer, and Space commands neutral brake. Existing sensitivity and throttle-limit settings apply. Focus loss stops control; no automatic re-enable. No joystick or firmware change is required. See [keyboard instructions](docs/KEYBOARD.md).
+
 
 

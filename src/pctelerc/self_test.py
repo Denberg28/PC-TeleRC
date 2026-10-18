@@ -41,6 +41,20 @@ def run(report_path):
         checks["map_restore_anchor"] = window.map_restore_btn.x() == 0 and window.map_restore_btn.y() > 0
         window.map_restore_btn.click(); app.processEvents()
         checks["map_restore"] = window.map_panel.isVisible() and not window.map_restore_btn.isVisible()
+        generation = window.camera_view._generation
+        window._swap_views()
+        from PySide6.QtTest import QTest
+        QTest.qWait(200)
+        checks["map_swap"] = window.map_panel.width() == window.camera_surface.width()
+        window._set_map_minimized(True)
+        window._set_map_minimized(False)
+        checks["swap_no_media_restart"] = window.camera_view._generation == generation
+        window.link_mode.setCurrentIndex(window.link_mode.findData("elrs_backpack"))
+        from dataclasses import replace
+        window._connected_settings = replace(window.settings, link_mode="elrs_backpack")
+        window._refresh()
+        checks["backpack_commands_locked"] = all(not b.isEnabled() for b in
+            (window.arm_btn, window.disarm_btn, window.control_btn))
         from PySide6.QtCore import QBuffer, QIODevice
         from PySide6.QtGui import QImage
         tile = QImage(256,256,QImage.Format.Format_RGB32); tile.fill(0xff2468ac)
@@ -88,4 +102,5 @@ def run(report_path):
     result = {"passed":bool(checks) and all(value is True for value in checks.values()),"checks":checks}
     Path(report_path).write_text(json.dumps(result,indent=2),encoding="utf-8")
     return 0 if result["passed"] else 1
+
 

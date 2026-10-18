@@ -37,7 +37,7 @@ def window(monkeypatch):
 def test_dropdown_shows_only_selected_radio_fields_and_retains_ports(window):
     window.settings_btn.setChecked(True)
     QApplication.processEvents()
-    assert window.link_mode.count() == 3
+    assert window.link_mode.count() == 4
     assert window.bind_host.isVisible()
     assert not window.lora_port.isVisible()
     window.link_mode.setCurrentIndex(1)
@@ -278,3 +278,4 @@ def test_reopened_setup_uses_current_base_port_without_opening_it(window):
     window.lora_port.setCurrentText('COM10')
     window._open_lora_setup()
     assert widget.port.currentText() == 'COM10' and widget.link is None
+

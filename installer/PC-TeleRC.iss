@@ -1,5 +1,5 @@
 #define MyAppName "PC TeleRC"
-#define MyAppVersion "0.1.3"
+#define MyAppVersion "0.1.4rc1"
 #define MyAppPublisher "Denberg28"
 #define MyAppExeName "PC-TeleRC.exe"
 
@@ -8,11 +8,11 @@ AppId={{0A14B133-FEC1-5E89-97E2-D08281951913}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-VersionInfoVersion=0.1.3.0
+VersionInfoVersion=0.1.4.1
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=PC TeleRC Windows rover control bridge
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion=0.1.3.0
+VersionInfoProductVersion=0.1.4.1
 DefaultDirName={localappdata}\Programs\PC TeleRC
 DefaultGroupName=PC TeleRC
 DisableProgramGroupPage=yes
@@ -21,7 +21,7 @@ PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\installer-dist
-OutputBaseFilename=PC-TeleRC-Setup-v0.1.3
+OutputBaseFilename=PC-TeleRC-Setup-v0.1.4rc1
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -53,6 +53,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch PC TeleRC"; Flags: nowai
 [UninstallDelete]
 ; Deliberately do not remove %LOCALAPPDATA%\PC-TeleRC.
 ; Controller calibration/settings/logs are preserved across upgrades and uninstall.
+
 
 
 

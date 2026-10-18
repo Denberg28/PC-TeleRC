@@ -41,6 +41,11 @@ class AppSettings:
     map_online: bool = True
     map_file: str = ""
     map_minimized: bool = False
+    map_primary: bool = False
+    camera_auto_reconnect: bool = True
+    backpack_host: str = "10.0.0.1"
+    backpack_listen_port: int = 14550
+    backpack_target_port: int = 14555
 
     def validate(self) -> "AppSettings":
         self.settings_version = CURRENT_SETTINGS_VERSION
@@ -51,9 +56,14 @@ class AppSettings:
         self.map_online = bool(self.map_online)
         self.map_file = str(self.map_file or "")
         self.map_minimized = bool(self.map_minimized)
+        self.map_primary = bool(self.map_primary)
+        self.camera_auto_reconnect = bool(self.camera_auto_reconnect)
+        self.backpack_host = str(self.backpack_host).strip()
+        self.backpack_listen_port = min(65535, max(1, int(self.backpack_listen_port)))
+        self.backpack_target_port = min(65535, max(1, int(self.backpack_target_port)))
         if self.input_source not in {"wheel", "keyboard"}:
             self.input_source = "wheel"
-        if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial"}:
+        if self.link_mode not in {"telerc_udp", "lora_usb", "elrs_serial", "elrs_backpack"}:
             self.link_mode = "telerc_udp"
         self.lora_port = str(self.lora_port).strip()
         self.elrs_port = str(self.elrs_port).strip()
@@ -122,6 +132,7 @@ def save_settings(settings: AppSettings, path: Path | None = None) -> Path:
     tmp.write_text(json.dumps(asdict(settings.validate()), indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(target)
     return target
+
 
 
 

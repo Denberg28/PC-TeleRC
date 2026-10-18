@@ -32,7 +32,7 @@ def test_bad_fix_and_out_of_range_positions_not_used():
 
 def test_global_position_and_battery_are_read_only_and_unknown_values_stay_unknown():
     service=MavlinkService()
-    service._snapshot=MavlinkSnapshot(vehicle_system=1,vehicle_component=1,gps_fix=3,last_heartbeat=80)
+    service._snapshot=MavlinkSnapshot(vehicle_system=1,vehicle_component=1,gps_fix=3,gps_timestamp=99,last_heartbeat=80)
     service._handle_message(message('GLOBAL_POSITION_INT',lat=136200000,lon=1231900000,vx=300,vy=400,hdg=65535),100)
     assert service.snapshot().speed == 5 and service.snapshot().heading is None
     service._handle_message(message('SYS_STATUS',voltage_battery=12400,battery_remaining=75),101)
@@ -41,3 +41,4 @@ def test_global_position_and_battery_are_read_only_and_unknown_values_stay_unkno
     service._handle_message(message('SYS_STATUS',voltage_battery=65535,battery_remaining=-1),102)
     assert service.snapshot().voltage is None and service.snapshot().battery_remaining is None
     assert service.snapshot().last_heartbeat == 80
+
