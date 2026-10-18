@@ -67,11 +67,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.4rc1.exe release-dist\
           Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PC-TeleRC-v0.1.4rc1-Windows
-          path: release-dist/*
-          if-no-files-found: error
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.4rc1
