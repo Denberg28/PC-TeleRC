@@ -10,6 +10,8 @@ Acceptance: preserve wheel/keyboard safety and original transport contracts; nat
 
 - PASS: 215 pytest checks on Linux/Python 3.12 with pinned PySide6 6.11.2, pymavlink 2.4.50, pygame-ce 2.5.8 and pyserial 3.5. Includes real localhost Backpack UDP/MAVLink retry and peer-rejection integration, PING-only command guards, camera retry cancellation/backoff/source retention, GPS-fix expiry and cockpit swap/collapse. No attached radio or rover was used.
 - PASS: 13 Node release-verification regression checks; Python compileall and pip check.
+- Tests isolate operator settings/cache into a temporary directory and replace the map tile endpoint with localhost. Localhost video/UDP integration remains enabled; no external map service receives test locations.
+- PASS: all five unchanged firmware host suites (PWM/bridge, LoRa protocol, LilyGO Wi-Fi/LoRa, runtime and relays). These are host simulations, not newly measured board/RF behavior.
 - PASS: visual review of camera-first view, expanded-map view, 900×580 compact view and 900×580 Backpack settings drawer. Same camera/map objects remain connected; settings scroll to preserve operator access. Latest UI adds top-level Connect/Disconnect.
 - Required cloud evidence: complete Windows regression, executable packaging, frozen real HTTP video decode, offline tile decode/no-network/no-fake-GPS, map swap/minimize/restore, command-lock check, installer and source packages, provenance and SHA256. The candidate workflow provides the authoritative results for its exact commit.
 - Firmware is app-only unchanged. Host firmware suites are regression evidence only; prior v0.1.3 target builds remain the matching firmware baseline. Cloud verifies a zero diff for `firmware` and `stable_config`.

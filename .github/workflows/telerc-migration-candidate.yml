@@ -25,8 +25,11 @@ jobs:
           git diff --exit-code 0edd09475dd4668a8793caf1402b15d3f35d0a1b HEAD -- firmware stable_config
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install -e ".[dev]"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m compileall -q src tests main.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tests/test_publish_stable.cjs
