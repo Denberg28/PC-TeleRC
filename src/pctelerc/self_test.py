@@ -72,6 +72,17 @@ def run(report_path):
             checks["offline_no_network"] = not window.rover_map._online and not window.rover_map._pending
             checks["offline_no_fake_gps"] = window.rover_map._last_position is None and not window.rover_map._track
             window._load_offline_map('', persist=False)
+        window._open_mission()
+        mission = window._mission_dialog
+        mission.map.set_online(False)
+        mission._add(13.6, 123.2)
+        mission._add(13.6001, 123.2001)
+        from .mission_plan import parse_text
+        checks["mission_plan_codec"] = len(parse_text(mission._text())) == 4
+        checks["mission_planning_no_authority"] = (not mission.service.running and
+            not mission.start_btn.isEnabled() and not window.mav.snapshot().running)
+        mission.reject(); app.processEvents()
+        checks["mission_close_cleans_session"] = window._mission_dialog is None and not mission.timer.isActive()
         fixture = Path(__file__).parent / "assets" / "test-pattern.mp4"
         if not fixture.exists():
             fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"

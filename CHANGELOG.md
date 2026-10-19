@@ -1,3 +1,13 @@
+## 0.1.5rc1 — LoRa mission planning
+
+- Add map route/F1–F3 event editing and QGC WPL 110 import/export.
+- Integrate addressed LoRa Mission v0.1.0 USB sessions, rover IDs 1–20, full readback,
+  explicit one-shot start, policy validation and confirmed HOLD.
+- Lock manual/mission ownership, purge cancelled jobs, stop on stale telemetry/GUI
+  lease/USB failure, and block reconnect replay.
+- Require auxiliary-output opt-in and FC function/limits checks; document independent
+  OFF/cutoff and AUTO timing limits. Firmware and manual transports unchanged.
+
 # 0.1.4rc1 — 18 October 2026
 
 TeleRC operator workflow migration: persistent camera/map swap and collapse, cockpit telemetry tiles, selected-camera retry, native ELRS Backpack telemetry with handset authority and PING-only output, GPS fix freshness and recovered-heartbeat expiry. App-only candidate; firmware unchanged. See docs/releases/v0.1.4rc1.md.
