@@ -5,7 +5,7 @@
   protocol-peer tests, actual native USB envelope and MAVLink2 upload/readback/
   START/HOLD simulation, retries, NACK/ACK-loss, foreign rover filtering, GUI lease,
   cancelled confirmation, Escape cleanup and manual-session exclusion.
-- Compileall: PASS. Publish-script tests: 13 passed. UI/media check: 24 checks PASS
+- Compileall: PASS. Publish-script tests: 13 passed. UI/media check: 23 checks PASS
   (camera decode, offline tiles, logo, cockpit, authority locks, mission codec/cleanup).
 - Protocol input archive SHA256:
   204127c329b85bfd92011686294fb264b90546b5294718fd9a19e514fedf6fdb.
