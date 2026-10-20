@@ -59,3 +59,8 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 Hardware validation: PXN GUID/axis confirmation, ESP32 routing, Rover channel mapping, measured controller/Wi-Fi fail-safe timing, then lock a first tagged test release.
 
 ELRS mode is USB MAVLink only, 460800 baud, DTR/RTS low, 5 Hz PC overrides. No raw CRSF bay input or verified Pocket/PC arbitration. Named T ONE/GEPRC hardware requires physical validation.
+
+
+## Maintained current firmware folder
+
+Keep `firmware/latest/catalog.json` updated when a new working firmware supersedes the current hardware baseline. Update its source/ref/path/profile selections and README in the same change. Experimental mission firmware, alternate motor drivers and legacy architectures stay excluded unless explicitly promoted into this collection. Run catalog/package regressions and affected real ESP32 board builds. Never advance the complete collection after a failed or partial build. Preserve the private repository boundary, saved calibration/NVS compatibility checks and all safety behavior above. Compile and host-test success do not establish physical hardware acceptance. The `Master firmware collection` workflow and nightly schedule run from main.

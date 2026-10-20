@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "esp32_core": "3.3.2",
+  "radiolib": "7.2.1",
+  "sources": {
+    "android": {
+      "repository": "Denberg28/TeleRC",
+      "ref": "latest-android-release",
+      "fallback": "181056fe0ef06e9717a3634089753a12414ea112"
+    },
+    "pc-mini": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "main"
+    },
+    "pc-stable": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "latest-stable-pc-release"
+    }
+  },
+  "profiles": [
+    {
+      "id": "balancer-mount-0",
+      "group": "balancer",
+      "source": "android",
+      "path": "bridge/TT_Balancer_ESP32S3",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DBALANCER_IMU_MOUNT=0",
+      "defines": {},
+      "note": "Balancer0.3.0; direction verification remains required. Saved gyro calibration format retained. No balance/PID qualification."
+    },
+    {
+      "id": "wifi-mini-mx1508-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family.",
+      "guide_files": [
+        "docs/MINI_ROVER_WIFI.md",
+        "docs/MINI_MX1508_122.md"
+      ]
+    },
+    {
+      "id": "receiver-mini-mx1508-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family.",
+      "guide_roots": [
+        "rover_types/mini/releases/v1.0.0-standard/package"
+      ]
+    },
+    {
+      "id": "pc-bridge",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCBridge",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-pwm",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRC_4x_BTS7960_PWM_GlitchFilter",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-base-0relays",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_BASE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 0
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-rover-0relays",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_ROVER",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 0
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-base-2relays",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_BASE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-rover-2relays",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_ROVER",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-node-1",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_NODE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2,
+        "TELERC_NODE_INDEX": 1
+      },
+      "note": "Two-relay route, node1 nearest BASE. Different protocol from dedicated UART LoRa and encrypted mission firmware.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    },
+    {
+      "id": "pc-runtime-node-2",
+      "group": "pc-manual",
+      "source": "pc-stable",
+      "path": "firmware/TeleRCLoRa_NODE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2,
+        "TELERC_NODE_INDEX": 2
+      },
+      "note": "Two-relay route, node1 nearest BASE. Different protocol from dedicated UART LoRa and encrypted mission firmware.",
+      "guide_files": [
+        "firmware/README.md",
+        "docs/LILYGO-SKETCH-RELAYS.md",
+        "docs/LILYGO-RUNTIME-SETUP.md",
+        "docs/LILYGO-WIFI-LORA.md"
+      ]
+    }
+  ],
+  "excluded_sketches": {
+    "android": {
+      "bridge/BTS7960PWMConverter": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCBridge": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCDirectDrive": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCHybridController": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCLoRaBase": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCLoRaRover": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCMotorController": "Alternate or legacy architecture outside current hardware baseline",
+      "bridge/TeleRCWiFiGateway": "Alternate or legacy architecture outside current hardware baseline"
+    }
+  }
+}

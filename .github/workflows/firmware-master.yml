@@ -1,0 +1,117 @@
+name: Master firmware collection
+on:
+  push:
+    branches: [main, firmware/catalog-build]
+    paths: ['firmware/latest/**', '.github/workflows/firmware-master.yml', 'rover_types/mini/**', 'firmware/**']
+  pull_request:
+    paths: ['firmware/latest/**', '.github/workflows/firmware-master.yml']
+  schedule:
+    - cron: '15 18 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firmware-master-${{ github.event_name == 'pull_request' && github.ref || 'owner' }}
+  cancel-in-progress: false
+jobs:
+  resolve:
+    if: github.repository == 'Denberg28/PC-TeleRC'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.resolve.outputs.changed }}
+      fingerprint: ${{ steps.resolve.outputs.fingerprint }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: python -m unittest discover -s firmware/latest -p 'test_*.py'
+      - id: resolve
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: python firmware/latest/build.py resolve
+      - uses: actions/upload-artifact@v4
+        with: { name: firmware-source-state, path: source-state.json, retention-days: 30 }
+  compile:
+    needs: resolve
+    if: needs.resolve.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [wifi-mini, receiver-mini, balancer, pc-manual]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/download-artifact@v4
+        with: { name: firmware-source-state }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install pinned board and radio toolchain
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.2 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install RadioLib@7.2.1
+      - name: Compile every catalog profile in this family
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: python firmware/latest/build.py compile --group '${{ matrix.group }}' --output family-build
+      - name: Mini and balancer host regression
+        if: matrix.group == 'wifi-mini'
+        env: { ASAN_OPTIONS: detect_leaks=0 }
+        run: |
+          cd sources/android
+          bridge/mini_wifi_tests/run.sh
+          SANITIZE=1 bridge/mini_wifi_tests/run.sh
+          bridge/mini_wifi_tests/check_profiles.sh
+          bash bridge/TT_Balancer_ESP32S3/tests/run.sh
+      - name: Receiver Mini host regression
+        if: matrix.group == 'receiver-mini'
+        env: { ASAN_OPTIONS: detect_leaks=0 }
+        run: bash sources/pc-mini/rover_types/mini/releases/v1.0.0-standard/package/tests/run_tests.sh
+      - name: Stable PC firmware host regression
+        if: matrix.group == 'pc-manual'
+        env: { ASAN_OPTIONS: detect_leaks=0 }
+        run: |
+          cd sources/pc-stable
+          python firmware/tests/run_tests.py
+          python firmware/lora-tests/run_tests.py
+          python firmware/lilygo-tests/run_host_tests.py
+          python firmware/runtime-tests/run_tests.py
+          python firmware/relay-tests/run_tests.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firmware-${{ matrix.group }}
+          path: family-build/
+          retention-days: 30
+  package:
+    needs: [resolve, compile]
+    if: needs.resolve.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: write, actions: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: firmware-source-state }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: firmware-bundle
+          merge-multiple: true
+      - name: Package and verify all 11 profiles atomically
+        env: { HUB_FINGERPRINT: '${{ needs.resolve.outputs.fingerprint }}' }
+        run: |
+          python firmware/latest/build.py package --archive "deliverables/TeleRC-Firmware-${HUB_FINGERPRINT:0:12}-${GITHUB_RUN_ID}.zip"
+      - name: Update private draft collection only after full success
+        if: github.event_name != 'pull_request'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh release view firmware-collection --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' > draft-state.txt || true
+          if test -s draft-state.txt; then
+            test "$(cat draft-state.txt)" = true
+          else
+            gh release create firmware-collection --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title 'TeleRC master firmware collection — build verified; HIL pending' --notes-file firmware/latest/README.md
+          fi
+          gh release upload firmware-collection --repo "$GITHUB_REPOSITORY" deliverables/TeleRC-Firmware-*.zip
+          python firmware/latest/publish.py
+      - uses: actions/upload-artifact@v4
+        with: { name: TeleRC-master-firmware, path: deliverables/, retention-days: 30 }
