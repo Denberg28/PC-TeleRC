@@ -1,0 +1,22 @@
+{
+  "base": {
+    "size_bytes": 423184,
+    "sha256": "1f44cd552df58630d6aa8d21806213b1dabd4f84de5bef4fe4cee545a8babf39",
+    "test_fixture_only": true
+  },
+  "rover": {
+    "size_bytes": 435920,
+    "sha256": "07a9a0a1dd8f4d745b02a281b4ea92fe1c5085cfa7addcfbc60e43cd3c98922b",
+    "test_fixture_only": true
+  },
+  "node": {
+    "size_bytes": 396112,
+    "sha256": "c91f71e62778674de297a1c3efd081f832a8514b543ac2f64deae756e7a19208",
+    "test_fixture_only": true
+  },
+  "node2": {
+    "size_bytes": 396112,
+    "sha256": "391bf642fe118c865e22a42d4b3c122c93c9f352d7483af6b835a9b7592d2e35",
+    "test_fixture_only": true
+  }
+}

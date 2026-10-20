@@ -1,3 +1,8 @@
+> **0.1.5rc2 mission candidate:** Open **Mission planning** for addressed LoRa Mission
+> v0.2.0 firmware and ordered map/F1–F3 event planning. See
+> [Mission planning](docs/MISSION-PLANNING.md) for compatibility, explicit
+> upload/start and failsafe requirements. Existing manual links remain separate.
+
 # PC TeleRC 0.1.4rc1 candidate
 
 Camera-first Windows cockpit with persistent map/camera swap, offline map collapse/restore, fresh telemetry tiles and selected-camera reconnection. Four radio profiles include the new telemetry-only ELRS TX Backpack Wi-Fi option; the handset retains drive/arm authority on that profile. Connect/Disconnect is available above the camera. Existing wheel/keyboard, Wi-Fi, LoRa and USB ELRS control workflows are retained.

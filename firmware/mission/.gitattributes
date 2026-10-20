@@ -1,0 +1,4 @@
+# Preserve retained upstream OLED source and literal compiler output.
+firmware/TinyOled.h whitespace=-blank-at-eof
+sketches/*/TinyOled.h whitespace=-blank-at-eof
+validation/board-build-results.txt -whitespace

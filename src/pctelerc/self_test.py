@@ -20,9 +20,10 @@ def run(report_path):
     from .config import AppSettings
     app = QApplication.instance() or QApplication([])
     app.setStyleSheet(ui.STYLE)
-    saved_load, saved_save, saved_map = ui.load_settings, ui.save_settings, ui.RoverMap
+    saved_load, saved_save, saved_map, saved_mission = ui.load_settings, ui.save_settings, ui.RoverMap, ui.MissionDialog
     map_cache = tempfile.TemporaryDirectory()
     ui.RoverMap = partial(saved_map, cache_dir=Path(map_cache.name) / "cache")
+    ui.MissionDialog = partial(saved_mission, draft_path=Path(map_cache.name)/"mission-draft.json")
     ui.load_settings = lambda: AppSettings(map_online=False)
     ui.save_settings = lambda *_args, **_kwargs: None
     window = ui.MainWindow(start_services=False)
@@ -72,6 +73,17 @@ def run(report_path):
             checks["offline_no_network"] = not window.rover_map._online and not window.rover_map._pending
             checks["offline_no_fake_gps"] = window.rover_map._last_position is None and not window.rover_map._track
             window._load_offline_map('', persist=False)
+        window._open_mission()
+        mission = window._mission_dialog
+        mission.map.set_online(False)
+        mission._add(13.6, 123.2)
+        mission._add(13.6001, 123.2001)
+        from .mission_plan import parse_text
+        checks["mission_plan_codec"] = len(parse_text(mission._text())) == 6
+        checks["mission_planning_no_authority"] = (not mission.service.running and
+            not mission.start_btn.isEnabled() and not window.mav.snapshot().running)
+        mission.reject(); app.processEvents()
+        checks["mission_close_cleans_session"] = window._mission_dialog is None and not mission.timer.isActive()
         fixture = Path(__file__).parent / "assets" / "test-pattern.mp4"
         if not fixture.exists():
             fixture = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "test-pattern.mp4"
@@ -97,7 +109,7 @@ def run(report_path):
         app.processEvents()
         if server is not None:
             server.shutdown(); server.server_close()
-        ui.load_settings, ui.save_settings, ui.RoverMap = saved_load, saved_save, saved_map
+        ui.load_settings, ui.save_settings, ui.RoverMap, ui.MissionDialog = saved_load, saved_save, saved_map, saved_mission
         map_cache.cleanup()
     result = {"passed":bool(checks) and all(value is True for value in checks.values()),"checks":checks}
     Path(report_path).write_text(json.dumps(result,indent=2),encoding="utf-8")

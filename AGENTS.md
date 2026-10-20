@@ -5,6 +5,34 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+0.1.5rc2 / Mission firmware 0.2.0rc1 — full mission release review authorized.
+Firmware is now under firmware/mission; all older firmware paths and manual profiles
+are protected. Require TM2 BASE capability confirmation before mission heartbeats.
+Batch at most four complete MAVLink frames/100 bytes; never fabricate a heartbeat.
+Source-time duplicate positions cannot refresh readiness. A stale FC must cancel
+in-flight transactions, and START verification is consumed before its one attempt.
+F action blocks begin CONDITION_DELAY followed by DO rows before a relative
+NAV_DELAY, so the stopped NAV command is active while actions run. Reject legacy
+unguarded servo imports; physical OFF remains unverified. Connect/HOLD must work
+without a valid draft. Draft persistence restores planning only. Help/panel changes
+are display-only; keep identity/profile edits frozen while connected.
+Keep candidate status until Windows/frozen and physical qualification evidence.
+
+
+0.1.5rc1 — authorized PC adaptation of TeleRC planning and new LoRa Mission firmware.
+MissionService exclusively owns the mission BASE while active; manual reconnect,
+ARM and RC control stay locked. Plan/profile/ID are immutable until disconnect.
+MissionUSB shares the final write gate with HOLD/close cancellation; no queued START
+may follow an observed cancellation. QDialog done/reject/Escape must close the worker.
+The UI lease expires after 2 seconds; a stalled GUI cannot keep host heartbeat alive.
+Require disarmed upload, full readback, fresh FC policy/output checks, separate exact
+rover/digest confirmation and one-shot START. Lost ACK means UNKNOWN. Never arm or
+write parameters through this path. Firmware/motor/manual transports are unchanged.
+F events use onboard AUTO semantics. No stationary action/output feedback guarantee;
+HOLD cannot guarantee auxiliary OFF. Preserve the independent-cutoff/opt-in gate.
+Keep candidate draft until Windows/frozen checks and physical qualification pass.
+
+
 0.1.4rc1 — owner authorized TeleRC-to-PC workflow/connection/telemetry migration and release build on 18 October 2026. Baseline v0.1.3 is retained. New candidate workflow on dev/telerc-migration-v0.1.4rc1 must pass source, Windows regression, frozen media/cockpit and packaging checks before uploading draft release assets. Keep candidate draft pending physical qualification; do not promote stable without hardware evidence. Native Backpack is immutable PING-only telemetry with handset authority. No map action or camera retry may acquire control. See docs/releases/v0.1.4rc1.md and docs/MIGRATION-014-QA.md.
 0.1.3 — stable offline maps, compact map minimize/restore and LoRa USB fixes. User explicitly authorized the stable release and offline/minimize additions on 15 October 2026 after confirming the direct 915 MHz LoRa link works. Publish only after automated/frozen Windows checks and packaged preset target compilation pass. Preserve earlier stable rollback releases.
 
@@ -64,7 +92,7 @@ Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lor
 
 ## Known limitations
 - Exact PXN behavior still depends on Windows driver/mode.
-- No force feedback or mission upload/planner; map is display-only.
+- No force feedback. The cockpit map is display-only; mission planning uses its dedicated window.
 - Unsigned Windows test executable.
 - Hardware fail-safe timing remains unverified.
 

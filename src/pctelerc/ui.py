@@ -25,6 +25,7 @@ from .camera import CameraView, stored_camera_url
 from .cockpit import Cockpit
 from .percent_slider import PercentSlider
 from .rover_map import RoverMap, position_fresh
+from .mission_widget import MissionDialog
 
 STYLE = """
 QWidget { background:#10151c; color:#e7edf5; font-family:'Segoe UI'; font-size:9pt; }
@@ -75,6 +76,7 @@ class MainWindow(QMainWindow):
         self._network_dirty = False
         self._diagnostics_window = None
         self._lora_dialog = None
+        self._mission_dialog = None
         self._restart_pending = False
         self._restart_generation = 0
         self._restart_settings = None
@@ -427,6 +429,9 @@ class MainWindow(QMainWindow):
         self.swap_view_btn = QPushButton("Map focus ⇄")
         self.swap_view_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.swap_view_btn.setToolTip("Swap map and camera with a short transition; streams stay connected.")
+        self.mission_btn = QPushButton("Mission planning")
+        self.mission_btn.clicked.connect(self._open_mission)
+        view_tools.addWidget(self.mission_btn)
         self.swap_view_btn.clicked.connect(self._swap_views)
         view_tools.addWidget(self.swap_view_btn)
         screen_layout.addLayout(view_tools)
@@ -920,6 +925,10 @@ class MainWindow(QMainWindow):
             self.message.setText(f"Could not list USB ports: {exc}")
 
     def _disconnect_link(self):
+        if self._mission_active():
+            if not self._mission_dialog.service.close():
+                self.message.setText("Mission connection is still closing; reconnect remains locked")
+                return False
         self._restart_pending = False
         self._restart_generation += 1
         self.reconnect_btn.setEnabled(True)
@@ -927,7 +936,39 @@ class MainWindow(QMainWindow):
         self.message.setText("Disconnected. PC Control is OFF." if stopped else "Link did not stop. Close PC TeleRC before reconnecting.")
         return stopped
 
+    def _mission_active(self):
+        return self._mission_dialog is not None and self._mission_dialog.service.running
+
+    def _prepare_mission_link(self):
+        if self._lora_dialog is not None:
+            if not self._lora_dialog.setup.close_usb():
+                self.message.setText("Close LoRa setup USB before opening mission BASE")
+                return False
+            self._lora_dialog.close()
+        self._stop_keyboard()
+        return self._disconnect_link()
+
+    def _open_mission(self):
+        if self._mission_dialog is None:
+            dialog = MissionDialog(self._prepare_mission_link, self)
+            dialog.setStyleSheet(STYLE)
+            dialog.port.setCurrentText(self.lora_port.currentText())
+            if self.settings.map_file:
+                try: dialog.map.set_offline_map(self.settings.map_file)
+                except (OSError, ValueError): pass
+            dialog.map.set_online(self.settings.map_online)
+            if dialog.map.points:
+                dialog.map._center = dialog.map.points[0]
+                dialog.map._follow = False
+            dialog.finished.connect(lambda *_: setattr(self, '_mission_dialog', None))
+            self._mission_dialog = dialog
+        self._mission_dialog.show()
+        self._mission_dialog.raise_()
+
     def _open_lora_setup(self):
+        if self._mission_active():
+            self.message.setText("Disconnect mission BASE before opening manual LoRa setup")
+            return
         if self._lora_dialog is None:
             dialog = QDialog(self)
             dialog.setWindowTitle("LilyGO SX1262 · LoRa setup")
@@ -946,6 +987,9 @@ class MainWindow(QMainWindow):
         self._lora_dialog.raise_()
 
     def _apply_and_reconnect(self):
+        if self._mission_active():
+            self.message.setText("Disconnect mission BASE before reconnecting manual control")
+            return
         self._restart_pending = False
         self._restart_generation += 1
         self.reconnect_btn.setEnabled(False)
@@ -1051,6 +1095,9 @@ class MainWindow(QMainWindow):
         self._diagnostics_window.show()
 
     def _toggle_control(self):
+        if self._mission_active():
+            self.message.setText("Mission link active; use RC authority and mission HOLD")
+            return
         if self.mav.snapshot().control_enabled:
             released = self.mav.disable_control()
             self.message.setText("PC control disabled; neutral/release written to USB. Verify rover handover." if released is True else
@@ -1066,6 +1113,9 @@ class MainWindow(QMainWindow):
             QApplication.beep()
 
     def _vehicle_command(self, command, allow_dirty: bool = False):
+        if self._mission_active():
+            self.message.setText("Mission link active; arm/disarm with RC")
+            return
         if (self._settings_dirty or self._network_dirty or self._restart_pending) and not allow_dirty:
             QApplication.beep()
             self.message.setText("Apply pending settings before ARM.")
@@ -1178,6 +1228,9 @@ class MainWindow(QMainWindow):
         self.control_btn.setEnabled(
             mav.control_enabled or (link_ok and wheel_ok and neutral_ok and not self._settings_dirty and not self._network_dirty)
         )
+        if self._mission_active():
+            for button in (self.arm_btn, self.disarm_btn, self.control_btn):
+                button.setEnabled(False)
         if backpack:
             for button in (self.arm_btn, self.disarm_btn, self.control_btn):
                 button.setEnabled(False)
@@ -1186,6 +1239,10 @@ class MainWindow(QMainWindow):
                 self.link_label.setText("Backpack UDP open · " + ("F405 telemetry stale; retrying registration" if mav.last_heartbeat else "waiting for F405 telemetry"))
 
     def closeEvent(self, event):
+        if self._mission_dialog is not None:
+            if not self._mission_dialog.close():
+                event.ignore()
+                return
         self.camera_view.shutdown()
         self.rover_map.shutdown()
         QApplication.instance().removeEventFilter(self)
