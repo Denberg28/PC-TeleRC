@@ -1,0 +1,114 @@
+{
+  "date": "2026-10-21 Asia/Manila",
+  "status": "11 real ESP32 board builds verified; source equivalence and image hashes verified",
+  "sources": {
+    "android": {
+      "repository": "Denberg28/TeleRC",
+      "ref": "latest-android-release",
+      "fallback": "181056fe0ef06e9717a3634089753a12414ea112",
+      "resolved_ref": "v0.8.88",
+      "commit": "181056fe0ef06e9717a3634089753a12414ea112"
+    },
+    "pc-mini": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "main",
+      "resolved_ref": "main",
+      "commit": "eb38f4d715fda7bfb42da02ac5c3c91e65b5e930"
+    },
+    "pc-stable": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "latest-stable-pc-release",
+      "resolved_ref": "v0.1.3",
+      "commit": "0edd09475dd4668a8793caf1402b15d3f35d0a1b"
+    }
+  },
+  "esp32_core": "3.3.2",
+  "RadioLib": "7.2.1",
+  "arduino_cli": "1.5.2-rc.1 fef6e48df",
+  "profiles": [
+    {
+      "profile": "balancer-mount-0",
+      "compilation_source_files": 26,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "wifi-mini-mx1508-4motors",
+      "compilation_source_files": 6,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "receiver-mini-mx1508-4motors",
+      "compilation_source_files": 8,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-bridge",
+      "compilation_source_files": 1,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-pwm",
+      "compilation_source_files": 1,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-base-0relays",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-rover-0relays",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-base-2relays",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-rover-2relays",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-node-1",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    },
+    {
+      "profile": "pc-runtime-node-2",
+      "compilation_source_files": 13,
+      "binary_images": 4,
+      "verified": true
+    }
+  ],
+  "hardware_tested": false,
+  "experimental_mission_included": false,
+  "notes": [
+    "Binaries were compiled before scope reduction. Original compilation commits remain in compiled_provenance.",
+    "Every staged firmware source file was compared against the selected baseline before packaging. Compiler flags and FQBN are unchanged.",
+    "Private stable PC v0.1.3 firmware is byte-identical to the original compilation inputs.",
+    "Saved calibration/NVS must not be erased for an otherwise compatible update."
+  ],
+  "archive": {
+    "file": "TeleRC-Current-Firmware-2026-10-21.zip",
+    "sha256": "7040a2791214a84b4797b08e101290598cff1dea44c919b893d5f816730a66be",
+    "profiles": 11,
+    "catalog_commit": "b75fa6b024cfb1dd7a3190ecf2b6b363ef9317f1"
+  },
+  "automatic_build_status": {
+    "run": "https://github.com/Denberg28/PC-TeleRC/actions/runs/39498005222",
+    "status": "GitHub job failed before runner steps; collection was built locally"
+  }
+}
