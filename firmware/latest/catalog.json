@@ -1,0 +1,486 @@
+{
+  "schema": 1,
+  "esp32_core": "3.3.2",
+  "radiolib": "7.2.1",
+  "sources": {
+    "android": {
+      "repository": "Denberg28/TeleRC",
+      "ref": "latest-android-release",
+      "fallback": "181056fe0ef06e9717a3634089753a12414ea112"
+    },
+    "pc-runtime": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "dev/mission-planning-v0.1.5rc1"
+    },
+    "pc-mini": {
+      "repository": "Denberg28/PC-TeleRC",
+      "ref": "main"
+    }
+  },
+  "profiles": [
+    {
+      "id": "android-motor",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCMotorController",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "Existing TeleRC manual/FC architecture; use the matching wiring guide."
+    },
+    {
+      "id": "android-wifi-gateway",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCWiFiGateway",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "Existing TeleRC manual/FC architecture; use the matching wiring guide."
+    },
+    {
+      "id": "android-bridge",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCBridge",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "Existing TeleRC manual/FC architecture; use the matching wiring guide."
+    },
+    {
+      "id": "android-hybrid",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCHybridController",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "Existing TeleRC manual/FC architecture; use the matching wiring guide."
+    },
+    {
+      "id": "android-direct",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCDirectDrive",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": "Existing TeleRC manual/FC architecture; use the matching wiring guide."
+    },
+    {
+      "id": "android-lora-base-sx1262",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCLoRaBase",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=enabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "-DTELERC_RADIO_VARIANT=1262 -DTELERC_BASE_WIFI=0",
+      "defines": {},
+      "note": "Dedicated motor UART protocol; not PC runtime or encrypted mission protocol. Radio remains unprovisioned without valid saved NVS."
+    },
+    {
+      "id": "android-lora-rover-sx1262",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCLoRaRover",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=enabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "-DTELERC_RADIO_VARIANT=1262 -DTELERC_BASE_WIFI=0",
+      "defines": {},
+      "note": "Dedicated motor UART protocol; not PC runtime or encrypted mission protocol. Radio remains unprovisioned without valid saved NVS."
+    },
+    {
+      "id": "android-lora-base-sx1276",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCLoRaBase",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=enabled,FlashMode=dio,Revision=Radio_SX1276",
+      "flags": "-DTELERC_RADIO_VARIANT=1276 -DTELERC_BASE_WIFI=0",
+      "defines": {},
+      "note": "Dedicated motor UART protocol; not PC runtime or encrypted mission protocol. Radio remains unprovisioned without valid saved NVS."
+    },
+    {
+      "id": "android-lora-rover-sx1276",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/TeleRCLoRaRover",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=enabled,FlashMode=dio,Revision=Radio_SX1276",
+      "flags": "-DTELERC_RADIO_VARIANT=1276 -DTELERC_BASE_WIFI=0",
+      "defines": {},
+      "note": "Dedicated motor UART protocol; not PC runtime or encrypted mission protocol. Radio remains unprovisioned without valid saved NVS."
+    },
+    {
+      "id": "android-pwm-four-input",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/BTS7960PWMConverter",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_PWM_PAIRED=0",
+      "defines": {},
+      "note": ""
+    },
+    {
+      "id": "android-pwm-paired",
+      "group": "android-core",
+      "source": "android",
+      "path": "bridge/BTS7960PWMConverter",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_PWM_PAIRED=1",
+      "defines": {},
+      "note": ""
+    },
+    {
+      "id": "balancer-mount-0",
+      "group": "balancer",
+      "source": "android",
+      "path": "bridge/TT_Balancer_ESP32S3",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DBALANCER_IMU_MOUNT=0",
+      "defines": {},
+      "note": "Balancer0.3.0; direction verification remains required. Saved gyro calibration format retained. No balance/PID qualification."
+    },
+    {
+      "id": "balancer-mount-1",
+      "group": "balancer",
+      "source": "android",
+      "path": "bridge/TT_Balancer_ESP32S3",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DBALANCER_IMU_MOUNT=1",
+      "defines": {},
+      "note": "Balancer0.3.0; direction verification remains required. Saved gyro calibration format retained. No balance/PID qualification."
+    },
+    {
+      "id": "wifi-mini-mx1508-2motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-mx1508-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-drv8833-2motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=2 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-drv8833-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=2 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-tb6612-2motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=3 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-tb6612-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=3 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-bts7960-2motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=4 -DTELERC_MOTOR_COUNT=2 -DTELERC_SUPPLY_MAX_MV=6000 -DTELERC_BTS_LOGIC_VERIFIED=1",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-bts7960-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=4 -DTELERC_MOTOR_COUNT=4 -DTELERC_SUPPLY_MAX_MV=6000 -DTELERC_BTS_LOGIC_VERIFIED=1",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-l298n-2motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=5 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "wifi-mini-l298n-4motors",
+      "group": "wifi-mini",
+      "source": "android",
+      "path": "bridge/TeleRC_MiniRover_WiFi",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=5 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-mx1508-2motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-mx1508-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=1 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-drv8833-2motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=2 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-drv8833-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=2 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-tb6612-2motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=3 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-tb6612-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=3 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-bts7960-2motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=4 -DTELERC_MOTOR_COUNT=2 -DTELERC_SUPPLY_MAX_MV=6000 -DTELERC_BTS_LOGIC_VERIFIED=1",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-bts7960-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=4 -DTELERC_MOTOR_COUNT=4 -DTELERC_SUPPLY_MAX_MV=6000 -DTELERC_BTS_LOGIC_VERIFIED=1",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-l298n-2motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=5 -DTELERC_MOTOR_COUNT=2",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "receiver-mini-l298n-4motors",
+      "group": "receiver-mini",
+      "source": "pc-mini",
+      "path": "rover_types/mini/releases/v1.0.0-standard/package/TeleRC_MiniRover",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "-DTELERC_DRIVER=5 -DTELERC_MOTOR_COUNT=4",
+      "defines": {},
+      "note": "BTS compile profile assumes verified3.3V logic; it is not electrical proof. Use regulated motor voltage matching the specific driver/motors. Receiver mini uses FS-iA6 authority; Wi-Fi-only mini is a separate family."
+    },
+    {
+      "id": "pc-bridge",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCBridge",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": ""
+    },
+    {
+      "id": "pc-pwm",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRC_4x_BTS7960_PWM_GlitchFilter",
+      "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,USBMode=hwcdc,FlashSize=4M,PartitionScheme=default,PSRAM=disabled,FlashMode=dio",
+      "flags": "",
+      "defines": {},
+      "note": ""
+    },
+    {
+      "id": "pc-runtime-base-0relays",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_BASE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 0
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant."
+    },
+    {
+      "id": "pc-runtime-rover-0relays",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_ROVER",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 0
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant."
+    },
+    {
+      "id": "pc-runtime-base-2relays",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_BASE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant."
+    },
+    {
+      "id": "pc-runtime-rover-2relays",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_ROVER",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2
+      },
+      "note": "PC runtime manual LoRa/Wi-Fi protocol. Empty compiled password; provision matching private settings before RF use. Match relay count on every participant."
+    },
+    {
+      "id": "pc-runtime-node-1",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_NODE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2,
+        "TELERC_NODE_INDEX": 1
+      },
+      "note": "Two-relay route, node1 nearest BASE. Different protocol from dedicated UART LoRa and encrypted mission firmware."
+    },
+    {
+      "id": "pc-runtime-node-2",
+      "group": "pc-manual",
+      "source": "pc-runtime",
+      "path": "firmware/TeleRCLoRa_NODE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {
+        "TELERC_RELAY_COUNT": 2,
+        "TELERC_NODE_INDEX": 2
+      },
+      "note": "Two-relay route, node1 nearest BASE. Different protocol from dedicated UART LoRa and encrypted mission firmware."
+    },
+    {
+      "id": "mission-base",
+      "group": "mission",
+      "source": "pc-runtime",
+      "path": "firmware/mission/sketches/TeleRCMission_BASE",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {},
+      "note": "Mission0.2.0rc1 keyless example: PROVISIONED=0, RF OFF. Generate one matching private set with firmware/mission/tools/provision.py; do not flash these examples expecting an operational link. Current Android TeleRC does not support this mission protocol."
+    },
+    {
+      "id": "mission-rover-001",
+      "group": "mission",
+      "source": "pc-runtime",
+      "path": "firmware/mission/sketches/TeleRCMission_ROVER_001",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {},
+      "note": "Mission0.2.0rc1 keyless example: PROVISIONED=0, RF OFF. Generate one matching private set with firmware/mission/tools/provision.py; do not flash these examples expecting an operational link. Current Android TeleRC does not support this mission protocol."
+    },
+    {
+      "id": "mission-node-1",
+      "group": "mission",
+      "source": "pc-runtime",
+      "path": "firmware/mission/sketches/TeleRCMission_NODE_1",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {},
+      "note": "Mission0.2.0rc1 keyless example: PROVISIONED=0, RF OFF. Generate one matching private set with firmware/mission/tools/provision.py; do not flash these examples expecting an operational link. Current Android TeleRC does not support this mission protocol."
+    },
+    {
+      "id": "mission-node-2",
+      "group": "mission",
+      "source": "pc-runtime",
+      "path": "firmware/mission/sketches/TeleRCMission_NODE_2",
+      "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PartitionScheme=default,PSRAM=disabled,FlashMode=dio,Revision=Radio_SX1262",
+      "flags": "",
+      "defines": {},
+      "note": "Mission0.2.0rc1 keyless example: PROVISIONED=0, RF OFF. Generate one matching private set with firmware/mission/tools/provision.py; do not flash these examples expecting an operational link. Current Android TeleRC does not support this mission protocol."
+    }
+  ]
+}
