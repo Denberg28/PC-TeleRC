@@ -1,0 +1,59 @@
+=== role BASE; relays 0; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS base runtime: actual host heartbeat fairness, no replay, stale command expiry, version handshake without authority
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role ROVER_001; relays 0; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS rover runtime: encrypted command forwarding once, duplicate/new-nonce replay denied, no synthetic GCS heartbeat
+PASS multi-hop batching: heartbeat and mission reply share each bounded response
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role BASE; relays 1; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS base runtime: actual host heartbeat fairness, no replay, stale command expiry, version handshake without authority
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role ROVER_001; relays 1; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS rover runtime: encrypted command forwarding once, duplicate/new-nonce replay denied, no synthetic GCS heartbeat
+PASS multi-hop batching: heartbeat and mission reply share each bounded response
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role NODE_1; relays 1; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS USB framing and corrupt frame rejection
+PASS relay runtime: fixed directional stage, hop authentication, duplicate suppression, no rover key
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role BASE; relays 2; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS base runtime: actual host heartbeat fairness, no replay, stale command expiry, version handshake without authority
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role ROVER_001; relays 2; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS crypto: AES-GCM roundtrip, wrong key, every-byte tamper, relay-key compromise isolation, fleet ID, lengths, token replay/expiry/wrap
+PASS USB framing and corrupt frame rejection
+PASS rover runtime: encrypted command forwarding once, duplicate/new-nonce replay denied, no synthetic GCS heartbeat
+PASS multi-hop batching: heartbeat and mission reply share each bounded response
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role NODE_1; relays 2; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS USB framing and corrupt frame rejection
+PASS relay runtime: fixed directional stage, hop authentication, duplicate suppression, no rover key
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+=== role NODE_2; relays 2; sanitizer True ===
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS USB framing and corrupt frame rejection
+PASS relay runtime: fixed directional stage, hop authentication, duplicate suppression, no rover key
+ALL NATIVE CHECKS PASSED (HOST STUBS, NOT BOARD VALIDATION)
+PASS: TeleRCMission_BASE keyless example keeps RF OFF
+PASS: TeleRCMission_NODE_1 keyless example keeps RF OFF
+PASS: TeleRCMission_NODE_2 keyless example keeps RF OFF
+PASS: TeleRCMission_ROVER_001 keyless example keeps RF OFF
+PASS: 9 provisioned runtime/profile builds plus 4 keyless RF-OFF builds (13 total host builds and executions)

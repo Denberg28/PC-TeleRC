@@ -1,3 +1,13 @@
+## 0.1.5rc2 — reviewed mission release candidate
+
+- Compact mission UI with collapsible plan/output/help panes and persistent state.
+- Stopped F-action windows, unsafe legacy-plan rejection and planning-only draft recovery.
+- Matching LoRa Mission 0.2.0 BASE/ROVER/NODE sketches, version/route/permission handshake,
+  actual heartbeat fairness, bounded telemetry batches and rotating navigation slots.
+- Recovery Connect/HOLD without a draft, source freshness checks inside transactions,
+  correct RC takeover state and consumed one-shot START readiness.
+- Production manual transports and motor firmware preserved. See the review/evidence.
+
 ## 0.1.5rc1 — LoRa mission planning
 
 - Add map route/F1–F3 event editing and QGC WPL 110 import/export.

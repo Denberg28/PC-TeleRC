@@ -1,0 +1,175 @@
+Processing base (platform: file:///workspace/scratch/3f40c31647c0/toolchain/platform-espressif32.zip; board: telerc-lilygo-sx1262; framework: arduino)
+--------------------------------------------------------------------------------
+Warning: No internet connection detected, Python dependency check will be skipped.
+Warning: No internet connection detected, Python dependency check will be skipped.
+Verbose mode can be enabled via `-v, --verbose` option
+Warning: No internet connection detected, Python dependency check will be skipped.
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/telerc-lilygo-sx1262.html
+PLATFORM: Espressif 32 (55.3.32) > LilyGo T3-S3 SX1262 (Arduino 3.3.2 4MB, PSRAM disabled)
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.2 
+ - framework-arduinoespressif32-libs @ 5.5.0+sha.07e9bf4970 
+ - tool-esptoolpy @ 5.1.0 
+ - tool-mklittlefs @ 3.2.0 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20250730
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 43 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- RadioLib @ 7.2.1
+|-- Wire @ 3.3.2
+|-- SPI @ 3.3.2
+Building in release mode
+Compiling .pio/build/base/src/base/main.cpp.o
+Linking .pio/build/base/firmware.elf
+/root/.platformio/penv/bin/python: No module named esp_idf_size
+Warning: esp-idf-size exited with code 1
+Retrieving maximum program size .pio/build/base/firmware.elf
+Checking size .pio/build/base/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   7.9% (used 25832 bytes from 327680 bytes)
+Flash: [===       ]  32.3% (used 422775 bytes from 1310720 bytes)
+Building .pio/build/base/firmware.bin
+esptool v5.1.0
+Creating ESP32S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32S3 image.
+========================= [SUCCESS] Took 15.58 seconds =========================
+
+Processing rover (platform: file:///workspace/scratch/3f40c31647c0/toolchain/platform-espressif32.zip; board: telerc-lilygo-sx1262; framework: arduino)
+--------------------------------------------------------------------------------
+Warning: No internet connection detected, Python dependency check will be skipped.
+Warning: No internet connection detected, Python dependency check will be skipped.
+Verbose mode can be enabled via `-v, --verbose` option
+Warning: No internet connection detected, Python dependency check will be skipped.
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/telerc-lilygo-sx1262.html
+PLATFORM: Espressif 32 (55.3.32) > LilyGo T3-S3 SX1262 (Arduino 3.3.2 4MB, PSRAM disabled)
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.2 
+ - framework-arduinoespressif32-libs @ 5.5.0+sha.07e9bf4970 
+ - tool-esptoolpy @ 5.1.0 
+ - tool-mklittlefs @ 3.2.0 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20250730
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 43 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- RadioLib @ 7.2.1
+|-- Wire @ 3.3.2
+|-- SPI @ 3.3.2
+Building in release mode
+Compiling .pio/build/rover/src/rover/main.cpp.o
+Linking .pio/build/rover/firmware.elf
+/root/.platformio/penv/bin/python: No module named esp_idf_size
+Warning: esp-idf-size exited with code 1
+Retrieving maximum program size .pio/build/rover/firmware.elf
+Checking size .pio/build/rover/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   8.2% (used 26768 bytes from 327680 bytes)
+Flash: [===       ]  33.2% (used 435515 bytes from 1310720 bytes)
+Building .pio/build/rover/firmware.bin
+esptool v5.1.0
+Creating ESP32S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32S3 image.
+========================= [SUCCESS] Took 13.01 seconds =========================
+
+Processing node (platform: file:///workspace/scratch/3f40c31647c0/toolchain/platform-espressif32.zip; board: telerc-lilygo-sx1262; framework: arduino)
+--------------------------------------------------------------------------------
+Warning: No internet connection detected, Python dependency check will be skipped.
+Warning: No internet connection detected, Python dependency check will be skipped.
+Verbose mode can be enabled via `-v, --verbose` option
+Warning: No internet connection detected, Python dependency check will be skipped.
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/telerc-lilygo-sx1262.html
+PLATFORM: Espressif 32 (55.3.32) > LilyGo T3-S3 SX1262 (Arduino 3.3.2 4MB, PSRAM disabled)
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.2 
+ - framework-arduinoespressif32-libs @ 5.5.0+sha.07e9bf4970 
+ - tool-esptoolpy @ 5.1.0 
+ - tool-mklittlefs @ 3.2.0 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20250730
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 43 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- RadioLib @ 7.2.1
+|-- Wire @ 3.3.2
+|-- SPI @ 3.3.2
+Building in release mode
+Compiling .pio/build/node/src/node/main.cpp.o
+Linking .pio/build/node/firmware.elf
+/root/.platformio/penv/bin/python: No module named esp_idf_size
+Warning: esp-idf-size exited with code 1
+Retrieving maximum program size .pio/build/node/firmware.elf
+Checking size .pio/build/node/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   7.8% (used 25520 bytes from 327680 bytes)
+Flash: [===       ]  30.2% (used 395711 bytes from 1310720 bytes)
+Building .pio/build/node/firmware.bin
+esptool v5.1.0
+Creating ESP32S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32S3 image.
+========================= [SUCCESS] Took 20.19 seconds =========================
+
+Processing node2 (platform: file:///workspace/scratch/3f40c31647c0/toolchain/platform-espressif32.zip; board: telerc-lilygo-sx1262; framework: arduino)
+--------------------------------------------------------------------------------
+Warning: No internet connection detected, Python dependency check will be skipped.
+Warning: No internet connection detected, Python dependency check will be skipped.
+Verbose mode can be enabled via `-v, --verbose` option
+Warning: No internet connection detected, Python dependency check will be skipped.
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/telerc-lilygo-sx1262.html
+PLATFORM: Espressif 32 (55.3.32) > LilyGo T3-S3 SX1262 (Arduino 3.3.2 4MB, PSRAM disabled)
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.2 
+ - framework-arduinoespressif32-libs @ 5.5.0+sha.07e9bf4970 
+ - tool-esptoolpy @ 5.1.0 
+ - tool-mklittlefs @ 3.2.0 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20250730
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 43 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- RadioLib @ 7.2.1
+|-- Wire @ 3.3.2
+|-- SPI @ 3.3.2
+Building in release mode
+Compiling .pio/build/node2/src/node2/main.cpp.o
+Linking .pio/build/node2/firmware.elf
+/root/.platformio/penv/bin/python: No module named esp_idf_size
+Warning: esp-idf-size exited with code 1
+Retrieving maximum program size .pio/build/node2/firmware.elf
+Checking size .pio/build/node2/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]   7.8% (used 25520 bytes from 327680 bytes)
+Flash: [===       ]  30.2% (used 395711 bytes from 1310720 bytes)
+Building .pio/build/node2/firmware.bin
+esptool v5.1.0
+Creating ESP32S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32S3 image.
+========================= [SUCCESS] Took 21.59 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+base           SUCCESS   00:00:15.582
+rover          SUCCESS   00:00:13.010
+node           SUCCESS   00:00:20.192
+node2          SUCCESS   00:00:21.593
+========================= 4 succeeded in 00:01:10.377 =========================

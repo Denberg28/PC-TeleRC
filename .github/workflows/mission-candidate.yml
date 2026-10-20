@@ -1,11 +1,11 @@
-name: PC TeleRC v0.1.5rc1 LoRa mission planning
+name: PC TeleRC v0.1.5rc2 LoRa mission planning
 on:
   push:
     branches: [dev/mission-planning-v0.1.5rc1]
 permissions:
   contents: write
 concurrency:
-  group: telerc-migration-v0.1.5rc1
+  group: telerc-migration-v0.1.5rc2
   cancel-in-progress: true
 jobs:
   windows:
@@ -22,7 +22,7 @@ jobs:
           cache: pip
       - name: Validate unchanged firmware and full application regression
         run: |
-          git diff --exit-code 0edd09475dd4668a8793caf1402b15d3f35d0a1b HEAD -- firmware stable_config
+          git diff --exit-code 0edd09475dd4668a8793caf1402b15d3f35d0a1b HEAD -- firmware stable_config ':(exclude)firmware/mission'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install -e ".[dev]"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -33,6 +33,8 @@ jobs:
           python -m pytest -q
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tests/test_publish_stable.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest -q firmware/mission/tests/test_tools.py firmware/mission/tests/test_mission_simulation.py
       - name: Build Windows application
         run: |
           pyinstaller --noconfirm --clean PC-TeleRC.spec
@@ -55,26 +57,27 @@ jobs:
           foreach ($name in @('OFFLINE-MAPS','CAMERA-DESKTOP','KEYBOARD','LORA-USB-SETUP','THIRD-PARTY','MISSION-PLANNING')) {
             Copy-Item "docs\$name.md" "dist\PC-TeleRC\$name.md"
           }
-          Copy-Item docs\releases\v0.1.5rc1.md dist\PC-TeleRC\RELEASE.md
-          @{ commit = '${{ github.sha }}'; run_id = '${{ github.run_id }}'; run_attempt = '${{ github.run_attempt }}'; version = '0.1.5rc1'; firmware = 'unchanged from v0.1.3' } | ConvertTo-Json | Set-Content -Encoding utf8 release-dist\build-provenance.json
+          Copy-Item docs\releases\v0.1.5rc2.md dist\PC-TeleRC\RELEASE.md
+          Copy-Item -Recurse firmware\mission dist\PC-TeleRC\Mission-firmware
+          @{ commit = '${{ github.sha }}'; run_id = '${{ github.run_id }}'; run_attempt = '${{ github.run_attempt }}'; version = '0.1.5rc2'; firmware = 'mission 0.2.0rc1; manual unchanged' } | ConvertTo-Json | Set-Content -Encoding utf8 release-dist\build-provenance.json
           Copy-Item frozen-ui-check.json release-dist\frozen-ui-check.json
-          Copy-Item docs\releases\v0.1.5rc1.md release-dist\RELEASE.md
-          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath release-dist\PC-TeleRC-portable-v0.1.5rc1.zip
-          git archive --format=zip --output=release-dist/PC-TeleRC-source-v0.1.5rc1.zip HEAD
+          Copy-Item docs\releases\v0.1.5rc2.md release-dist\RELEASE.md
+          Compress-Archive -Path dist\PC-TeleRC\* -DestinationPath release-dist\PC-TeleRC-portable-v0.1.5rc2.zip
+          git archive --format=zip --output=release-dist/PC-TeleRC-source-v0.1.5rc2.zip HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           choco install innosetup --no-progress -y
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\PC-TeleRC.iss"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.5rc1.exe release-dist\
+          Copy-Item installer-dist\PC-TeleRC-Setup-v0.1.5rc2.exe release-dist\
           Get-ChildItem release-dist\* | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content -Encoding ascii release-dist\SHA256-windows.txt
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.5rc1
+          tag_name: v0.1.5rc2
           target_commitish: ${{ github.sha }}
-          name: PC TeleRC v0.1.5rc1 — LoRa mission planning
+          name: PC TeleRC v0.1.5rc2 — LoRa mission planning
           draft: true
           prerelease: true
           make_latest: false
-          body_path: docs/releases/v0.1.5rc1.md
+          body_path: docs/releases/v0.1.5rc2.md
           files: release-dist/*
           fail_on_unmatched_files: true

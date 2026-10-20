@@ -1,0 +1,17 @@
+Setting SIM_SPEEDUP=1.000000
+Home: 13.600000 123.200000 alt=20.000000m hdg=0.000000
+Starting sketch 'Rover'
+Starting SITL input
+Using Irlock at port : 9005
+bind port 40989 for SERIAL0
+SERIAL0 on TCP port 40989
+Loaded defaults from /tmp/pctelerc-sitl-a5oj2yqv/defaults.parm
+bind port 5762 for SERIAL1
+SERIAL1 on TCP port 5762
+bind port 5763 for SERIAL2
+SERIAL2 on TCP port 5763
+validate_structures:516: Validating structures
+Waiting for internal clock bits to be set (current=0x00)
+New connection on SERIAL0
+Closed connection on SERIAL0
+Exitting

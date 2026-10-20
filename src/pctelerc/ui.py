@@ -957,6 +957,9 @@ class MainWindow(QMainWindow):
                 try: dialog.map.set_offline_map(self.settings.map_file)
                 except (OSError, ValueError): pass
             dialog.map.set_online(self.settings.map_online)
+            if dialog.map.points:
+                dialog.map._center = dialog.map.points[0]
+                dialog.map._follow = False
             dialog.finished.connect(lambda *_: setattr(self, '_mission_dialog', None))
             self._mission_dialog = dialog
         self._mission_dialog.show()

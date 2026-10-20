@@ -5,6 +5,20 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+0.1.5rc2 / Mission firmware 0.2.0rc1 — full mission release review authorized.
+Firmware is now under firmware/mission; all older firmware paths and manual profiles
+are protected. Require TM2 BASE capability confirmation before mission heartbeats.
+Batch at most four complete MAVLink frames/100 bytes; never fabricate a heartbeat.
+Source-time duplicate positions cannot refresh readiness. A stale FC must cancel
+in-flight transactions, and START verification is consumed before its one attempt.
+F action blocks begin CONDITION_DELAY followed by DO rows before a relative
+NAV_DELAY, so the stopped NAV command is active while actions run. Reject legacy
+unguarded servo imports; physical OFF remains unverified. Connect/HOLD must work
+without a valid draft. Draft persistence restores planning only. Help/panel changes
+are display-only; keep identity/profile edits frozen while connected.
+Keep candidate status until Windows/frozen and physical qualification evidence.
+
+
 0.1.5rc1 — authorized PC adaptation of TeleRC planning and new LoRa Mission firmware.
 MissionService exclusively owns the mission BASE while active; manual reconnect,
 ARM and RC control stay locked. Plan/profile/ID are immutable until disconnect.
@@ -78,7 +92,7 @@ Preserve the a10 wheel/controller and UDP code paths. New modes: telerc_udp, lor
 
 ## Known limitations
 - Exact PXN behavior still depends on Windows driver/mode.
-- No force feedback or mission upload/planner; map is display-only.
+- No force feedback. The cockpit map is display-only; mission planning uses its dedicated window.
 - Unsigned Windows test executable.
 - Hardware fail-safe timing remains unverified.
 

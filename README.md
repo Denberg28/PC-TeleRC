@@ -1,5 +1,5 @@
-> **0.1.5rc1 mission candidate:** Open **Mission planning** for addressed LoRa Mission
-> v0.1.0 firmware and ordered map/F1–F3 event planning. See
+> **0.1.5rc2 mission candidate:** Open **Mission planning** for addressed LoRa Mission
+> v0.2.0 firmware and ordered map/F1–F3 event planning. See
 > [Mission planning](docs/MISSION-PLANNING.md) for compatibility, explicit
 > upload/start and failsafe requirements. Existing manual links remain separate.
 

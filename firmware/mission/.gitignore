@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+private*/
+BUILD_INFO.json
+SHA256SUMS.txt
+SOURCE.bundle
+*.zip

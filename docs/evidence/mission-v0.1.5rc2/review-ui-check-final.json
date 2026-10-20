@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "checks": {
+    "camera_layout": true,
+    "lower_left_map": true,
+    "logo": true,
+    "control_disabled": true,
+    "sliders": true,
+    "map_minimize": true,
+    "map_restore_anchor": true,
+    "map_restore": true,
+    "map_swap": true,
+    "swap_no_media_restart": true,
+    "backpack_commands_locked": true,
+    "offline_map_load": true,
+    "offline_tile_decode": true,
+    "offline_no_network": true,
+    "offline_no_fake_gps": true,
+    "mission_plan_codec": true,
+    "mission_planning_no_authority": true,
+    "mission_close_cleans_session": true,
+    "video_fixture": true,
+    "camera_start": true,
+    "actual_video_decode": true,
+    "media_no_control_side_effect": true,
+    "camera_stop": true
+  }
+}
