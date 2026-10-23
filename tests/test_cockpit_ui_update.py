@@ -85,6 +85,25 @@ def test_hud_click_reaches_camera_and_status_follows_camera_inset(window):
     assert window.camera_status.y() == window.camera_view.y() + 12
 
 
+@pytest.mark.parametrize("size", [(1180, 720), (900, 580)])
+def test_selector_names_and_balanced_spacing(window, size):
+    window.resize(*size)
+    QApplication.processEvents()
+    assert window.width() == size[0]
+    assert window.link_mode.itemText(window.link_mode.findData("telerc_udp")) == "WIFI"
+    assert window.link_mode.itemText(window.link_mode.findData("lora_usb")) == "LORA"
+    assert [window.input_source.itemText(i) for i in range(window.input_source.count())] == ["Steering Wheel", "Keyboard"]
+    assert window.link_mode.width() == window.input_source.width() == 168
+    assert window.link_mode.mapTo(window, QPoint()).y() == window.input_source.mapTo(window, QPoint()).y()
+    assert window.link_mode.height() == window.input_source.height() == 32
+    buttons = (window.quick_connect_btn, window.quick_disconnect_btn, window.mission_btn, window.swap_view_btn)
+    assert len({(b.width(), b.height()) for b in buttons}) == 1
+    groups = [widget.parentWidget() for widget in
+              (window.steering_sensitivity, window.throttle_sensitivity, window.throttle_limit)]
+    assert max(g.width() for g in groups) - min(g.width() for g in groups) <= 1
+    assert len({g.y() for g in groups}) == 1
+
+
 def test_map_starts_loading_without_inventing_a_rover_fix(tmp_path, monkeypatch):
     widget = RoverMap(cache_dir=tmp_path / "cache")
     requests = []

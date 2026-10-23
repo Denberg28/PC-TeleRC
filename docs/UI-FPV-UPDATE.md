@@ -22,12 +22,16 @@ The green icon uses the TeleRC Go launcher geometry from
 `8f4e2fd2ca8c92f02a56f70546b4b8830ae2b834`, with stroke `#16A34A`.
 PNG and multi-size ICO assets serve the header, window and existing installer paths.
 
-Validation on Linux with Qt 6.11.2: 31 focused camera, map, icon and UI checks pass.
+Validation on Linux with Qt 6.11.2: the initial FPV changes passed 31 focused
+camera, map, icon and UI checks. The selector/spacing refinement passed 22 focused
+UI and keyboard checks, including each WASD and arrow-key direction.
 The new HTTP map test uses a local fixture server and verifies complete coverage,
 cache metadata and the four-request bound. Fresh/stale readings, transparent input
 pass-through, swap/minimize and radio-state invariance are covered.
-Visual checks at 1180×720 and 900×580 show 90 px more view height:
-449→539 px and 309→399 px respectively. Live online map loading was also checked.
+Selectors use WIFI / LORA and Steering Wheel / Keyboard, with equal widths and
+aligned Connection / Controls labels. Main buttons and slider groups use uniform
+sizing and spacing. Visual checks at 1180×720 and 900×580 show 58 px more view
+height than the original layout: 449→507 px and 309→367 px respectively. Live online map loading was also checked.
 
 Only display/media files, icon assets and related tests changed. No firmware,
 radio/control worker, mission protocol or fail-safe logic changed. This is a source

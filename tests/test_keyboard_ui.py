@@ -63,6 +63,23 @@ def test_arrows_wasd_space_and_no_button_activation(window, monkeypatch):
     assert not window.mav.snapshot().control_enabled
 
 
+@pytest.mark.parametrize("key,expected", [
+    (Qt.Key.Key_W, (0, 1)), (Qt.Key.Key_Up, (0, 1)),
+    (Qt.Key.Key_S, (0, -1)), (Qt.Key.Key_Down, (0, -1)),
+    (Qt.Key.Key_A, (-1, 0)), (Qt.Key.Key_Left, (-1, 0)),
+    (Qt.Key.Key_D, (1, 0)), (Qt.Key.Key_Right, (1, 0)),
+])
+def test_keyboard_choice_supports_each_wasd_and_arrow_direction(window, key, expected):
+    assert window.input_source.currentText() == "Keyboard"
+    QTest.keyPress(window.camera_view, key)
+    snapshot = window.keyboard.snapshot()
+    assert (snapshot.steering, snapshot.throttle) == expected
+    QTest.keyRelease(window.camera_view, key)
+    snapshot = window.keyboard.snapshot()
+    assert (snapshot.steering, snapshot.throttle) == (0, 0)
+    assert not window.mav.snapshot().control_enabled
+
+
 @pytest.mark.parametrize("event_type", [QEvent.Type.WindowDeactivate, QEvent.Type.FocusOut])
 def test_focus_loss_disables_and_never_auto_enables(window, monkeypatch, event_type):
     ready(window, monkeypatch)
