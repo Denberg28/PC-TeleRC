@@ -195,3 +195,25 @@ def test_draft_staging_validates_exact_archive_before_network(tmp_path,monkeypat
     monkeypatch.setattr(sys,'argv',['stage_draft.py','--dist',str(tmp_path),'--target','a'*40])
     with pytest.raises(ValueError,match='checksum'):
         mod.main()
+
+
+@pytest.mark.parametrize('changes',[{}, {'SERVO9_FUNCTION':70}, {'SERVO9_MIN':1600}, {'SERVO9_MAX':float('nan')}, {'SERVO9_MAX':2100}])
+def test_auxiliary_output_checks_are_read_only_and_fail_closed(changes):
+    from mission_client import verify_outputs
+    parameters={'SERVO9_FUNCTION':0,'SERVO9_MIN':1000,'SERVO9_MAX':2000,**changes}
+    calls=[]
+    class Fake:
+        def parameter(self,key):calls.append(key);return parameters[key]
+        def log(self,text):pass
+    items=[{'command':183,'params':[9,1500,0,0]}]
+    if changes:
+        with pytest.raises(RuntimeError):verify_outputs(Fake(),items)
+    else:
+        verify_outputs(Fake(),items)
+    assert calls==['SERVO9_FUNCTION','SERVO9_MIN','SERVO9_MAX']
+
+
+def test_auxiliary_output_policy_rejects_motor_channels():
+    from mission_client import verify_outputs
+    with pytest.raises(RuntimeError):
+        verify_outputs(object(),[{'command':183,'params':[5,1500,0,0]}])

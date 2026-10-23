@@ -63,7 +63,7 @@ def read_plan(path):
             )
         if command == 183 and (
             values[0] != int(values[0])
-            or not 1 <= values[0] <= 16
+            or int(values[0]) not in (9, 10, 11)
             or not 1000 <= values[1] <= 2000
         ):
             raise ValueError("Invalid auxiliary servo command")
@@ -416,6 +416,27 @@ class Client:
         )
 
 
+def verify_outputs(client, items):
+    """Fresh read-only checks for every deliberately enabled auxiliary output."""
+    channels = {}
+    for item in items:
+        if item["command"] == 183:
+            channel = item["params"][0]
+            if channel not in (9, 10, 11):
+                raise RuntimeError("Only dedicated auxiliary outputs 9/10/11 are supported")
+            channels.setdefault(int(channel), []).append(item["params"][1])
+    for channel, values in channels.items():
+        function = client.parameter(f"SERVO{channel}_FUNCTION")
+        low = client.parameter(f"SERVO{channel}_MIN")
+        high = client.parameter(f"SERVO{channel}_MAX")
+        if function != 0 or not (1000 <= low < high <= 2000):
+            raise RuntimeError(f"Output {channel} must have FUNCTION=0 and finite 1000..2000 min/max limits")
+        if any(not math.isfinite(value) or not low <= value <= high for value in values):
+            raise RuntimeError(f"Mission PWM outside verified output {channel} limits")
+    if channels:
+        client.log("Auxiliary FC function/limits verified; independent physical cutoff and OFF behavior remain operator requirements.")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--endpoint", default="udpout:127.0.0.1:14551")
@@ -465,6 +486,7 @@ def main():
                 return
             c.heartbeat(disarmed=True)
             c.loss_policy(a.continue_on_loss, min_timeout=10)
+            verify_outputs(c, items)
             c.upload(items)
         else:
             print(
@@ -475,6 +497,7 @@ def main():
             )
             c.heartbeat()
             c.loss_policy(a.continue_on_loss, min_timeout=10)
+            verify_outputs(c, items)
         actual = c.download()
         compare(items, actual)
         print(f"Full actionable mission readback VERIFIED: {digest}")
@@ -496,6 +519,7 @@ def main():
         # Re-read immediately before start, including any changes by another GCS.
         compare(items, c.download())
         c.loss_policy(a.continue_on_loss, min_timeout=10)
+        verify_outputs(c, items)
         c.start_once()
         if a.detach:
             print("DETACHED after confirmed ARMED AUTO. FC continues under verified policy. This PC no longer sends heartbeats; use fleet monitor/independent RC.")

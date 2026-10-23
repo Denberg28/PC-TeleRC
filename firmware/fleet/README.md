@@ -202,6 +202,8 @@ in this release. Ages are receive-time observations; they do not prove stopping.
   paths are endpoint authenticated. No reliable-delivery promise is made.
 - Auxiliary outputs are disabled by default. Optional outputs 9/10/11 require
   one-time explicit `--servo-mask` provisioning and independent physical cutoff.
+  The client re-reads SERVOx_FUNCTION=0 and 1000..2000 MIN/MAX limits before upload
+  and start, and rejects mission PWM outside those limits.
   HOLD/link loss/FC reset cannot guarantee accessory OFF. M5..M8 stay denied.
 - Host tests and actual ESP32 compilation are recorded in `validation/REPORT.md`.
   No radios, vehicles, Windows frozen app, ArduRover SITL/HIL, real failsafe timing

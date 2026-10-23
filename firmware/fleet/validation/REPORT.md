@@ -8,14 +8,14 @@ Exact ESP32 Arduino 3.3.2 and RadioLib 7.2.1.
 
 | Check | Result |
 |---|---|
-| Python host/tool/protocol tests | 13 passed (8.83 s) |
+| Python host/tool/protocol tests | 19 passed (8.85 s) |
 | Provisioned C++ role builds/execution with ASan + UBSan | BASE, ROVER1, ROVER20, NODE1, NODE200 passed |
 | Public keyless examples | BASE, ROVER1, NODE1, NODE2 keep RF OFF and send no FC command |
 | TF2 addressing/routing | IDs 1..20 × routes 0..4 = 100 combinations per runtime binary |
 | Tamper/security checks | Every packet byte altered, truncated frames, wrong keys, forged ciphertext/route, one-use/expired challenges rejected |
 | Runtime behavior | Idle node HELLO/ACK, replay suppression, new ID20 without base rebuild, WATCH without command authority, duplicate-ID quarantine, writer exclusivity, HOLD queue priority |
 | Radio failure paths (host adapter) | CAD busy backoff, queue expiry, real TX_DONE polling, timeout recovery without command replay |
-| Mission behavior | Disarmed complete upload, full readback, exact ID/digest start, one-shot START, ACK/NACK, host/FC stale/reboot, no RC/arm/parameter-write, deliberate verified detach |
+| Mission behavior | Disarmed complete upload, full readback, exact ID/digest start, one-shot START, ACK/NACK, host/FC stale/reboot, no RC/arm/parameter-write, deliberate verified detach, fresh read-only auxiliary FC function/PWM-limit checks |
 | New-board provisioning | Exact same base/rover network config reused for ID1/20; node profile contains no ENDPOINT_ROOT; existing files unchanged |
 | Public archive | Reproducible ZIP, exact example header copies, per-file SHA256 manifest; no credentials or provisioned binaries |
 
