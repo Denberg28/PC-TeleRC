@@ -35,14 +35,11 @@ def build(commit=None):
     run(python, "-m", "pip", "check")
     run(python, "-m", "compileall", "-q", "src", "tests", "main.py")
     run(python, "-m", "pytest", "-q")
-    run(
-        python,
-        "-m",
-        "pytest",
-        "-q",
-        "firmware/mission/tests/test_tools.py",
-        "firmware/mission/tests/test_mission_simulation.py",
-    )
+    # The immutable firmware CLI uses upstream pymavlink's Windows udpout bind.
+    # Its real UDP simulations run in the required Linux firmware job, together
+    # with native runtime/sanitizer and actual-board builds. The Windows app's
+    # own real UDP peer regressions above exercise its corrected endpoint path.
+    # Both jobs remain mandatory dependencies of release publication.
     run(python, "-m", "PyInstaller", "--noconfirm", "--clean", "PC-TeleRC.spec")
     report = ROOT / "frozen-ui-check.json"
     report.unlink(missing_ok=True)

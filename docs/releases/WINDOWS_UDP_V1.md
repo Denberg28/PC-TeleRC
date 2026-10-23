@@ -27,3 +27,12 @@ firmware CLI. The guard now normalizes only that exact factory call back to the
 original connection expression; every other initializer and transaction AST stays
 under the original exact comparison. The endpoint factory has separate regression
 coverage. The firmware CLI and public firmware manifest remain byte-for-byte intact.
+
+The complete Windows application suite now passes 288 tests. The separate,
+immutable firmware CLI loopback simulations encounter the same upstream Windows
+binding bug; those eight firmware Python tests remain mandatory in the Linux
+firmware CI job, with native runtime/sanitizer tests and all actual board builds.
+The Windows builder runs the desktop application's own real UDP regressions,
+then builds and verifies the frozen executable. Publication still depends on
+both Windows and firmware jobs. Standalone firmware-CLI UDP simulation is
+qualified on Linux only; use the corrected desktop application on Windows.
