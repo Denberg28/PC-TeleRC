@@ -6,6 +6,7 @@ import argparse
 import re
 import zipfile
 from mission_release_support import check_public_config, public_mission_files
+from release_safety import check_file
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "release-dist"
@@ -34,7 +35,10 @@ def files(root):
             continue
         if path.is_symlink():
             raise ValueError("Refusing symlink in source package")
+        check_file(path, relative.as_posix())
         if path.suffix.lower() in {
+            ".zip",
+            ".apk",
             ".pyc",
             ".pyo",
             ".bin",

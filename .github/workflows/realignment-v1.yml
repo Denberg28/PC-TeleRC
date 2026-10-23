@@ -18,6 +18,8 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12', cache: pip}
+      - name: Check release and source archive boundaries
+        run: python -m unittest discover -s scripts -p 'test_*safety.py' -v
       - name: Validate and build native Windows portable
         run: python scripts/build_windows_mission.py --source-commit '${{ github.sha }}'
       - name: Verify publish tooling
@@ -106,6 +108,8 @@ jobs:
           (out/'RELEASE_STATUS.json').write_text(json.dumps(info,indent=2)+'\n')
           (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name!='SHA256SUMS.txt'))
           PYRELEASE
+      - name: Reject private configuration and unsafe nested release archives
+        run: python scripts/release_safety.py candidate-release
       - name: Publish verified v1.0.0 prerelease
         env:
           GH_TOKEN: ${{ github.token }}
