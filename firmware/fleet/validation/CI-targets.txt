@@ -1,0 +1,19 @@
+Compiling TeleRCFleet_BASE: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 409003 bytes (31%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 30088 bytes (9%) of dynamic memory, leaving 297592 bytes for local variables. Maximum is 327680 bytes.
+Compiling TeleRCFleet_NODE_001: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 406079 bytes (30%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 26464 bytes (8%) of dynamic memory, leaving 301216 bytes for local variables. Maximum is 327680 bytes.
+Compiling TeleRCFleet_NODE_002: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 406075 bytes (30%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 26464 bytes (8%) of dynamic memory, leaving 301216 bytes for local variables. Maximum is 327680 bytes.
+Compiling TeleRCFleet_NODE_200: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 406079 bytes (30%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 26464 bytes (8%) of dynamic memory, leaving 301216 bytes for local variables. Maximum is 327680 bytes.
+Compiling TeleRCFleet_ROVER_001: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 418835 bytes (31%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 27560 bytes (8%) of dynamic memory, leaving 300120 bytes for local variables. Maximum is 327680 bytes.
+Compiling TeleRCFleet_ROVER_020: esp32:esp32:lilygo_t3s3:Revision=Radio_SX1262,PSRAM=disabled,USBMode=hwcdc,CDCOnBoot=cdc
+Sketch uses 418843 bytes (31%) of program storage space. Maximum is 1310720 bytes.
+Global variables use 27560 bytes (8%) of dynamic memory, leaving 300120 bytes for local variables. Maximum is 327680 bytes.
+

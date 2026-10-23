@@ -1,0 +1,35 @@
+ROLE base ID 1; sanitizer=True
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS TF2: 100 rover/route combinations, every-byte tampering, endpoint isolation, AEAD route binding
+PASS duplicate identity quarantine, freshness wraparound and one-use challenge
+PASS CAD busy backoff, queue expiry, TX_DONE polling and RF timeout recovery without command replay
+PASS actual base Runtime: unlisted ID20 without base rebuild, read-only WATCH, duplicate-ID quarantine, exclusive writer, HOLD priority, recovery discards commands
+ROLE rover ID 1; sanitizer=True
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS TF2: 100 rover/route combinations, every-byte tampering, endpoint isolation, AEAD route binding
+PASS duplicate identity quarantine, freshness wraparound and one-use challenge
+PASS CAD busy backoff, queue expiry, TX_DONE polling and RF timeout recovery without command replay
+PASS actual rover Runtime: editable ID, 4-node discovery, batched real heartbeat, once-only UART, replay/stale rejection, RF recovery without restart
+ROLE rover ID 20; sanitizer=True
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS TF2: 100 rover/route combinations, every-byte tampering, endpoint isolation, AEAD route binding
+PASS duplicate identity quarantine, freshness wraparound and one-use challenge
+PASS CAD busy backoff, queue expiry, TX_DONE polling and RF timeout recovery without command replay
+PASS actual rover Runtime: editable ID, 4-node discovery, batched real heartbeat, once-only UART, replay/stale rejection, RF recovery without restart
+ROLE node ID 1; sanitizer=True
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS TF2: 100 rover/route combinations, every-byte tampering, endpoint isolation, AEAD route binding
+PASS duplicate identity quarantine, freshness wraparound and one-use challenge
+PASS CAD busy backoff, queue expiry, TX_DONE polling and RF timeout recovery without command replay
+PASS actual node Runtime: arbitrary ID discovery, replay suppression, idle HELLO/ACK READY, automatic RF recovery
+ROLE node ID 200; sanitizer=True
+PASS gate: addressing, CRC, no RC/arm/force-arm, complete upload, no auto-start, single start, stale/reboot, servo opt-in
+PASS TF2: 100 rover/route combinations, every-byte tampering, endpoint isolation, AEAD route binding
+PASS duplicate identity quarantine, freshness wraparound and one-use challenge
+PASS CAD busy backoff, queue expiry, TX_DONE polling and RF timeout recovery without command replay
+PASS actual node Runtime: arbitrary ID discovery, replay suppression, idle HELLO/ACK READY, automatic RF recovery
+PASS keyless base 1: RF OFF
+PASS keyless rover 1: RF OFF
+PASS keyless node 1: RF OFF
+PASS keyless node 2: RF OFF
+PASS: five provisioned runtime builds + four RF-OFF profiles; no hardware/RF certification implied.
