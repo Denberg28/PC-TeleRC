@@ -1,7 +1,7 @@
 name: v1.0 Windows and matched mission firmware candidate
 on:
   push:
-    branches: [release/realignment-v1.0]
+    branches: [release/realignment-v1.0, release/publish-v1.0.0]
 permissions:
   contents: read
 concurrency:
@@ -102,19 +102,19 @@ jobs:
               for source in sorted(Path('incoming').rglob('*')):
                   if source.is_file() and (source.suffix in ('.xml','.json','.log','.html') or source.name.endswith('.txt')):z.write(source,source.relative_to('incoming').as_posix())
           shutil.copyfile('docs/REALIGNMENT_V1.md',out/'START_HERE.md')
-          info=dict(source_commit=os.environ['GITHUB_SHA'],workflow_run=os.environ['GITHUB_RUN_ID'],channel='candidate',stable_qualified=False,software_build_gates='PASS',hardware_validation='BLOCKED',known_limits='See START_HERE.md and ecosystem-release.json')
+          info=dict(source_commit=os.environ['GITHUB_SHA'],workflow_run=os.environ['GITHUB_RUN_ID'],release_tag='v1.0.0',channel='prerelease',stable_qualified=False,software_build_gates='PASS',hardware_validation='BLOCKED',known_limits='See START_HERE.md and ecosystem-release.json')
           (out/'RELEASE_STATUS.json').write_text(json.dumps(info,indent=2)+'\n')
           (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name!='SHA256SUMS.txt'))
           PYRELEASE
-      - name: Create reviewable draft prerelease
+      - name: Publish verified v1.0.0 prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v1.0.0-rc1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Candidate tag already exists; refusing to replace an existing release.'
             exit 1
           fi
-          gh release create v1.0.0-rc1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title 'PC-TeleRC v1.0 realignment candidate' --notes-file docs/REALIGNMENT_V1.md candidate-release/*
+          gh release create v1.0.0 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false --title 'PC-TeleRC v1.0.0 ecosystem baseline prerelease' --notes-file docs/releases/v1.0.0.md candidate-release/*
       - uses: actions/upload-artifact@v4
         with:
           name: PC-TeleRC-v1-complete-candidate

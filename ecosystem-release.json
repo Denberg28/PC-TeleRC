@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "baseline": "1.0",
-  "release_channel": "candidate",
+  "release_channel": "prerelease",
   "product": "PC-TeleRC",
   "tier": "industrial",
   "application_version": "1.0.0rc1",
@@ -17,5 +17,6 @@
   "stable_qualified": false,
   "hardware_validation": "BLOCKED",
   "wifi_command_authentication": "UNIMPLEMENTED",
-  "failsafe_owner": "ArduRover for autopilot profiles; local controller for direct-drive profiles"
+  "failsafe_owner": "ArduRover for autopilot profiles; local controller for direct-drive profiles",
+  "release_tag": "v1.0.0"
 }
