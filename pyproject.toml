@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pc-telerc"
-version = "0.1.5rc2"
+version = "1.0.0rc1"
 description = "Windows MAVLink rover bridge for keyboard, PXN and compatible steering wheel controllers"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"

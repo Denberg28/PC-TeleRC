@@ -1,4 +1,4 @@
-# Mission planning — PC TeleRC 0.1.5rc2
+# Mission planning — PC TeleRC 0.1.5rc3
 
 Use the dedicated **Mission** window with the complete **LoRa Mission 0.2.0rc1**
 BASE/ROVER/NODE set under `firmware/mission`. The manual Link profiles remain

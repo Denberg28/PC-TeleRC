@@ -1,0 +1,21 @@
+✔ publishes fully verified current build even when draft target is stale (3.477197ms)
+✔ rejects stale provenance commit (1.398417ms)
+✔ rejects stale provenance run_id (0.92915ms)
+✔ rejects stale provenance run_attempt (0.629408ms)
+✔ rejects altered installer bytes (0.568516ms)
+✔ rejects internally inconsistent checksum manifests (1.570896ms)
+✔ rejects missing checksum manifest entries (2.602501ms)
+✔ rejects a missing required download (0.722979ms)
+✔ rejects frozen report with false media or map checks (0.801708ms)
+✔ never moves an existing tag from another commit (0.839916ms)
+✔ allows existing tag already at tested commit (0.500033ms)
+✔ does not overwrite an already published stable release (0.506172ms)
+✔ rejects failed downloads without publishing (0.218789ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 125.165265

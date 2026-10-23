@@ -111,7 +111,8 @@ def run(report_path):
             server.shutdown(); server.server_close()
         ui.load_settings, ui.save_settings, ui.RoverMap, ui.MissionDialog = saved_load, saved_save, saved_map, saved_mission
         map_cache.cleanup()
-    result = {"passed":bool(checks) and all(value is True for value in checks.values()),"checks":checks}
+    from . import __version__
+    result = {"version": __version__, "passed":bool(checks) and all(value is True for value in checks.values()),"checks":checks}
     Path(report_path).write_text(json.dumps(result,indent=2),encoding="utf-8")
     return 0 if result["passed"] else 1
 

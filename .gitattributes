@@ -1,0 +1,3 @@
+# Firmware checksums describe exact public bytes on every build host.
+# Preserve these bytes even when Windows Git enables core.autocrlf.
+firmware/mission/** -text
