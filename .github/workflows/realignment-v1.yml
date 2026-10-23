@@ -72,3 +72,50 @@ jobs:
             firmware-dist/
             firmware-v1-evidence/
             ecosystem-release.json
+
+  release:
+    needs: [windows, firmware]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'PC-TeleRC-v1-*'
+          path: incoming
+      - name: Stage verified candidate with exact source provenance
+        run: |
+          python - <<'PYRELEASE'
+          import hashlib,json,os,shutil,zipfile
+          from pathlib import Path
+          out=Path('candidate-release');out.mkdir()
+          for source in Path('incoming').rglob('*'):
+              if source.is_file() and (source.parent.name=='release-dist' or source.parent.name=='firmware-dist' and source.suffix=='.zip'):
+                  if source.name in ('SHA256SUMS.txt','SOURCE_COMMIT.txt'):continue
+                  target=out/source.name
+                  if target.exists() and target.read_bytes()!=source.read_bytes():raise ValueError('Conflicting candidate filenames')
+                  shutil.copyfile(source,target)
+          assert any(p.suffix in ('.apk','.exe') for p in out.iterdir())
+          assert any(p.name.endswith('-firmware.zip') for p in out.iterdir())
+          with zipfile.ZipFile(out/'PC-TeleRC-v1-test-evidence.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for source in sorted(Path('incoming').rglob('*')):
+                  if source.is_file() and (source.suffix in ('.xml','.json','.log','.html') or source.name.endswith('.txt')):z.write(source,source.relative_to('incoming').as_posix())
+          shutil.copyfile('docs/REALIGNMENT_V1.md',out/'START_HERE.md')
+          info=dict(source_commit=os.environ['GITHUB_SHA'],workflow_run=os.environ['GITHUB_RUN_ID'],channel='candidate',stable_qualified=False,software_build_gates='PASS',hardware_validation='BLOCKED',known_limits='See START_HERE.md and ecosystem-release.json')
+          (out/'RELEASE_STATUS.json').write_text(json.dumps(info,indent=2)+'\n')
+          (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file() and p.name!='SHA256SUMS.txt'))
+          PYRELEASE
+      - name: Create reviewable draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0.0-rc1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Candidate tag already exists; refusing to replace an existing release.'
+            exit 1
+          fi
+          gh release create v1.0.0-rc1 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --prerelease --latest=false --title 'PC-TeleRC v1.0 realignment candidate' --notes-file docs/REALIGNMENT_V1.md candidate-release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-v1-complete-candidate
+          path: candidate-release/
