@@ -18,7 +18,9 @@ builds=[]
 for role,folder,fqbn in targets:
  path=Path(folder);target=out/role;target.mkdir(exist_ok=True)
  build=Path(os.environ.get('RUNNER_TEMP','/tmp'))/('v1-build-'+role)
- command=['arduino-cli','compile','--fqbn',fqbn,'--output-dir',str(build.resolve()),str(path.resolve())]
+ command=['arduino-cli','compile','--fqbn',fqbn,'--output-dir',str(build.resolve())]
+ if Path('bridge/libraries').is_dir():command+=['--libraries',str(Path('bridge/libraries').resolve())]
+ command+=[str(path.resolve())]
  with (evidence/(role+'.log')).open('w') as log: subprocess.run(command,check=True,stdout=log,stderr=subprocess.STDOUT)
  images=[]
  for suffix,offset,kind in [('.ino.bin','0x10000','application'),('.ino.bootloader.bin','0x0','bootloader'),('.ino.partitions.bin','0x8000','partitions')]:
