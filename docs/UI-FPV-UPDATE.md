@@ -34,5 +34,5 @@ sizing and spacing. Visual checks at 1180×720 and 900×580 show 58 px more view
 height than the original layout: 449→507 px and 309→367 px respectively. Live online map loading was also checked.
 
 Only display/media files, icon assets and related tests changed. No firmware,
-radio/control worker, mission protocol or fail-safe logic changed. This is a source
-UI update; no new Windows installer or stable release was built or published.
+radio/control worker, mission protocol or fail-safe logic changed. This initial source UI review predates v1.0.1 release packaging; see
+docs/releases/v1.0.1.md and its workflow evidence for current release status.

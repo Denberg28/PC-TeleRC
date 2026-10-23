@@ -35,6 +35,15 @@ def run(report_path):
         checks["camera_layout"] = window.camera_view.width() > window.map_panel.width()
         checks["lower_left_map"] = window.map_panel.x() == 0 and window.map_panel.y() > 0
         checks["logo"] = not window.windowIcon().isNull() and not window.brand_logo.pixmap().isNull()
+        from PySide6.QtCore import Qt
+        checks["fpv_overlay"] = (window.telemetry_overlay.parent() is window.camera_surface
+            and window.telemetry_overlay.isVisible()
+            and window.telemetry_overlay.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents))
+        checks["connection_control_labels"] = (window.link_mode.itemText(0) == "WIFI"
+            and window.link_mode.itemText(1) == "LORA"
+            and window.input_source.itemText(0) == "Steering Wheel"
+            and window.input_source.itemText(1) == "Keyboard")
+        checks["balanced_selectors"] = window.link_mode.size() == window.input_source.size()
         checks["control_disabled"] = not window.mav.snapshot().control_enabled and not window.mav.snapshot().running
         checks["sliders"] = window.steering_sensitivity.label.text() == "100%" and window.throttle_limit.label.text() == "25%"
         window.map_minimize_btn.click(); app.processEvents()

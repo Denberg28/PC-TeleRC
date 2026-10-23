@@ -1,15 +1,25 @@
-> **v1.0 realignment candidate:** see [scope, compatibility, validation and rollback](docs/REALIGNMENT_V1.md). Hardware qualification and production authentication are not complete.
+# PC TeleRC v1.0.1
 
-> **0.1.5rc3 mission candidate:** Open **Mission planning** for addressed LoRa Mission
-> v0.2.0 firmware and ordered map/F1–F3 event planning. See
-> [Mission planning](docs/MISSION-PLANNING.md) for compatibility, explicit
-> upload/start and failsafe requirements. Existing manual links remain separate.
+Windows rover controller with a spacious FPV cockpit, transparent telemetry,
+green power icon, WIFI/LORA selectors and Steering Wheel/Keyboard controls.
+Keyboard accepts WASD and arrow keys. Maps load before GPS and support cached
+coverage, raster MBTiles, minimize and camera/map swap.
 
-# PC TeleRC 0.1.5rc3 candidate
+[Download v1.0.1](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.0.1) ·
+[Release notes](docs/releases/v1.0.1.md) · [Start here](START-HERE.md) ·
+[Firmware compatibility](docs/FIRMWARE-COMPATIBILITY-v1.0.1.md)
 
-Camera-first Windows cockpit with persistent map/camera swap, offline map collapse/restore, fresh telemetry tiles and selected-camera reconnection. Four radio profiles include the new telemetry-only ELRS TX Backpack Wi-Fi option; the handset retains drive/arm authority on that profile. Connect/Disconnect is available above the camera. Existing wheel/keyboard, Wi-Fi, LoRa and USB ELRS control workflows are retained.
+The release includes matching manual LoRa v1.0.1 BASE/ROVER/NODE1/NODE2 firmware
+and the separate TM2 mission 0.2.0rc1 set. Mission planning supports verified
+upload/readback and explicit Start, with separate saved plans for 20 rover IDs
+and one active addressed session. Public mission examples require private
+provisioning before RF operation. Do not mix manual and mission radio roles.
 
-[Release, installation, radio workflow and hardware checks](docs/releases/v0.1.4rc1.md). No firmware reflash is required. Native Backpack mission/drive/arm commands are blocked. Software-only evidence does not qualify hardware or stable promotion.
+Stable identifies the Windows software channel. Physical RF, stopping, power,
+auxiliary OFF and handset-takeover qualification remain unrecorded. The mission
+firmware retains its rc1 designation. Read the compatibility guide before
+flashing and complete restrained commissioning. Previous releases remain
+available for rollback.
 
 ## Earlier desktop documentation
 

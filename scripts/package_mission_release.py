@@ -11,7 +11,7 @@ from release_safety import check_file
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "release-dist"
 OUT.mkdir(exist_ok=True)
-APP = "1.0.0rc1"
+APP = "1.0.1"
 FW = "0.2.0rc1"
 EXCLUDE = {
     "__pycache__",
@@ -23,6 +23,10 @@ EXCLUDE = {
     "build",
     "dist",
     "installer-dist",
+    "stable-release",
+    "incoming",
+    "firmware-dist",
+    "firmware-v1-evidence",
     "pc_telerc.egg-info",
     ".ruff_cache",
 }
@@ -36,6 +40,11 @@ def files(root):
         if path.is_symlink():
             raise ValueError("Refusing symlink in source package")
         check_file(path, relative.as_posix())
+        if relative.as_posix() == 'release_addons/TeleRC-LoRa-v1.0.1/TeleRC-LoRa-v1.0.1-node-fix-firmware.zip':
+            from manual_companion import verify
+            verify()
+            yield path
+            continue
         if path.suffix.lower() in {
             ".zip",
             ".apk",

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "baseline": "1.0",
-  "release_channel": "prerelease",
+  "release_channel": "stable",
   "product": "PC-TeleRC",
   "tier": "industrial",
-  "application_version": "1.0.0rc1",
+  "application_version": "1.0.1",
   "android_version_code": null,
   "protocol_profiles": [
     "lora-mission-tm2",
@@ -15,8 +15,11 @@
   "validated_simultaneous_radio_vehicle_count": null,
   "active_mission_sessions": 1,
   "stable_qualified": false,
-  "hardware_validation": "BLOCKED",
+  "hardware_validation": "NOT_TESTED",
   "wifi_command_authentication": "UNIMPLEMENTED",
   "failsafe_owner": "ArduRover for autopilot profiles; local controller for direct-drive profiles",
-  "release_tag": "v1.0.0"
+  "release_tag": "v1.0.1",
+  "stable_scope": "software release channel; physical qualification remains pending",
+  "manual_firmware": "1.0.1",
+  "mission_firmware": "0.2.0rc1"
 }

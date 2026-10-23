@@ -41,7 +41,7 @@ def test_backpack_ui_locks_commands_and_hides_unused_serial_fields(window):
     window.mav._snapshot = MavlinkSnapshot(running=True, state=LinkState.CONNECTED, armed=True)
     window._refresh()
     assert all(not b.isEnabled() for b in (window.arm_btn, window.disarm_btn, window.control_btn))
-    assert 'HANDSET' in window.authority_label.text()
+    assert 'HANDSET' in window.authority_label.text().upper()
 
 
 def test_camera_retry_keeps_identity_backs_off_and_stop_cancels(qt_application):

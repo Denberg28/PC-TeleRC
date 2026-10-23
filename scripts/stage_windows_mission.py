@@ -12,6 +12,7 @@ import tomllib
 import zipfile
 
 from mission_release_support import public_mission_files, validate_frozen_report
+from manual_companion import verify as verify_manual
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,6 +37,11 @@ def stage(commit):
         target = destination / source.relative_to(firmware)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
+    manual = desktop / 'Manual-firmware'
+    manual.mkdir(exist_ok=True)
+    companion = verify_manual()
+    shutil.copyfile(companion, manual / companion.name)
+    shutil.copyfile(ROOT / 'docs/FIRMWARE-COMPATIBILITY-v1.0.1.md', desktop / 'FIRMWARE-COMPATIBILITY.md')
     shutil.copyfile(ROOT / "START-HERE.md", desktop / "START-HERE.md")
     for name in (
         "OFFLINE-MAPS",

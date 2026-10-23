@@ -11,6 +11,11 @@ elif product=='telerc_go':
  targets=[('mini-four-motor-mx1508','firmware/go/TeleRC_MiniRover_WiFi',generic),('tt-car-jog-steering','firmware/go/TeleRC_Go_TT_Car',generic),('balancer-sbrb-candidate','bridge/TT_Balancer_ESP32S3',generic)]
 else:
  targets=[(p.name,str(p),t3) for p in sorted(Path('firmware/mission/sketches').glob('TeleRCMission_*'))]
+ if m.get('release_tag') == 'v1.0.1':
+  from manual_companion import extract
+  manual=extract(Path(os.environ.get('RUNNER_TEMP','/tmp'))/'pctelerc-manual-reviewed')
+  manual_board='esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PSRAM=enabled,Revision=Radio_SX1262'
+  targets += [('manual-'+role,str(manual/'firmware'/('TeleRCLoRa_'+role)),manual_board) for role in ('BASE','ROVER','NODE1','NODE2')]
 out=Path('firmware-dist');out.mkdir(exist_ok=True);evidence=Path('firmware-v1-evidence');evidence.mkdir(exist_ok=True)
 core=Path.home()/'.arduino15/packages/esp32/hardware/esp32/3.3.2'
 boot=core/'tools/partitions/boot_app0.bin'
@@ -30,12 +35,15 @@ for role,folder,fqbn in targets:
   images.append(dict(file=str(dest.relative_to(out)),offset=offset,kind=kind,bytes=dest.stat().st_size,sha256=hashlib.sha256(dest.read_bytes()).hexdigest()))
  dest=target/'boot_app0.bin';shutil.copyfile(boot,dest)
  images.append(dict(file=str(dest.relative_to(out)),offset='0xe000',kind='boot_app0',bytes=dest.stat().st_size,sha256=hashlib.sha256(dest.read_bytes()).hexdigest()))
- builds.append(dict(role=role,source=folder,fqbn=fqbn,images=images))
+ source= ('release_addons/TeleRC-LoRa-v1.0.1/TeleRC-LoRa-v1.0.1-node-fix-firmware.zip!firmware/'+path.name) if role.startswith('manual-') else folder
+ builds.append(dict(role=role,source=source,fqbn=fqbn,images=images))
 info=dict(baseline='1.0',product=product,source_commit=os.environ['GITHUB_SHA'],esp32_core='3.3.2',radiolib='7.2.1',hardware_validation='BLOCKED',builds=builds,mission_examples_rf_enabled=False if product=='PC-TeleRC' else None)
 (out/'FIRMWARE_MANIFEST.json').write_text(json.dumps(info,indent=2)+'\n')
-(out/'FLASH.md').write_text('Candidate images only. Match the exact role, board and vehicle wiring. Use manifest offsets; preserve NVS. Never flash a merged/NVS image. LoRa Mission examples are keyless and RF OFF: generate a private matching fleet and compile locally before deployment. Physical acceptance remains BLOCKED.\n')
+(out/'FLASH.md').write_text('Match the exact role, board and vehicle wiring. Use manifest offsets; preserve NVS. These separate images do not erase NVS. Manual v1.0.1 roles support manual driving only; update BASE/ROVER/NODE1/NODE2 together. LoRa Mission 0.2.0rc1 examples are keyless and RF OFF: generate a private matching fleet and compile locally before deployment. Do not mix manual and mission roles. Physical acceptance remains unmeasured. See FIRMWARE-COMPATIBILITY.md.\n')
+if product=='PC-TeleRC' and m.get('release_tag')=='v1.0.1':
+ shutil.copyfile('docs/FIRMWARE-COMPATIBILITY-v1.0.1.md',out/'FIRMWARE-COMPATIBILITY.md')
 (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.relative_to(out).as_posix()+'\n' for p in sorted(out.rglob('*')) if p.is_file() and p.name!='SHA256SUMS.txt'))
-with zipfile.ZipFile(out/(product+'-v1.0-firmware.zip'),'w',zipfile.ZIP_DEFLATED) as z:
+with zipfile.ZipFile(out/(product+'-v'+m.get('application_version','1.0')+'-firmware.zip'),'w',zipfile.ZIP_DEFLATED) as z:
  for p in sorted(out.rglob('*')):
   if p.is_file() and p.suffix!='.zip':z.write(p,p.relative_to(out).as_posix())
 print('PASS: compiled and packaged',len(builds),'actual board profiles; hardware acceptance pending')

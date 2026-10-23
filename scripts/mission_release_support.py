@@ -9,6 +9,7 @@ import re
 REQUIRED_CHECKS = frozenset(
     """
 camera_layout lower_left_map logo control_disabled sliders map_minimize
+fpv_overlay connection_control_labels balanced_selectors
 map_restore_anchor map_restore map_swap swap_no_media_restart
 backpack_commands_locked offline_map_load offline_tile_decode offline_no_network
 offline_no_fake_gps mission_plan_codec mission_planning_no_authority

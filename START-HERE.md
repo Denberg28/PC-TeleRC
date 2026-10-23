@@ -1,21 +1,30 @@
-# PC TeleRC v0.1.5rc3 candidate
+# PC TeleRC v1.0.1
 
-Run PC-TeleRC.exe from a verified Windows portable package. For the source package, use RUN-TELERC.cmd with Python 3.12, or BUILD-WINDOWS-MISSION.cmd to test and create the portable package. Source archives do not contain a prebuilt Windows executable.
+Run PC-TeleRC.exe from the portable folder, or use the Windows installer. Source
+users need Python 3.12 and BUILD-WINDOWS-MISSION.cmd to build an executable.
 
-## Mission planning
+Select WIFI or LORA, then Steering Wheel or Keyboard. Keyboard accepts WASD and
+arrow keys while the camera has focus; hold Space for neutral. Apply settings
+before enabling PC Control at neutral. Camera and map controls do not acquire
+driving authority. Open Settings for radio, camera and calibration details.
 
-Use **Mission planning** with **TeleRC LoRa Mission 0.2.0rc1** firmware. The package includes public BASE, ROVER, NODE 1 and NODE 2 sketches. Run Mission-firmware/MAKE-MATCHING-SKETCHES.cmd in the portable package, or firmware/mission/MAKE-MATCHING-SKETCHES.cmd in source. Generate one private matching set outside the source folder and flash all participating boards from that set. Public examples have RF disabled.
+Read FIRMWARE-COMPATIBILITY.md (docs/FIRMWARE-COMPATIBILITY-v1.0.1.md in source)
+before flashing. Manual-firmware contains the reviewed LoRa v1.0.1 BASE, ROVER,
+NODE1 and NODE2 package. It supports manual driving. Mission-firmware contains
+separate LoRa Mission 0.2.0rc1 sketches and MAKE-MATCHING-SKETCHES.cmd; generate a
+private matching set outside the source folder before using Mission. Public TM2
+examples have RF OFF. Do not mix manual and mission board roles.
 
-Plan → connect BASE and rover ID → upload while disarmed → verify full readback → arm using RC → confirm Start. HOLD requires fresh FC confirmation; it does not guarantee physical stopping or accessory OFF. Reconnecting never starts or resumes a mission automatically. Read MISSION-PLANNING.md (under docs/ in source) and complete the firmware HARDWARE_TEST.md before operation.
+Mission: plan → connect BASE and rover ID → upload disarmed → verify readback →
+arm with RC → confirm Start. Reconnection never starts or resumes automatically.
+Use MISSION-PLANNING.md for commissioning. Only one mission session is active.
 
-## Manual driving
+Settings → Camera → Open offline map accepts raster MBTiles. Viewed online maps
+remain cached; no regional map is bundled. The lower-left Map button restores the
+minimized map. The default map view is not a measured rover position.
 
-Existing manual Wi-Fi, LoRa and ELRS profiles retain their own firmware and setup. Use the existing stable manual installation as rollback. LoRa Mission firmware requires the dedicated mission window and is a separate protocol.
-
-## Offline maps and compact map
-
-Settings → Camera → Open offline map… accepts raster MBTiles. PNG/JPEG/WebP tiles are supported; vector MapLibre offline databases are not. Viewed online tiles also remain cached for offline use. No regional map is bundled. See OFFLINE-MAPS.md for coverage, browsing and offline setup.
-
-Click ▁ in the map bar to minimize it to the lower-left Map button; click Map ▣ to restore.
-
-Driving still requires fresh input, neutral acquisition and manual Enable PC Control. ARM is separate. Confirm link-loss stopping and receiver takeover with wheels raised before ground operation.
+Back up settings, FC parameters and private provisioning. Separate images in the
+new firmware bundle preserve NVS without erase; older factory images erase all
+flash/NVS. Keep the previous matching app/firmware set. Physical RF, stop timing,
+power and takeover qualification remain unrecorded; complete restrained checks
+and retain a local cutoff before operation.

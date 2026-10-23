@@ -5,6 +5,17 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+24 October 2026: user explicitly authorizes final review, sanitation, matching
+firmware inclusion and stable software publication of the reviewed UI build.
+Use a new v1.0.1 tag; preserve v1.0.0 and older rollback assets. This authorization
+selects the software release channel; do not claim physical qualification.
+Require current Windows/frozen checks, host sanitizers, all actual board builds,
+verified archive boundaries and downloaded asset checksums before publication.
+Keep TM2 mission 0.2.0rc1 byte-for-byte unchanged and label it separately from
+manual LoRa v1.0.1. Ship the matched BASE/ROVER/NODE sets with compatibility notes.
+The green TeleRC Go-style power icon and simplified selectors are user-authorized.
+
+
 0.1.5rc3 — continued development/release authorized on 20 October 2026.
 Use shared checked Windows builder for local and CI builds. Require a fresh,
 version-matched frozen report with every UI/media check true before staging.
