@@ -95,17 +95,33 @@ def test_existing_tag_cannot_be_moved_to_a_different_build(bundle, monkeypatch):
 
 def test_incomplete_remote_assets_leave_the_release_unpublished(bundle, monkeypatch):
     monkeypatch.setenv('GITHUB_REPOSITORY', 'example/project')
+    created = False
     def api(*args):
-        if args[0] == 'api' and ('releases?' in args[1] or 'matching-refs' in args[1]):
+        nonlocal created
+        if args[0] == 'api' and 'matching-refs' in args[1]:
             return '[]'
+        if args[0] == 'api' and 'releases?' in args[1]:
+            return json.dumps([dict(tag_name='v1.0.1', draft=True,
+                target_commitish=COMMIT, assets=[])]) if created else '[]'
         if args[:2] == ('release','create'):
+            created = True
             return ''
-        if args == ('api','repos/example/project/releases/tags/v1.0.1'):
-            return json.dumps(dict(assets=[]))
         pytest.fail('Must not publish incomplete remote assets')
     monkeypatch.setattr(release,'gh',api)
     with pytest.raises(ValueError, match='Incomplete uploaded'):
         release.publish(bundle, COMMIT)
+
+
+@pytest.mark.parametrize('draft,source', [(False,COMMIT),(True,'b'*40)])
+def test_resume_never_replaces_published_or_different_source(bundle, monkeypatch, draft, source):
+    monkeypatch.setenv('GITHUB_REPOSITORY', 'example/project')
+    def api(*args):
+        if args == ('api','repos/example/project/releases?per_page=100'):
+            return json.dumps([dict(tag_name='v1.0.1',draft=draft,target_commitish=source)])
+        pytest.fail('No mutation is permitted for a published or different-source release')
+    monkeypatch.setattr(release,'gh',api)
+    with pytest.raises(ValueError, match='Cannot replace or resume'):
+        release.publish(bundle, COMMIT, resume=True)
 
 
 @pytest.mark.parametrize('variant', ['wrong_source','frozen_false','missing_check','missing_role','image_tamper'])

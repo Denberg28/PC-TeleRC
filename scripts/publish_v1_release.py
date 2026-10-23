@@ -122,22 +122,28 @@ def gh(*args):
     return subprocess.check_output(['gh', *args], text=True)
 
 
-def publish(folder, commit):
+def publish(folder, commit, *, resume=False):
     validate(folder, commit)
     repo = os.environ['GITHUB_REPOSITORY']
     # A published tag is immutable here; never replace earlier release assets.
     releases = json.loads(gh('api',f'repos/{repo}/releases?per_page=100'))
-    if any(item['tag_name'] == TAG for item in releases):
-        raise ValueError('Release tag already exists; refusing replacement')
+    existing = next((item for item in releases if item['tag_name'] == TAG), None)
+    if existing is not None and (not resume or not existing['draft'] or existing['target_commitish'] != commit):
+        raise ValueError('Cannot replace or resume a different/published release')
     refs = json.loads(gh('api', f'repos/{repo}/git/matching-refs/tags/{TAG}'))
     for ref in refs:
         if ref['ref'] == 'refs/tags/' + TAG and (ref['object']['type'] != 'commit' or ref['object']['sha'] != commit):
             raise ValueError('Existing release tag points at another source revision')
-    gh('release','create',TAG,'--repo',repo,'--target',commit,'--draft',
-       '--title','PC TeleRC v1.0.1 — FPV cockpit and matched firmware',
-       '--notes-file',str(ROOT / 'docs/releases/v1.0.1.md'),
-       *[str(p) for p in sorted(Path(folder).iterdir()) if p.is_file()])
-    release = json.loads(gh('api',f'repos/{repo}/releases/tags/{TAG}'))
+    if existing is None:
+        gh('release','create',TAG,'--repo',repo,'--target',commit,'--draft',
+           '--title','PC TeleRC v1.0.1 — FPV cockpit and matched firmware',
+           '--notes-file',str(ROOT / 'docs/releases/v1.0.1.md'),
+           *[str(p) for p in sorted(Path(folder).iterdir()) if p.is_file()])
+    # Draft releases are not reliably returned by the published-by-tag endpoint.
+    drafts = json.loads(gh('api', f'repos/{repo}/releases?per_page=100'))
+    release = next((item for item in drafts if item['tag_name'] == TAG), None)
+    if release is None or not release['draft'] or release['target_commitish'] != commit:
+        raise ValueError('Uploaded draft provenance mismatch')
     expected = {p.name: digest(p) for p in Path(folder).iterdir() if p.is_file()}
     assets = release['assets']
     if len(assets) != len(expected) or {a['name'] for a in assets} != set(expected):
@@ -146,11 +152,16 @@ def publish(folder, commit):
         if asset['state'] != 'uploaded' or asset.get('digest') != 'sha256:' + expected[asset['name']]:
             raise ValueError('Uploaded asset mismatch')
     with tempfile.TemporaryDirectory() as temp:
-        gh('release','download',TAG,'--repo',repo,'--dir',temp)
+        for asset in assets:
+            with (Path(temp) / asset['name']).open('wb') as output:
+                subprocess.run(['gh','api',f'repos/{repo}/releases/assets/{asset["id"]}',
+                    '-H','Accept: application/octet-stream'], stdout=output, check=True)
         if {p.name:digest(p) for p in Path(temp).iterdir()} != expected:
             raise ValueError('Downloaded asset mismatch')
         validate(temp, commit)
-    gh('release','edit',TAG,'--repo',repo,'--draft=false','--prerelease=false','--latest')
+    gh('api','--method','PATCH',f'repos/{repo}/releases/{release["id"]}',
+       '-F','draft=false','-F','prerelease=false','-f','make_latest=true',
+       '-f','target_commitish=' + commit)
     final = json.loads(gh('api',f'repos/{repo}/releases/tags/{TAG}'))
     if final['draft'] or final['prerelease'] or final['target_commitish'] != commit:
         raise ValueError('Final release state differs from verified build')
@@ -162,13 +173,20 @@ def publish(folder, commit):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--incoming', required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--incoming')
+    source.add_argument('--existing', help='Resume verification of an unchanged saved final asset set')
     parser.add_argument('--out', default='stable-release')
     parser.add_argument('--commit', required=True)
     parser.add_argument('--publish', action='store_true')
+    parser.add_argument('--resume-draft', action='store_true')
     args = parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}', args.commit):
         parser.error('Exact committed source SHA required')
-    stage(args.incoming, args.out, args.commit)
+    if args.existing:
+        args.out = args.existing
+        validate(args.out, args.commit)
+    else:
+        stage(args.incoming, args.out, args.commit)
     if args.publish:
-        publish(args.out, args.commit)
+        publish(args.out, args.commit, resume=args.resume_draft)
