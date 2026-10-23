@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+FleetCredentials.json
+NetworkConfig.h
+*.bin
+*.elf
+*.map
+TeleRC-private/
+!sketches/**/NetworkConfig.h

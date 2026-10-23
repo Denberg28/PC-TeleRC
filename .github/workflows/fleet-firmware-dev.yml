@@ -1,0 +1,61 @@
+name: LoRa Fleet ID scaling development candidate
+on:
+  push:
+    branches: [dev/lora-fleet-v1.1.0-dev1]
+    paths:
+      - firmware/fleet/**
+      - .github/workflows/fleet-firmware-dev.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fleet-v1.1.0-dev1
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Host mission, addressing, crypto and role-runtime checks
+        run: |
+          python -m pip install -r firmware/fleet/requirements-dev.txt
+          python -m pytest -q firmware/fleet/tests
+          python firmware/fleet/tests/run_native.py --sanitize
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install exact target dependencies
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.2 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install RadioLib@7.2.1
+      - name: Compile all three roles and boundary IDs with private throwaway keys
+        run: |
+          python firmware/fleet/tools/network.py init --out "$RUNNER_TEMP/fleet-private"
+          python firmware/fleet/tools/network.py add --network "$RUNNER_TEMP/fleet-private/FleetCredentials.json" --role rover --id 20 --out "$RUNNER_TEMP/fleet-private/TeleRCFleet_ROVER_020"
+          python firmware/fleet/tools/network.py add --network "$RUNNER_TEMP/fleet-private/FleetCredentials.json" --role node --id 200 --out "$RUNNER_TEMP/fleet-private/TeleRCFleet_NODE_200"
+          python firmware/fleet/tools/compile_profiles.py "$RUNNER_TEMP/fleet-private"
+      - name: Package only public keyless sources
+        run: python firmware/fleet/tools/package.py --out fleet-dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TeleRC-LoRa-Fleet-v1.1.0-dev1
+          path: fleet-dist/*
+  draft:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: TeleRC-LoRa-Fleet-v1.1.0-dev1
+          path: fleet-dist
+      - name: Stage a separate draft candidate; never change stable releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python firmware/fleet/tools/stage_draft.py --dist fleet-dist --target "$GITHUB_SHA"
