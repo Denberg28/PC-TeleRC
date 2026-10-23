@@ -457,6 +457,22 @@ def test_gui_and_cli_share_transaction_semantics():
         "from_message",
     }
 
+    class NormalizeEndpointFactory(ast.NodeTransformer):
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Name) and node.func.id == "open_endpoint":
+                # Only the desktop's platform socket construction differs.
+                # Compare every transaction and all other initialization AST
+                # exactly against the immutable public firmware CLI copy.
+                assert ast.dump(node.args[0]) == ast.dump(ast.Name(id="endpoint", ctx=ast.Load()))
+                assert len(node.args) == 1 and not node.keywords
+                return ast.parse(
+                    'mavutil.mavlink_connection(endpoint, source_system=255, '
+                    'source_component=190, dialect="common")'
+                ).body[0].value
+            return self.generic_visit(node)
+
+    gui = NormalizeEndpointFactory().visit(gui)
+
     def definitions(tree):
         return {
             node.name: ast.dump(node, include_attributes=False)

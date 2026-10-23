@@ -20,3 +20,10 @@ including invalid remote ports and the actual local/remote port separation.
 The native Windows workflow must rerun the complete application/frozen/package
 gates from this corrected source before publication. Hardware qualification and
 the existing single-active-radio-session limit remain unchanged.
+
+The next Windows run passed the real UDP peer checks. Its remaining failure was
+the source-parity guard comparing desktop endpoint construction with the immutable
+firmware CLI. The guard now normalizes only that exact factory call back to the
+original connection expression; every other initializer and transaction AST stays
+under the original exact comparison. The endpoint factory has separate regression
+coverage. The firmware CLI and public firmware manifest remain byte-for-byte intact.
