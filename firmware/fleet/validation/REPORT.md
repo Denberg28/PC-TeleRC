@@ -8,7 +8,7 @@ Exact ESP32 Arduino 3.3.2 and RadioLib 7.2.1.
 
 | Check | Result |
 |---|---|
-| Python host/tool/protocol tests | 19 passed (8.85 s) |
+| Python host/tool/protocol tests | 20 passed (8.83 s) |
 | Provisioned C++ role builds/execution with ASan + UBSan | BASE, ROVER1, ROVER20, NODE1, NODE200 passed |
 | Public keyless examples | BASE, ROVER1, NODE1, NODE2 keep RF OFF and send no FC command |
 | TF2 addressing/routing | IDs 1..20 × routes 0..4 = 100 combinations per runtime binary |
@@ -64,8 +64,16 @@ python tools/package.py --out ../fleet-dist
 Native sanitizer tests require g++/OpenSSL development headers on Linux. Target
 compilation requires the pinned board core and RadioLib. None of these commands
 flashes hardware. Never commit/distribute TeleRC-test-private or its binaries.
-The repository's separate fleet development workflow repeats host checks and all
-six target profiles before staging a separate DRAFT release.
+The separate fleet development workflow repeats host checks and either compiles
+all six target profiles or verifies successful prior target-job evidence plus a
+byte-for-byte firmware/profile/generator comparison before staging a DRAFT release.
+
+Independent GitHub target validation also passed for all six profiles at commit
+118b8552dc82eaef8ce71de10fdb3d515b4d122b, job 120408407208, run 39951810761.
+See CI-targets.txt for the build excerpt. The final publisher-only repair reuses
+that evidence: no radio/runtime/profile code changed. Its regression test covers
+authenticated draft-list lookup and allows advancing only the exact known draft
+with both prior asset digests; published/unrecognized candidates stay protected.
 
 ## Outstanding qualification
 

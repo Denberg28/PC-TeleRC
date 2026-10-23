@@ -217,3 +217,25 @@ def test_auxiliary_output_policy_rejects_motor_channels():
     from mission_client import verify_outputs
     with pytest.raises(RuntimeError):
         verify_outputs(object(),[{'command':183,'params':[5,1500,0,0]}])
+
+
+def test_draft_lookup_uses_authenticated_list_and_advances_only_exact_owned_candidate(tmp_path,monkeypatch):
+    import stage_draft as mod,hashlib,json
+    archive=tmp_path/(mod.NAME+'.zip');archive.write_bytes(b'reviewed revised public archive')
+    sums=tmp_path/(mod.NAME+'.sha256');sums.write_text(hashlib.sha256(archive.read_bytes()).hexdigest()+'  '+archive.name+'\n')
+    old_sums=f'{mod.PREVIOUS_ZIP}  {mod.NAME}.zip\n'.encode()
+    old={'tag_name':mod.TAG,'draft':True,'target_commitish':mod.PREVIOUS_TARGET,
+         'assets':[{'name':archive.name,'digest':'sha256:'+mod.PREVIOUS_ZIP},
+                   {'name':sums.name,'digest':'sha256:'+hashlib.sha256(old_sums).hexdigest()}]}
+    fresh={'tag_name':mod.TAG,'draft':True,'target_commitish':'a'*40,
+           'assets':[{'name':f.name,'size':f.stat().st_size,'digest':'sha256:'+hashlib.sha256(f.read_bytes()).hexdigest()} for f in (archive,sums)]}
+    calls=[]
+    def fake(*args):
+        calls.append(args)
+        assert not any('/releases/tags/' in arg for arg in args)
+        if args[0]=='api':return json.dumps([[old if len(calls)==1 else fresh]])
+        return ''
+    monkeypatch.setattr(mod,'gh',fake)
+    monkeypatch.setattr(sys,'argv',['stage_draft.py','--dist',str(tmp_path),'--target','a'*40])
+    mod.main()
+    assert [call[:2] for call in calls]==[('api','repos/Denberg28/PC-TeleRC/releases'),('release','edit'),('release','upload'),('api','repos/Denberg28/PC-TeleRC/releases')]
