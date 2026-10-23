@@ -1,0 +1,98 @@
+{
+  "repository": "Denberg28/PC-TeleRC",
+  "release_id": 421523284,
+  "tag": "v1.0.0",
+  "prerelease": true,
+  "assets": [
+    {
+      "id": 668227663,
+      "name": "PC-TeleRC-Mission-v1.0.0rc1-source.zip",
+      "size": 1229328,
+      "digest": "sha256:5afc42706bd644a837ca249484a6bc78d7d367f9fde9ca0689c30a89aa9a2ea3"
+    },
+    {
+      "id": 668227662,
+      "name": "PC-TeleRC-portable-v1.0.0rc1.zip",
+      "size": 105410368,
+      "digest": "sha256:be7e4c0ea9809da4915228411b1b502f992e5831333406ee90f0a0ed4799d0cc"
+    },
+    {
+      "id": 668227669,
+      "name": "PC-TeleRC-Setup-v1.0.0rc1.exe",
+      "size": 73516702,
+      "digest": "sha256:b5a66b5ee5231c172ffa0f0a29c0dad2d193e0d4aaf0c8183ae5ec89eed76baa"
+    },
+    {
+      "id": 668227661,
+      "name": "PC-TeleRC-v1-test-evidence.zip",
+      "size": 7519,
+      "digest": "sha256:9cd902f3e2b0492441745a797557d8a68a1a17afcda5e6ad5a54859a3083e366"
+    },
+    {
+      "id": 668227666,
+      "name": "PC-TeleRC-v1.0-firmware.zip",
+      "size": 887010,
+      "digest": "sha256:8722f88fe324ac1901005fd90a10811b85dc38976d711b41faaf033544c691f7"
+    },
+    {
+      "id": 668227699,
+      "name": "RELEASE_STATUS.json",
+      "size": 318,
+      "digest": "sha256:b35a2a3a914f6f3c01e3a1b7ac669f43fb31fe88762dbeeca104d6394bcf75d8"
+    },
+    {
+      "id": 668227709,
+      "name": "SHA256-mission.txt",
+      "size": 216,
+      "digest": "sha256:849e1399f29397f02e09dcf9bea8a752e1dcf420470564458818a26fcc39c5f3"
+    },
+    {
+      "id": 668621668,
+      "name": "SHA256-TeleRC-LoRa-v1.0.0.txt",
+      "size": 98,
+      "digest": "sha256:67eab00a66151b2adb78f1fdf2a22e2d1deae29d0eed841eb19f5592dfad80a9"
+    },
+    {
+      "id": 668227710,
+      "name": "SHA256-windows-portable.txt",
+      "size": 100,
+      "digest": "sha256:52f07d001f28e508564a45666befb989ccec62510f648784892ba6a9dbd74e7a"
+    },
+    {
+      "id": 668227741,
+      "name": "SHA256-windows.txt",
+      "size": 679,
+      "digest": "sha256:6f920001b611a61cca291ad37c55798bd73b8e6343587e07439c295cbb5401ef"
+    },
+    {
+      "id": 668227747,
+      "name": "SHA256SUMS.txt",
+      "size": 1030,
+      "digest": "sha256:10a5c8f5388b6d223d5336bbb3ece7f10bf90903255a1c9bf1ce1ee77627830d"
+    },
+    {
+      "id": 668227755,
+      "name": "START_HERE.md",
+      "size": 5130,
+      "digest": "sha256:1e66e95d071966f606c4597eb47b3a5c7414d8addbc3bed62ebafddb57d29255"
+    },
+    {
+      "id": 668227775,
+      "name": "TeleRC-LoRa-Mission-v0.2.0rc1-sketches.zip",
+      "size": 104712,
+      "digest": "sha256:815f808663f7d82e8dd60226b12012ca979a7f43c22b34b0f8c4a3d18cbd0664"
+    },
+    {
+      "id": 668621686,
+      "name": "TeleRC-LoRa-v1.0.0-COMPATIBILITY.md",
+      "size": 2073,
+      "digest": "sha256:8ef54f4abba8b04d99d0247e096292d24e6e88a4a6167506ba7ab7c978a75cc2"
+    },
+    {
+      "id": 668621637,
+      "name": "TeleRC-LoRa-v1.0.0-firmware.zip",
+      "size": 1404547,
+      "digest": "sha256:f6e43280ce6374a2ca216ad70cee77aff66e359c6ba02cc51597d7061d9ad880"
+    }
+  ]
+}

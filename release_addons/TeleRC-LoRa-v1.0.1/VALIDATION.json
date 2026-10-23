@@ -1,0 +1,66 @@
+{
+  "version": "1.0.1",
+  "date": "2026-10-23",
+  "timezone": "Asia/Manila",
+  "source_baseline": "TeleRC-LoRa-v1.0.0-firmware.zip",
+  "baseline_zip_sha256": "f6e43280ce6374a2ca216ad70cee77aff66e359c6ba02cc51597d7061d9ad880",
+  "radio_protocol": 4,
+  "toolchain": {
+    "arduino_esp32": "3.3.2",
+    "radiolib": "7.2.1",
+    "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PSRAM=enabled,Revision=Radio_SX1262"
+  },
+  "builds": [
+    {
+      "role": "ROVER",
+      "status": "PASS",
+      "flash_bytes": 976387,
+      "ram_bytes": 55200,
+      "factory_image_sha256": "0a9ed384b8732fc879576d877a9f691c4cbaa5bbce0267557ca4f3d1d3e7213d"
+    },
+    {
+      "role": "BASE",
+      "status": "PASS",
+      "flash_bytes": 390303,
+      "ram_bytes": 29428,
+      "factory_image_sha256": "b2d2ee61537552d582e10e044c54e8427168875928f2442d7812463aed3f5d55"
+    },
+    {
+      "role": "NODE1",
+      "status": "PASS",
+      "flash_bytes": 388727,
+      "ram_bytes": 29428,
+      "factory_image_sha256": "96d26a1d58e4e8ad6549827d5de0728ccad5bbcdb64ce4c43ea673439de0b2b4"
+    },
+    {
+      "role": "NODE2",
+      "status": "PASS",
+      "flash_bytes": 388727,
+      "ram_bytes": 29428,
+      "factory_image_sha256": "8714c38710235a629393bd6248111f043d47459d2ee3ddf3c0505b74ddce8254"
+    }
+  ],
+  "host_checks": {
+    "core": 405,
+    "link": 31,
+    "wifi": 15,
+    "four_role_network": 161,
+    "total": 612,
+    "status": "PASS",
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "hardware_apis": "mocked"
+  },
+  "header_copy_consistency": "PASS",
+  "node_probe_policy": "one candidate every 3 seconds, only when no RC axis is owned; never consumes base host commands or switches selected driving route",
+  "not_performed": [
+    "physical flashing",
+    "RF/range/interference test",
+    "motor stop/ELRS takeover test",
+    "Windows or Android app interoperability test",
+    "brownout/EMI test"
+  ],
+  "scope": "Single-rover manual bridge. No mission/fleet support. All four manual radio boards must use protocol v4."
+}
