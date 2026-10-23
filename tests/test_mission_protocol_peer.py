@@ -168,6 +168,8 @@ def test_protocol_loss_readback_start_hold_no_arm():
     p = Peer()
     c = client.Client(f"udpout:127.0.0.1:{p.port}", 1)
     try:
+        # Outgoing UDP must not reuse the peer's listening port on Windows.
+        assert c.link.port.getsockname()[1] != p.port
         expected = make_items()
         c.heartbeat(disarmed=True)
         c.loss_policy()

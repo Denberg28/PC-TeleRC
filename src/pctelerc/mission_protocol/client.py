@@ -6,6 +6,7 @@ import json
 import math
 import os
 from pathlib import Path
+import sys
 import time
 
 os.environ["MAVLINK20"] = "1"
@@ -156,6 +157,32 @@ def from_message(m):
     )
 
 
+def open_endpoint(endpoint):
+    """Keep outgoing UDP's local port independent of the vehicle's port.
+
+    pymavlink 2.4.50 binds Windows udpout sockets to the destination port.
+    That captures replies incorrectly for loopback peers and conflicts with
+    other local listeners. Construct with port zero (ephemeral local bind),
+    then restore the real remote destination before any message can be sent.
+    """
+    destination = None
+    connect_to = endpoint
+    if sys.platform == "win32" and endpoint.startswith("udpout:"):
+        host, port = endpoint[len("udpout:"):].rsplit(":", 1)
+        port = int(port)
+        if not host or not 1 <= port <= 65535:
+            raise ValueError("UDP destination requires a host and port 1..65535")
+        destination = (host, port)
+        connect_to = f"udpout:{host}:0"
+    link = mavutil.mavlink_connection(
+        connect_to, source_system=255, source_component=190, dialect="common"
+    )
+    if destination is not None:
+        link.destination_addr = destination
+        link.address = endpoint[len("udpout:"):]
+    return link
+
+
 class Client:
     def __init__(self, endpoint, rover, link=None):
         self.log = lambda *args: None
@@ -164,9 +191,7 @@ class Client:
         self.link = (
             link
             if link is not None
-            else mavutil.mavlink_connection(
-                endpoint, source_system=255, source_component=190, dialect="common"
-            )
+            else open_endpoint(endpoint)
         )
         self.last_tx = -10
         self.hb = None
