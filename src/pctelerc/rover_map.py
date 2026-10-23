@@ -37,6 +37,8 @@ def position_fresh(snapshot, now=None):
 class RoverMap(QWidget):
     TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     CACHE_SECONDS = 7 * 24 * 3600
+    # Same display-only starting view as TeleRC; never a measured rover fix.
+    DEFAULT_CENTER = (13.6218, 123.1948)
 
     def __init__(self, parent=None, *, cache_dir: Path | None = None):
         super().__init__(parent)
@@ -44,7 +46,7 @@ class RoverMap(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._zoom = 17
         self._snapshot = None
-        self._center = None
+        self._center = self.DEFAULT_CENTER
         self._home = None
         self._track = deque(maxlen=500)
         self._tiles = OrderedDict()
@@ -206,11 +208,31 @@ class RoverMap(QWidget):
         if len(self._tiles) > 64:
             self._tiles.popitem(last=False)
 
+    def _fallback_tile(self, key):
+        """Keep cached lower-detail coverage visible while new tiles arrive."""
+        z, x, y = key
+        for levels in range(1, min(4, z) + 1):
+            scale = 2 ** levels
+            parent = (z - levels, x // scale, y // scale)
+            image = self._tiles.get(parent)
+            if image is None:
+                path = self._cache_dir / ("-".join(map(str, parent)) + ".png")
+                image = QImage(str(path)) if path.exists() else QImage()
+                if image.width() != 256 or image.height() != 256:
+                    continue
+                self._remember(parent, image)
+            side = 256 // scale
+            return image.copy((x % scale) * side, (y % scale) * side, side, side).scaled(
+                256, 256, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        return None
+
     def _request_tile(self, key, path):
         z, x, y = key
         generation = self._generation
         request = QNetworkRequest(QUrl(self.TILE_URL.format(z=z, x=x, y=y)))
-        request.setTransferTimeout(5000)
+        # First HTTPS setup can be slower than subsequent tiles. This affects
+        # display loading only; radio and input watchdogs are independent.
+        request.setTransferTimeout(15000)
         request.setRawHeader(b"User-Agent", f"PC-TeleRC/{__version__} (+https://github.com/Denberg28/PC-TeleRC)".encode())
         metadata_path = path.with_suffix(".json")
         try:
@@ -245,9 +267,12 @@ class RoverMap(QWidget):
                     self._remember(key, image)
                     path.parent.mkdir(parents=True, exist_ok=True)
                     image.save(str(path))
-                    metadata_path.write_text(json.dumps({h:bytes(reply.rawHeader(h.encode())).decode("latin1") for h in ("ETag", "Last-Modified")}))
+                    metadata_path.write_text(json.dumps({h:bytes(reply.rawHeader(h)).decode("latin1") for h in ("ETag", "Last-Modified")}))
                 else:
-                    self._failed[key] = time.monotonic() + 30
+                    transient = reply.error() in (QNetworkReply.NetworkError.TimeoutError,
+                        QNetworkReply.NetworkError.TemporaryNetworkFailureError,
+                        QNetworkReply.NetworkError.RemoteHostClosedError)
+                    self._failed[key] = time.monotonic() + (2 if transient else 30)
             except OSError:
                 pass
             reply.deleteLater()
@@ -258,11 +283,6 @@ class RoverMap(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor("#182330"))
-        painter.setPen(QColor("#263647"))
-        for x in range(0, self.width(), 40):
-            painter.drawLine(x, 0, x, self.height())
-        for y in range(0, self.height(), 40):
-            painter.drawLine(0, y, self.width(), y)
         if self._center is None:
             painter.setPen(QColor("#c2cedd"))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "MAP\nWaiting for rover GPS")
@@ -271,13 +291,20 @@ class RoverMap(QWidget):
         left, top = cx - self.width()/2, cy - self.height()/2
         total = 2 ** self._zoom
         visible_tiles = 0
-        for x in range(math.floor(left/256), math.floor((left+self.width())/256)+1):
-            for y in range(math.floor(top/256), math.floor((top+self.height())/256)+1):
-                if 0 <= y < total:
-                    tile = self._tile((self._zoom, x % total, y))
-                    if tile is not None:
-                        visible_tiles += 1
-                        painter.drawImage(QPointF(x*256-left, y*256-top), tile)
+        coverage = [(x, y)
+                    for x in range(math.floor(left/256), math.floor((left+self.width())/256)+1)
+                    for y in range(math.floor(top/256), math.floor((top+self.height())/256)+1)
+                    if 0 <= y < total]
+        # Load the center first so the operator sees useful coverage immediately.
+        coverage.sort(key=lambda tile: (tile[0]*256+128-cx)**2 + (tile[1]*256+128-cy)**2)
+        for x, y in coverage:
+            key = (self._zoom, x % total, y)
+            tile = self._tile(key)
+            if tile is None and self._offline_map is None:
+                tile = self._fallback_tile(key)
+            if tile is not None:
+                visible_tiles += 1
+                painter.drawImage(QPointF(x*256-left, y*256-top), tile)
         def project(point):
             x, y = world_pixel(*point, self._zoom)
             dx = (x-cx + total*128) % (total*256) - total*128
@@ -305,10 +332,15 @@ class RoverMap(QWidget):
             else:
                 painter.drawPath(rover)
             painter.restore()
-        painter.fillRect(QRectF(0,0,self.width(),23),QColor(10,16,24,210))
-        painter.setPen(QColor("#e2e8f0")); painter.drawText(8,16,("GPS live" if fresh else "GPS stale / unavailable") + (" • offline" if self._offline_map or not self._online else ""))
+        status = "GPS live" if fresh else "GPS stale" if self._last_position else "Waiting for GPS"
+        if self._offline_map or not self._online:
+            status += " · offline"
+        # Shadowed text, leaving the map visible behind its status.
+        painter.setPen(QColor("#10151c")); painter.drawText(9,17,status)
+        painter.setPen(QColor("#ffffff")); painter.drawText(8,16,status)
         if not visible_tiles:
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "No saved tiles here\nLoad an offline map or change zoom")
+            message = ("Loading map…" if self._pending else "Map unavailable · retrying") if self._online and not self._offline_map else "No offline coverage"
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, message)
         painter.fillRect(QRectF(0,self.height()-20,self.width(),20),QColor(10,16,24,220))
         font=painter.font(); font.setPointSize(8); painter.setFont(font)
         painter.setPen(QColor("#e2e8f0")); painter.drawText(6,self.height()-6, painter.fontMetrics().elidedText(

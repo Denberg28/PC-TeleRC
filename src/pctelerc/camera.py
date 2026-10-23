@@ -286,9 +286,10 @@ class CameraView(QWidget):
             if stale:
                 painter.fillRect(self.rect(), QColor(9, 13, 18, 175))
             painter.setPen(QColor("#c9d3df"))
-            font = painter.font(); font.setPointSize(14); painter.setFont(font)
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter,
-                             self._status + ("\nChoose a camera source in Settings" if self._image.isNull() else ""))
+            font = painter.font(); font.setPointSize(14 if self.width() >= 480 else 10); painter.setFont(font)
+            painter.drawText(self.rect().adjusted(12, 12, -12, -12),
+                             Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
+                             self._status + ("\nSettings · Camera" if self._image.isNull() else ""))
         painter.setPen(QPen(QColor("#38bdf8" if self.hasFocus() else "#293544"), 2 if self.hasFocus() else 1))
         painter.drawRect(self.rect().adjusted(1, 1, -2, -2))
 

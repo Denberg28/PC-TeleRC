@@ -10,7 +10,14 @@ class Cockpit(QWidget):
         self.primary_map = False
         self.minimized = False
         self.camera = self.map_panel = self.restore = None
+        self.telemetry = self.camera_status = None
         self._transition = QParallelAnimationGroup(self)
+
+    def set_overlays(self, telemetry, camera_status):
+        self.telemetry, self.camera_status = telemetry, camera_status
+        for overlay in (telemetry, camera_status):
+            overlay.setParent(self)
+        self.arrange()
 
     def set_views(self, camera, map_panel, restore):
         self.camera, self.map_panel, self.restore = camera, map_panel, restore
@@ -50,6 +57,12 @@ class Cockpit(QWidget):
         (self.camera if self.primary_map else self.map_panel).raise_()
         self.restore.setGeometry(0, max(0, height - 32), 92, 32)
         self.restore.raise_()
+        if self.telemetry is not None:
+            self.telemetry.setGeometry(max(0, width - 236), 12, 224, self.telemetry.sizeHint().height())
+            self.telemetry.raise_()
+            self.camera_status.adjustSize()
+            self.camera_status.move(camera_rect.x() + 12, camera_rect.y() + 12)
+            self.camera_status.raise_()
         if animate:
             self._transition.start()
 

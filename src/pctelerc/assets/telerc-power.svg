@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <!-- TeleRC Go launcher geometry; PC TeleRC uses a green power symbol. -->
+  <path fill="#F0F3F7" d="M0 0h108v108H0z"/>
+  <g transform="translate(54 54) scale(.68) translate(-54 -54)">
+    <path fill="none" stroke="#16A34A" stroke-width="8" stroke-linecap="round" d="M37 33 A27 27 0 1 0 71 33 M54 24 L54 51"/>
+  </g>
+</svg>
