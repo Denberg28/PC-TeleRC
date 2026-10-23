@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "date": "2026-10-23",
+  "timezone": "Asia/Manila",
+  "input_zip_sha256": "7889fd12550b97f79274507da9c043bb4e9f7ca455cc7b3d6fdfc440009ff61e",
+  "radio_protocol": 3,
+  "toolchain": {
+    "arduino_esp32": "3.3.2",
+    "radiolib": "7.2.1",
+    "fqbn": "esp32:esp32:lilygo_t3s3:CDCOnBoot=cdc,USBMode=hwcdc,PSRAM=enabled,Revision=Radio_SX1262"
+  },
+  "builds": [
+    {
+      "role": "ROVER",
+      "status": "PASS",
+      "flash_bytes": 975279,
+      "ram_bytes": 55000,
+      "factory_image_sha256": "81b081ca634c8cb0561a1c00b3d562334b9b1677db4247e21ff7feb75a7135b2"
+    },
+    {
+      "role": "BASE",
+      "status": "PASS",
+      "flash_bytes": 389839,
+      "ram_bytes": 29244,
+      "factory_image_sha256": "6900578793c560b43fac35738b9e58c4910e2f2eb2d09e4f8fc8bb46178980b1"
+    },
+    {
+      "role": "NODE1",
+      "status": "PASS",
+      "flash_bytes": 387835,
+      "ram_bytes": 29244,
+      "factory_image_sha256": "61e9600f0477e93c97af7c8e7e81b2ca10e9339b95d7b1446ab5436ac7f8ab64"
+    },
+    {
+      "role": "NODE2",
+      "status": "PASS",
+      "flash_bytes": 387835,
+      "ram_bytes": 29244,
+      "factory_image_sha256": "ce54f7d910e87332c4d7cacaf5f76519be8f706d4cad0bdef64924ce1f1a75b6"
+    }
+  ],
+  "host_checks": {
+    "core": 272,
+    "link": 31,
+    "wifi": 15,
+    "total": 318,
+    "status": "PASS",
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "hardware_apis": "mocked"
+  },
+  "header_copy_consistency": "PASS",
+  "not_performed": [
+    "physical flashing",
+    "RF/range/interference test",
+    "motor stop/ELRS takeover test",
+    "Windows or Android app interoperability test",
+    "brownout/EMI test"
+  ],
+  "scope": "Single-rover bridge. No waypoint/mission/servo/fleet command support."
+}

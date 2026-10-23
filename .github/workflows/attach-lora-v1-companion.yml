@@ -1,0 +1,46 @@
+name: Attach TeleRC LoRa v1 manual firmware companion
+on:
+  push:
+    branches: [main]
+    paths:
+      - release_addons/TeleRC-LoRa-v1.0.0/**
+      - scripts/attach-lora-v1-companion.py
+      - .github/workflows/attach-lora-v1-companion.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: attach-lora-v1-companion
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate exact reviewed companion archive
+        run: python3 scripts/attach-lora-v1-companion.py --validate-only
+      - name: Extract reviewed sources and exercise control/link regressions
+        run: |
+          python3 -m zipfile -e release_addons/TeleRC-LoRa-v1.0.0/TeleRC-LoRa-v1.0.0-firmware.zip reviewed-firmware
+          bash reviewed-firmware/TeleRC-LoRa-v1.0.0/tests/run.sh
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install pinned target dependencies
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.2 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install RadioLib@7.2.1
+      - name: Compile all four actual LilyGO targets
+        run: bash reviewed-firmware/TeleRC-LoRa-v1.0.0/tools/compile-all.sh
+  attach:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add only the companion assets and compatibility note
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/attach-lora-v1-companion.py
