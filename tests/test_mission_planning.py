@@ -504,3 +504,22 @@ def test_legacy_request_still_gets_exact_integer_mission_item():
         and message.x == item["x"]
         and message.y == item["y"]
     )
+
+
+@pytest.mark.parametrize("phase", ["AUTO · running", "AUTO · monitor only"])
+@pytest.mark.parametrize("mode,armed", [(0, True), (4, False), (10, False)])
+def test_takeover_updates_phase_for_started_and_monitored_missions(phase, mode, armed):
+    service = MissionService()
+    service.phase = phase
+    sender = mav.MAVLink(None, srcSystem=2, srcComponent=1)
+    parser = mav.MAVLink(None)
+    heartbeat = parser.parse_char(
+        mav.MAVLink_heartbeat_message(10, 3, 129 if armed else 1, mode, 3, 3).pack(
+            sender
+        )
+    )
+    service._observe(heartbeat, 2)
+    assert service.phase == (
+        "RC/FC takeover · monitor only" if armed else "Disarmed · monitor only"
+    )
+    assert service.snapshot.armed == armed

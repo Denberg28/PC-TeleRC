@@ -73,13 +73,16 @@ def heartbeat_link_state(last_heartbeat: float | None, *, now: float | None = No
     if last_heartbeat is None:
         return LinkState.CONNECTING
     now = time.monotonic() if now is None else now
-    return LinkState.CONNECTED if now - last_heartbeat <= stale_after else LinkState.STALE
+    age = now - last_heartbeat
+    return (LinkState.CONNECTED
+            if math.isfinite(age) and math.isfinite(stale_after)
+            and 0 <= age <= stale_after else LinkState.STALE)
 
 def control_is_fresh(frame: ControlFrame | None, *, now: float | None = None, stale_after: float = 0.35) -> bool:
     if frame is None:
         return False
     now = time.monotonic() if now is None else now
-    return (all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp))
-            and now - frame.timestamp <= stale_after)
+    return (all(math.isfinite(v) for v in (frame.steering, frame.throttle, frame.timestamp, now, stale_after))
+            and 0 <= now - frame.timestamp <= stale_after)
 
 

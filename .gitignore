@@ -20,3 +20,9 @@ settings.json
 Thumbs.db
 .idea/
 .vscode/
+
+# Generated v1 build outputs and evidence staging.
+firmware-dist/
+firmware-v1-evidence/
+release-dist/
+installer-dist/

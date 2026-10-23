@@ -5,6 +5,15 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+0.1.5rc3 — continued development/release authorized on 20 October 2026.
+Use shared checked Windows builder for local and CI builds. Require a fresh,
+version-matched frozen report with every UI/media check true before staging.
+Only copy mission firmware files whose hashes match the public manifest; reject
+unexpected/private profiles. Keep 0.2.0rc1 firmware byte-for-byte unchanged.
+Preserve portable diagnostics before installer packaging, and keep candidate
+status until Windows/frozen and physical qualification evidence exists.
+
+
 0.1.5rc2 / Mission firmware 0.2.0rc1 — full mission release review authorized.
 Firmware is now under firmware/mission; all older firmware paths and manual profiles
 are protected. Require TM2 BASE capability confirmation before mission heartbeats.

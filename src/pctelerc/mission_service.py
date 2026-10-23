@@ -132,9 +132,14 @@ class MissionService:
                     m.custom_mode, str(m.custom_mode)
                 ),
             )
-            if self.phase == "AUTO · running" and m.custom_mode != 10:
+            if (
+                self.phase in ("AUTO · running", "AUTO · monitor only")
+                and (m.custom_mode != 10 or not s.armed)
+            ):
                 self._phase(
-                    "RC/FC takeover · stopped" if s.armed else "Disarmed · stopped"
+                    "RC/FC takeover · monitor only"
+                    if s.armed
+                    else "Disarmed · monitor only"
                 )
         elif kind == "GPS_RAW_INT":
             if m.time_usec and self.gps_boot == m.time_usec:

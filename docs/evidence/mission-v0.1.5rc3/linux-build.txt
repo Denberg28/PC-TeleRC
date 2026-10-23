@@ -1,0 +1,350 @@
+49 INFO: PyInstaller: 6.22.3, contrib hooks: 2026.8
+49 INFO: Python: 3.12.14
+50 INFO: Platform: Linux-6.18.55-x86_64-with-glibc2.39
+50 INFO: Python environment: /workspace/scratch/3877b12c4b3b/.venv
+51 INFO: Removing temporary files and cleaning cache in /root/.cache/pyinstaller
+pygame-ce 2.5.8 (SDL 2.32.10, Python 3.12.14)
+439 INFO: Module search paths (PYTHONPATH):
+['/workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2',
+ '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python312.zip',
+ '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12',
+ '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/lib-dynload',
+ '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages',
+ '/workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/src',
+ '/workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2',
+ '/workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/src']
+pygame-ce 2.5.8 (SDL 2.32.10, Python 3.12.14)
+572 INFO: Appending 'datas' from .spec
+583 INFO: checking Analysis
+583 INFO: Building Analysis because Analysis-00.toc is non existent
+583 INFO: Looking for Python shared library...
+591 INFO: Using Python shared library: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/libpython3.12.so.1.0
+591 INFO: Running Analysis Analysis-00.toc
+591 INFO: Target bytecode optimization level: 0
+591 INFO: Initializing module dependency graph...
+591 INFO: Initializing module graph hook caches...
+598 INFO: Analyzing modules for base_library.zip ...
+1104 INFO: Processing standard module hook 'hook-encodings.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+1486 INFO: Processing standard module hook 'hook-math.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+2415 INFO: Processing standard module hook 'hook-pickle.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+3182 INFO: Processing standard module hook 'hook-heapq.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+3618 INFO: Caching module dependency graph...
+3657 INFO: Analyzing /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/main.py
+3666 INFO: Processing standard module hook 'hook-PySide6.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+3805 INFO: Processing standard module hook 'hook-shiboken6.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+3985 INFO: Processing standard module hook 'hook-PySide6.QtNetwork.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+4738 INFO: Processing standard module hook 'hook-PySide6.QtCore.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+5428 INFO: Processing standard module hook 'hook-PySide6.QtWidgets.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+6044 INFO: Processing standard module hook 'hook-PySide6.QtGui.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+6943 INFO: Processing standard module hook 'hook-pygame.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/pygame/__pyinstaller'
+6986 INFO: Processing standard module hook 'hook-platform.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+7035 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+7035 INFO: SetuptoolsInfo: initializing cached setuptools info...
+7467 INFO: Processing standard module hook 'hook-difflib.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+7523 INFO: Processing standard module hook 'hook-sysconfig.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+9003 INFO: Processing standard module hook 'hook-webbrowser.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+9227 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+9276 INFO: Processing standard module hook 'hook-xml.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+9404 INFO: Processing standard module hook 'hook-_ctypes.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+10761 INFO: Processing standard module hook 'hook-lxml.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+10896 INFO: Processing standard module hook 'hook-lxml.etree.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+11425 INFO: Processing standard module hook 'hook-lxml.objectify.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+11563 INFO: Processing standard module hook 'hook-PySide6.QtMultimedia.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+11694 INFO: Processing standard module hook 'hook-sqlite3.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+12915 INFO: Processing standard module hook 'hook-PySide6.QtTest.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+13019 INFO: Analyzing hidden import 'pymavlink.dialects.v10.ASLUAV'
+13751 INFO: Analyzing hidden import 'pymavlink.dialects.v10.AVSSUAS'
+14452 INFO: Analyzing hidden import 'pymavlink.dialects.v10.common'
+15123 INFO: Analyzing hidden import 'pymavlink.dialects.v10.csAirLink'
+15145 INFO: Analyzing hidden import 'pymavlink.dialects.v10.cubepilot'
+15924 INFO: Analyzing hidden import 'pymavlink.dialects.v10.development'
+16746 INFO: Analyzing hidden import 'pymavlink.dialects.v10.icarous'
+16770 INFO: Analyzing hidden import 'pymavlink.dialects.v10.loweheiser'
+16817 INFO: Analyzing hidden import 'pymavlink.dialects.v10.matrixpilot'
+17632 INFO: Analyzing hidden import 'pymavlink.dialects.v10.minimal'
+17680 INFO: Analyzing hidden import 'pymavlink.dialects.v10.paparazzi'
+18421 INFO: Analyzing hidden import 'pymavlink.dialects.v10.python_array_test'
+19183 INFO: Analyzing hidden import 'pymavlink.dialects.v10.standard'
+19246 INFO: Analyzing hidden import 'pymavlink.dialects.v10.storm32'
+20241 INFO: Analyzing hidden import 'pymavlink.dialects.v10.test'
+20278 INFO: Analyzing hidden import 'pymavlink.dialects.v10.uAvionix'
+21000 INFO: Analyzing hidden import 'pymavlink.dialects.v10.ualberta'
+21757 INFO: Analyzing hidden import 'pymavlink.dialects.v20.ASLUAV'
+22748 INFO: Analyzing hidden import 'pymavlink.dialects.v20.AVSSUAS'
+23756 INFO: Analyzing hidden import 'pymavlink.dialects.v20.all'
+25590 INFO: Analyzing hidden import 'pymavlink.dialects.v20.ardupilotmega'
+27060 INFO: Analyzing hidden import 'pymavlink.dialects.v20.csAirLink'
+27086 INFO: Analyzing hidden import 'pymavlink.dialects.v20.cubepilot'
+28390 INFO: Analyzing hidden import 'pymavlink.dialects.v20.development'
+29598 INFO: Analyzing hidden import 'pymavlink.dialects.v20.icarous'
+29635 INFO: Analyzing hidden import 'pymavlink.dialects.v20.loweheiser'
+29703 INFO: Analyzing hidden import 'pymavlink.dialects.v20.matrixpilot'
+30904 INFO: Analyzing hidden import 'pymavlink.dialects.v20.minimal'
+30980 INFO: Analyzing hidden import 'pymavlink.dialects.v20.paparazzi'
+32069 INFO: Analyzing hidden import 'pymavlink.dialects.v20.python_array_test'
+33061 INFO: Analyzing hidden import 'pymavlink.dialects.v20.standard'
+33113 INFO: Analyzing hidden import 'pymavlink.dialects.v20.storm32'
+34529 INFO: Analyzing hidden import 'pymavlink.dialects.v20.test'
+34557 INFO: Analyzing hidden import 'pymavlink.dialects.v20.uAvionix'
+35585 INFO: Analyzing hidden import 'pymavlink.dialects.v20.ualberta'
+36787 INFO: Analyzing hidden import 'pymavlink.fgFDM'
+36796 INFO: Analyzing hidden import 'pymavlink.mavftp'
+36872 INFO: Analyzing hidden import 'pymavlink.mavftpfs'
+36878 INFO: Analyzing hidden import 'pymavlink.mavparm'
+36884 INFO: Analyzing hidden import 'pymavlink.mavtestgen'
+36886 INFO: Analyzing hidden import 'pymavlink.mavwp'
+36905 INFO: Analyzing hidden import 'pymavlink.setup'
+36913 INFO: Processing standard module hook 'hook-setuptools.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+36921 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+36969 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+36969 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+36977 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+36977 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+37080 INFO: Processing standard module hook 'hook-_osx_support.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+37090 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+37287 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+37288 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+37293 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+37293 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+37711 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+37711 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+38217 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+38217 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+38257 INFO: Analyzing hidden import 'pymavlink.tools'
+38257 INFO: Analyzing hidden import 'pymavlink.tools.extract_batch_imu'
+38259 INFO: Analyzing hidden import 'pymavlink.tools.extract_parms'
+38261 INFO: Analyzing hidden import 'pymavlink.tools.find_aliasing'
+38264 INFO: Analyzing hidden import 'pymavlink.tools.isb_extract'
+38267 INFO: Analyzing hidden import 'pymavlink.tools.magfit'
+38271 INFO: Analyzing hidden import 'pymavlink.tools.magfit_WMM'
+38289 INFO: Analyzing hidden import 'pymavlink.tools.magfit_compassmot'
+38292 INFO: Analyzing hidden import 'pymavlink.tools.magfit_delta'
+38296 INFO: Analyzing hidden import 'pymavlink.tools.magfit_elliptical'
+38302 INFO: Analyzing hidden import 'pymavlink.tools.magfit_gps'
+38307 INFO: Analyzing hidden import 'pymavlink.tools.magfit_motors'
+38310 INFO: Analyzing hidden import 'pymavlink.tools.magfit_rotation_gps'
+38314 INFO: Analyzing hidden import 'pymavlink.tools.magfit_rotation_gyro'
+38319 INFO: Analyzing hidden import 'pymavlink.tools.mavbitmask_change'
+38325 INFO: Analyzing hidden import 'pymavlink.tools.mavextract'
+38328 INFO: Analyzing hidden import 'pymavlink.tools.mavfft'
+38330 INFO: Analyzing hidden import 'pymavlink.tools.mavfft_int'
+38337 INFO: Analyzing hidden import 'pymavlink.tools.mavfft_isb'
+/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/pymavlink/tools/mavfft_isb.py:268: SyntaxWarning: invalid escape sequence '\s'
+  pylab.ylabel('LSD $' + scale_label + 'd/s/\sqrt{Hz}$')
+/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/pymavlink/tools/mavfft_isb.py:270: SyntaxWarning: invalid escape sequence '\s'
+  pylab.ylabel('LSD $' + scale_label + 'm/s^2/\sqrt{Hz}$')
+38348 INFO: Analyzing hidden import 'pymavlink.tools.mavfft_pid'
+38352 INFO: Analyzing hidden import 'pymavlink.tools.mavfixtimedrift'
+38355 INFO: Analyzing hidden import 'pymavlink.tools.mavflightmodes'
+38357 INFO: Analyzing hidden import 'pymavlink.tools.mavflighttime'
+38360 INFO: Analyzing hidden import 'pymavlink.tools.mavftpdecode'
+38364 INFO: Analyzing hidden import 'pymavlink.tools.mavgen'
+38365 INFO: Analyzing hidden import 'pymavlink.tools.mavgps_CEP'
+38368 INFO: Analyzing hidden import 'pymavlink.tools.mavgpslag'
+38371 INFO: Analyzing hidden import 'pymavlink.tools.mavgpslock'
+38373 INFO: Analyzing hidden import 'pymavlink.tools.mavgraph'
+38383 INFO: Analyzing hidden import 'pymavlink.tools.mavkml'
+38388 INFO: Analyzing hidden import 'pymavlink.tools.mavlink_bitmask_decoder'
+38389 INFO: Analyzing hidden import 'pymavlink.tools.mavlink_messages_size'
+38390 INFO: Analyzing hidden import 'pymavlink.tools.mavlogdump'
+38400 INFO: Analyzing hidden import 'pymavlink.tools.mavloss'
+38404 INFO: Analyzing hidden import 'pymavlink.tools.mavmerge'
+38406 INFO: Analyzing hidden import 'pymavlink.tools.mavmission'
+38408 INFO: Analyzing hidden import 'pymavlink.tools.mavmsgstats'
+38410 INFO: Analyzing hidden import 'pymavlink.tools.mavparmdiff'
+38411 INFO: Analyzing hidden import 'pymavlink.tools.mavparms'
+38413 INFO: Analyzing hidden import 'pymavlink.tools.mavplayback'
+38420 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_find_module_path'
+38420 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+38584 INFO: Processing standard module hook 'hook-_tkinter.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+38592 INFO: Analyzing hidden import 'pymavlink.tools.mavsearch'
+38593 INFO: Analyzing hidden import 'pymavlink.tools.mavsensor_status_change'
+38594 INFO: Analyzing hidden import 'pymavlink.tools.mavsigloss'
+38595 INFO: Analyzing hidden import 'pymavlink.tools.mavsplit_sysid'
+38597 INFO: Analyzing hidden import 'pymavlink.tools.mavsummarize'
+38628 INFO: Analyzing hidden import 'pymavlink.tools.mavtelemetry_datarates'
+38661 INFO: Analyzing hidden import 'pymavlink.tools.mavtogpx'
+38664 INFO: Analyzing hidden import 'pymavlink.tools.mavtomfile'
+/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/pymavlink/tools/mavtomfile.py:31: SyntaxWarning: invalid escape sequence '\.'
+  mfilename = re.sub('[\.\-\+\*]','_', basename) + '.m'
+38667 INFO: Analyzing hidden import 'pymavlink.tools.mavtranslatelog'
+38671 INFO: Analyzing hidden import 'pymavlink.tools.python_array_test_recv'
+38672 INFO: Analyzing hidden import 'pymavlink.tools.python_array_test_send'
+38673 INFO: Analyzing hidden import 'pymavlink.tools.serial_control_to_shell'
+38705 INFO: Analyzing hidden import 'pymavlink.tools.sertotcp'
+38708 INFO: Analyzing hidden import 'pymavlink.tools.test_mavftp_hardware'
+38713 INFO: Analyzing hidden import 'pygame.__briefcase'
+38713 INFO: Analyzing hidden import 'pygame.__briefcase.pygame_ce'
+38715 INFO: Analyzing hidden import 'pygame.__pyinstaller'
+38715 INFO: Analyzing hidden import 'pygame.__pyinstaller.hook-pygame'
+38755 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+38755 INFO: Setuptools: 'importlib_metadata' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.importlib_metadata'!
+38772 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+38788 INFO: Processing pre-safe-import-module hook 'hook-zipp.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+38788 INFO: Setuptools: 'zipp' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.zipp'!
+38975 INFO: Analyzing hidden import 'pygame._camera'
+38975 INFO: Analyzing hidden import 'pygame._camera_opencv'
+39029 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+39032 INFO: Analyzing hidden import 'pygame._render'
+39037 INFO: Analyzing hidden import 'pygame._sdl2.controller'
+39038 INFO: Analyzing hidden import 'pygame._sdl2.controller_old'
+39040 INFO: Analyzing hidden import 'pygame._sdl2.mixer'
+39040 INFO: Analyzing hidden import 'pygame._sdl2.touch'
+39041 INFO: Analyzing hidden import 'pygame._sdl2.window'
+39041 INFO: Analyzing hidden import 'pygame._sprite'
+39042 INFO: Analyzing hidden import 'pygame.camera'
+39049 INFO: Analyzing hidden import 'pygame.docs'
+39049 INFO: Analyzing hidden import 'pygame.docs.__main__'
+39052 INFO: Analyzing hidden import 'pygame.examples.aacircle'
+39055 INFO: Analyzing hidden import 'pygame.examples.aliens'
+39064 INFO: Analyzing hidden import 'pygame.examples.arraydemo'
+39068 INFO: Analyzing hidden import 'pygame.examples.audiocapture'
+39070 INFO: Analyzing hidden import 'pygame.examples.blend_fill'
+39073 INFO: Analyzing hidden import 'pygame.examples.blit_blends'
+39078 INFO: Analyzing hidden import 'pygame.examples.chimp'
+39082 INFO: Analyzing hidden import 'pygame.examples.cursors'
+39088 INFO: Analyzing hidden import 'pygame.examples.dropevent'
+39090 INFO: Analyzing hidden import 'pygame.examples.eventlist'
+39094 INFO: Analyzing hidden import 'pygame.examples.font_viewer'
+39101 INFO: Analyzing hidden import 'pygame.examples.fonty'
+39102 INFO: Analyzing hidden import 'pygame.examples.freetype_misc'
+39106 INFO: Analyzing hidden import 'pygame.examples.glcube'
+39117 INFO: Analyzing hidden import 'pygame.examples.go_over_there'
+39119 INFO: Analyzing hidden import 'pygame.examples.headless_no_windows_needed'
+39120 INFO: Analyzing hidden import 'pygame.examples.joystick'
+39123 INFO: Analyzing hidden import 'pygame.examples.liquid'
+39125 INFO: Analyzing hidden import 'pygame.examples.mask'
+39129 INFO: Analyzing hidden import 'pygame.examples.midi'
+39150 INFO: Analyzing hidden import 'pygame.examples.moveit'
+39153 INFO: Analyzing hidden import 'pygame.examples.multiplayer_joystick'
+39157 INFO: Analyzing hidden import 'pygame.examples.music_drop_fade'
+39161 INFO: Analyzing hidden import 'pygame.examples.ninepatch'
+39165 INFO: Analyzing hidden import 'pygame.examples.pixelarray'
+39168 INFO: Analyzing hidden import 'pygame.examples.playmus'
+39171 INFO: Analyzing hidden import 'pygame.examples.prevent_display_stretching'
+39173 INFO: Analyzing hidden import 'pygame.examples.resizing_new'
+39174 INFO: Analyzing hidden import 'pygame.examples.retro_scaling'
+39175 INFO: Analyzing hidden import 'pygame.examples.scaletest'
+39179 INFO: Analyzing hidden import 'pygame.examples.scrap_clipboard'
+39180 INFO: Analyzing hidden import 'pygame.examples.scroll'
+39185 INFO: Analyzing hidden import 'pygame.examples.setmodescale'
+39187 INFO: Analyzing hidden import 'pygame.examples.sound'
+39188 INFO: Analyzing hidden import 'pygame.examples.sound_array_demos'
+39192 INFO: Analyzing hidden import 'pygame.examples.sprite_texture'
+39195 INFO: Analyzing hidden import 'pygame.examples.stars'
+39198 INFO: Analyzing hidden import 'pygame.examples.testsprite'
+39202 INFO: Analyzing hidden import 'pygame.examples.textinput'
+39208 INFO: Analyzing hidden import 'pygame.examples.vgrade'
+39211 INFO: Analyzing hidden import 'pygame.examples.video'
+39215 INFO: Analyzing hidden import 'pygame.examples.window_opengl'
+39216 INFO: Analyzing hidden import 'pygame.geometry'
+39226 INFO: Analyzing hidden import 'pygame.newbuffer'
+39227 INFO: Analyzing hidden import 'pygame.tests'
+39258 INFO: Analyzing hidden import 'pygame.tests.base_test'
+39323 INFO: Analyzing hidden import 'pygame.tests.blit_test'
+39336 INFO: Analyzing hidden import 'pygame.tests.bufferproxy_test'
+39366 INFO: Analyzing hidden import 'pygame.tests.camera_test'
+39367 INFO: Analyzing hidden import 'pygame.tests.color_test'
+39444 INFO: Analyzing hidden import 'pygame.tests.constants_test'
+39449 INFO: Analyzing hidden import 'pygame.tests.controller_test'
+39455 INFO: Analyzing hidden import 'pygame.tests.ctest_test'
+39456 INFO: Analyzing hidden import 'pygame.tests.cursors_test'
+39459 INFO: Analyzing hidden import 'pygame.tests.debug_test'
+39519 INFO: Analyzing hidden import 'pygame.tests.display_test'
+39548 INFO: Analyzing hidden import 'pygame.tests.docs_test'
+39550 INFO: Analyzing hidden import 'pygame.tests.draw_test'
+39795 INFO: Analyzing hidden import 'pygame.tests.event_test'
+39819 INFO: Analyzing hidden import 'pygame.tests.font_test'
+39854 INFO: Analyzing hidden import 'pygame.tests.freetype_test'
+39908 INFO: Analyzing hidden import 'pygame.tests.ftfont_test'
+39909 INFO: Analyzing hidden import 'pygame.tests.geometry_test'
+39979 INFO: Analyzing hidden import 'pygame.tests.gfxdraw_test'
+40011 INFO: Analyzing hidden import 'pygame.tests.image__save_gl_surface_test'
+40013 INFO: Analyzing hidden import 'pygame.tests.image_test'
+40137 INFO: Analyzing hidden import 'pygame.tests.imageext_test'
+40140 INFO: Analyzing hidden import 'pygame.tests.joystick_test'
+40144 INFO: Analyzing hidden import 'pygame.tests.key_test'
+40152 INFO: Analyzing hidden import 'pygame.tests.locals_test'
+40152 INFO: Analyzing hidden import 'pygame.tests.mask_test'
+40366 INFO: Analyzing hidden import 'pygame.tests.math_test'
+40524 INFO: Analyzing hidden import 'pygame.tests.midi_test'
+40535 INFO: Analyzing hidden import 'pygame.tests.mixer_music_test'
+40545 INFO: Analyzing hidden import 'pygame.tests.mixer_test'
+40590 INFO: Analyzing hidden import 'pygame.tests.mouse_test'
+40613 INFO: Analyzing hidden import 'pygame.tests.pixelarray_test'
+40702 INFO: Analyzing hidden import 'pygame.tests.pixelcopy_test'
+40728 INFO: Analyzing hidden import 'pygame.tests.rect_test'
+40853 INFO: Analyzing hidden import 'pygame.tests.render_test'
+40871 INFO: Analyzing hidden import 'pygame.tests.rwobject_test'
+40877 INFO: Analyzing hidden import 'pygame.tests.scrap_test'
+40881 INFO: Analyzing hidden import 'pygame.tests.sndarray_tags'
+40881 INFO: Analyzing hidden import 'pygame.tests.sndarray_test'
+40887 INFO: Analyzing hidden import 'pygame.tests.sprite_test'
+40925 INFO: Analyzing hidden import 'pygame.tests.surface_test'
+41089 INFO: Analyzing hidden import 'pygame.tests.surfarray_tags'
+41090 INFO: Analyzing hidden import 'pygame.tests.surfarray_test'
+41110 INFO: Analyzing hidden import 'pygame.tests.surflock_test'
+41114 INFO: Analyzing hidden import 'pygame.tests.sysfont_test'
+41116 INFO: Analyzing hidden import 'pygame.tests.system_test'
+41119 INFO: Analyzing hidden import 'pygame.tests.time_test'
+41129 INFO: Analyzing hidden import 'pygame.tests.touch_test'
+41133 INFO: Analyzing hidden import 'pygame.tests.transform_test'
+41196 INFO: Analyzing hidden import 'pygame.tests.typing_test'
+41197 INFO: Analyzing hidden import 'pygame.tests.version_test'
+41198 INFO: Analyzing hidden import 'pygame.tests.video_test'
+41200 INFO: Analyzing hidden import 'pygame.tests.window_test'
+41237 INFO: Processing module hooks (post-graph stage)...
+41394 INFO: Processing standard module hook 'hook-lxml.isoschematron.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+41446 INFO: Processing standard module hook 'hook-PySide6.QtConcurrent.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+41632 INFO: Processing standard module hook 'hook-PySide6.QtDBus.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+41789 INFO: Processing standard module hook 'hook-PySide6.QtMultimediaWidgets.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+41923 INFO: Processing standard module hook 'hook-_tkinter.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+42016 INFO: Performing binary vs. data reclassification (1051 entries)
+42136 INFO: Looking for ctypes DLLs
+42172 WARNING: Library Cfgmgr32 required via ctypes not found
+42181 WARNING: Library setupapi required via ctypes not found
+42193 WARNING: Library Advapi32 required via ctypes not found
+42195 WARNING: Ignoring /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation imported from /workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+42195 WARNING: Ignoring /System/Library/Frameworks/IOKit.framework/IOKit imported from /workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+42340 INFO: Analyzing run-time hooks ...
+42345 INFO: Including run-time hook 'pyi_rth_inspect.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42347 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42348 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42350 INFO: Including run-time hook 'pyi_rth_setuptools.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42350 INFO: Including run-time hook 'pyi_rth__tkinter.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42351 INFO: Including run-time hook 'pyi_rth_pyside6.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+42352 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks/pre_find_module_path'
+42353 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/hooks'
+42386 INFO: Creating base_library.zip...
+42403 INFO: Looking for dynamic libraries
+44598 WARNING: Library not found: could not resolve 'libxcb-cursor.so.0', dependency of '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PySide6/Qt/plugins/platforms/libqxcb.so'.
+44598 WARNING: Library not found: could not resolve 'libxcb-cursor.so.0', dependency of '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PySide6/Qt/plugins/xcbglintegrations/libqxcb-glx-integration.so'.
+44598 WARNING: Library not found: could not resolve 'libxcb-cursor.so.0', dependency of '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PySide6/Qt/plugins/xcbglintegrations/libqxcb-egl-integration.so'.
+44598 WARNING: Library not found: could not resolve 'libtcl9tk9.0.so', dependency of '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/lib-dynload/_tkinter.cpython-312-x86_64-linux-gnu.so'.
+44598 WARNING: Library not found: could not resolve 'libtcl9.0.so', dependency of '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/lib-dynload/_tkinter.cpython-312-x86_64-linux-gnu.so'.
+44598 WARNING: Library not found: could not resolve 'libxcb-cursor.so.0', dependency of '/workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PySide6/Qt/lib/libQt6XcbQpa.so.6'.
+44627 INFO: Warnings written to /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/build/PC-TeleRC/warn-PC-TeleRC.txt
+44661 INFO: Graph cross-reference written to /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/build/PC-TeleRC/xref-PC-TeleRC.html
+44701 INFO: checking PYZ
+44701 INFO: Building PYZ because PYZ-00.toc is non existent
+44701 INFO: Building PYZ (ZlibArchive) /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/build/PC-TeleRC/PYZ-00.pyz
+47039 INFO: Building PYZ (ZlibArchive) /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/build/PC-TeleRC/PYZ-00.pyz completed successfully.
+47050 WARNING: Ignoring icon; supported only on Windows and macOS!
+47056 INFO: checking PKG
+47057 INFO: Building PKG because PKG-00.toc is non existent
+47057 INFO: Building PKG (CArchive) PC-TeleRC.pkg
+47074 INFO: Building PKG (CArchive) PC-TeleRC.pkg completed successfully.
+47074 INFO: Bootloader /workspace/scratch/3877b12c4b3b/.venv/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run
+47075 INFO: checking EXE
+47075 INFO: Building EXE because EXE-00.toc is non existent
+47075 INFO: Building EXE from EXE-00.toc
+47075 INFO: Copying bootloader EXE to /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/build/PC-TeleRC/PC-TeleRC
+47075 INFO: Appending PKG archive to custom ELF section in EXE
+47128 INFO: Building EXE from EXE-00.toc completed successfully.
+47140 INFO: checking COLLECT
+47140 INFO: Building COLLECT because COLLECT-00.toc is non existent
+47140 INFO: Removing dir /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/dist/PC-TeleRC
+47169 INFO: Building COLLECT COLLECT-00.toc
+47449 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+47463 INFO: Build complete! The results are available in: /workspace/scratch/3877b12c4b3b/source/PC-TeleRC-v0.1.5rc2/dist
+pygame-ce 2.5.8 (SDL 2.32.10, Python 3.12.14)

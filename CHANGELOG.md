@@ -1,3 +1,11 @@
+## 0.1.5rc3 — checked release packaging
+
+- Shared Windows build path validates the complete fresh, version-matched frozen UI report.
+- Public firmware hash allowlist prevents private fleet profiles and modified sketches from entering packages.
+- Portable candidates and diagnostics are retained before installer creation in CI.
+- Restored AUTO monitoring now reports RC/FC takeover when the FC leaves AUTO.
+- Matching LoRa Mission 0.2.0rc1 firmware is unchanged from the compiled rc2 set.
+
 ## 0.1.5rc2 — reviewed mission release candidate
 
 - Compact mission UI with collapsible plan/output/help panes and persistent state.

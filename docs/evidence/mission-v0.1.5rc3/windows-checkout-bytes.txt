@@ -1,0 +1,1 @@
+PASS: 65 public firmware files survive a core.autocrlf=true checkout with exact manifest hashes.

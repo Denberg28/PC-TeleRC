@@ -5,11 +5,12 @@ import hashlib
 import argparse
 import re
 import zipfile
+from mission_release_support import check_public_config, public_mission_files
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "release-dist"
 OUT.mkdir(exist_ok=True)
-APP = "0.1.5rc2"
+APP = "1.0.0rc1"
 FW = "0.2.0rc1"
 EXCLUDE = {
     "__pycache__",
@@ -22,6 +23,7 @@ EXCLUDE = {
     "dist",
     "installer-dist",
     "pc_telerc.egg-info",
+    ".ruff_cache",
 }
 
 
@@ -30,27 +32,47 @@ def files(root):
         relative = path.relative_to(root)
         if not path.is_file() or EXCLUDE.intersection(relative.parts):
             continue
-        if path.suffix in {".pyc", ".pyo", ".bin", ".elf", ".map", ".log"}:
+        if path.is_symlink():
+            raise ValueError("Refusing symlink in source package")
+        if path.suffix.lower() in {
+            ".pyc",
+            ".pyo",
+            ".bin",
+            ".elf",
+            ".map",
+            ".log",
+            ".exe",
+            ".dll",
+            ".pdb",
+            ".so",
+            ".key",
+            ".pem",
+            ".pfx",
+            ".p12",
+        }:
             continue
         if path.name in {".env", "Config.private.h"}:
             continue
         if relative.parts[:2] == ("bridge", "releases"):
             continue
+        if path.name == "SOURCE_COMMIT.txt":
+            continue
+        if path.suffix == ".h":
+            text = path.read_text(encoding="utf-8")
+            if re.search(r"^\s*#\s*define\s+PROVISIONED\b", text, re.M):
+                check_public_config(text)
         yield path
 
 
 def archive(filename, root, prefix):
     destination = OUT / filename
+    selected = list(files(root))
+    temporary = destination.with_suffix(".zip.partial")
     with zipfile.ZipFile(
-        destination, "w", zipfile.ZIP_DEFLATED, compresslevel=9
+        temporary, "w", zipfile.ZIP_DEFLATED, compresslevel=9
     ) as writer:
-        for path in files(root):
+        for path in selected:
             relative = path.relative_to(root).as_posix()
-            if path.name == "Config.h" and "/mission/" in str(path):
-                if "#define PROVISIONED 0" not in path.read_text():
-                    raise RuntimeError(
-                        "Refusing to package a provisioned private Config.h"
-                    )
             info = zipfile.ZipInfo(prefix + "/" + relative, (2026, 10, 20, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
@@ -59,9 +81,10 @@ def archive(filename, root, prefix):
         info.compress_type = zipfile.ZIP_DEFLATED
         info.external_attr = 0o644 << 16
         writer.writestr(info, (OUT / "SOURCE_COMMIT.txt").read_text())
-    with zipfile.ZipFile(destination) as reader:
+    with zipfile.ZipFile(temporary) as reader:
         if reader.testzip() is not None:
             raise RuntimeError("Archive integrity failure")
+    temporary.replace(destination)
     return destination
 
 
@@ -71,6 +94,7 @@ args = parser.parse_args()
 if not re.fullmatch("[0-9a-f]{40}", args.source_commit):
     parser.error("Use the exact committed source revision")
 (OUT / "SOURCE_COMMIT.txt").write_text(args.source_commit + "\n")
+public_mission_files(ROOT / "firmware/mission")
 source = archive(f"PC-TeleRC-Mission-v{APP}-source.zip", ROOT, f"PC-TeleRC-v{APP}")
 sketches = archive(
     f"TeleRC-LoRa-Mission-v{FW}-sketches.zip",

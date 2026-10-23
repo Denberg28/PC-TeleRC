@@ -36,6 +36,7 @@ from .mission_service import MissionService
 from .rover_map import RoverMap, world_pixel
 from .lora_setup_widget import refresh_ports
 from .config import data_dir
+from .fleet import draft_path as fleet_draft_path
 
 
 class MissionMap(RoverMap):
@@ -113,12 +114,20 @@ class MissionDialog(QDialog):
         self._plan_valid = False
         self._phase_text = "Planning"
         self._last_snapshot = None
+        self._fleet_root = None if draft_path is not None else data_dir() / "fleet-plans"
         self._draft_path = (
             Path(draft_path)
             if draft_path is not None
-            else data_dir() / "mission-draft.json"
+            else fleet_draft_path(self._fleet_root, 1)
         )
-        self.setWindowTitle("Mission · PC TeleRC")
+        # Retain the previous single-rover draft only for rover 1. Never apply
+        # that draft implicitly to a newly selected vehicle.
+        if self._fleet_root is not None and not self._draft_path.exists():
+            legacy = data_dir() / "mission-draft.json"
+            if legacy.is_file() and legacy.stat().st_size <= 120000:
+                self._draft_path.parent.mkdir(parents=True, exist_ok=True)
+                self._draft_path.write_bytes(legacy.read_bytes())
+        self.setWindowTitle("Fleet missions · PC TeleRC")
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMinMaxButtonsHint)
         self.resize(1100, 760)
         self.setMinimumSize(850, 600)
@@ -361,6 +370,48 @@ class MissionDialog(QDialog):
         self.timer.start(100)
         self._restore_draft()
         self._invalidate()
+        self._selected_rover = self.rover.value()
+        self.rover.valueChanged.connect(self._switch_rover)
+
+    def _switch_rover(self, rover):
+        # Selection is normally disabled while connected. Guard programmatic
+        # changes too: a selection event must never retarget an active worker.
+        if self.service.running:
+            self.rover.blockSignals(True)
+            self.rover.setValue(self._selected_rover)
+            self.rover.blockSignals(False)
+            return
+        self.draft_timer.stop()
+        self._save_draft()
+        self._selected_rover = rover
+        if self._fleet_root is not None:
+            self._draft_path = fleet_draft_path(self._fleet_root, rover)
+        else:
+            # Explicitly injected test/export paths also receive isolated files.
+            self._draft_path = self._draft_path.parent / f"rover-{rover:03d}.json"
+        self.digest = ""
+        self.connected = False
+        self.busy = False
+        self._last_snapshot = None
+        self.map._snapshot = None
+        self.map._track.clear()
+        self.map._home = None
+        self.map._last_timestamp = None
+        self.map._last_position = None
+        self.continue_loss.setChecked(False)
+        self.aux.setChecked(False)
+        self.imported = None
+        self.plan = Plan()
+        self.speed.setValue(0.5)
+        for ch, off, on in self.functions:
+            ch.setValue(0)
+            off.setValue(1100)
+            on.setValue(1900)
+        self._restore_draft()
+        self._render()
+        self._invalidate()
+        self._phase(f"Rover {rover} · Planning offline")
+        self._update_telemetry()
 
     def _pulse(self):
         self.service.pulse()
@@ -374,6 +425,8 @@ class MissionDialog(QDialog):
             self.status.setText(text[:120])
 
     def _snapshot(self, snapshot):
+        if snapshot.vehicle_system != self.rover.value():
+            return
         self._last_snapshot = snapshot
         self.map.set_snapshot(snapshot)
         self._update_telemetry()
