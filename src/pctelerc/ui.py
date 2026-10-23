@@ -5,11 +5,12 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, Qt, QTimer
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QColor, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
     QSpinBox, QSizePolicy, QVBoxLayout, QWidget, QDialog, QScrollArea, QTabWidget, QFileDialog,
+    QGraphicsDropShadowEffect,
 )
 
 from . import __version__
@@ -387,34 +388,44 @@ class MainWindow(QMainWindow):
         self.settings_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         header.addWidget(self.settings_btn)
         screen_layout.addLayout(header)
-        health = QHBoxLayout()
-        self.link_label.setMinimumWidth(220)
-        health.addWidget(self.link_label, 1)
-        health.addWidget(self.vehicle_label)
-        self.telemetry_label = QLabel("GPS —   Speed —   Battery —")
-        health.addWidget(self.telemetry_label)
+        # Detailed connection information belongs in Settings, leaving the view tall.
+        connection.insertWidget(1, self.link_label)
         self.camera_status = QLabel("Camera off")
-        self.camera_status.setObjectName("Muted")
-        health.addStretch()
-        health.addWidget(self.camera_status)
-        screen_layout.addLayout(health)
-        hud = QHBoxLayout()
+        self.camera_status.setStyleSheet("background:transparent;color:#e7edf5;")
+        self.camera_status.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.telemetry_overlay = QFrame()
+        self.telemetry_overlay.setObjectName("TelemetryOverlay")
+        self.telemetry_overlay.setStyleSheet("QFrame#TelemetryOverlay { background:transparent; border:0; } QLabel { background:transparent;color:#ffffff; }")
+        self.telemetry_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.telemetry_overlay.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        hud = QVBoxLayout(self.telemetry_overlay)
+        hud.setContentsMargins(0, 0, 0, 0)
+        hud.setSpacing(5)
+        self.vehicle_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        hud.addWidget(self.vehicle_label)
         self.hud_values = {}
-        for key, title in (("speed", "GROUND SPEED"), ("battery", "BATTERY"),
-                           ("gps", "GPS FIX"), ("link", "ROVER TELEMETRY")):
-            tile = QFrame()
-            tile.setObjectName("Card")
-            tile_layout = QVBoxLayout(tile)
-            tile_layout.setContentsMargins(12, 7, 12, 7)
+        for key, title in (("speed", "SPD"), ("battery", "BAT"),
+                           ("gps", "GPS"), ("link", "LINK")):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.addStretch()
             caption = QLabel(title)
-            caption.setStyleSheet("color:#91a0b2;font-size:8pt;")
+            caption.setStyleSheet("font-size:8pt;")
             value = QLabel("—")
-            value.setStyleSheet("font-size:16pt;font-weight:600;")
+            value.setStyleSheet("font-size:11pt;font-weight:600;")
+            value.setAccessibleName(title)
+            value.setAlignment(Qt.AlignmentFlag.AlignRight)
             self.hud_values[key] = value
-            tile_layout.addWidget(caption)
-            tile_layout.addWidget(value)
-            hud.addWidget(tile, 1)
-        screen_layout.addLayout(hud)
+            row.addWidget(caption)
+            row.addWidget(value)
+            hud.addLayout(row)
+        # A text shadow keeps FPV readings legible without an opaque panel.
+        for overlay in (self.telemetry_overlay, self.camera_status):
+            shadow = QGraphicsDropShadowEffect(overlay)
+            shadow.setBlurRadius(5)
+            shadow.setOffset(1, 1)
+            shadow.setColor(QColor("#000000"))
+            overlay.setGraphicsEffect(shadow)
         view_tools = QHBoxLayout()
         self.authority_label = QLabel("PC control · manual enable")
         self.authority_label.setObjectName("Muted")
@@ -426,10 +437,11 @@ class MainWindow(QMainWindow):
             view_tools.addWidget(button)
         self.quick_connect_btn.clicked.connect(self._apply_and_reconnect)
         self.quick_disconnect_btn.clicked.connect(self._disconnect_link)
-        self.swap_view_btn = QPushButton("Map focus ⇄")
+        self.swap_view_btn = QPushButton("Map")
         self.swap_view_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.swap_view_btn.setToolTip("Swap map and camera with a short transition; streams stay connected.")
-        self.mission_btn = QPushButton("Mission planning")
+        self.mission_btn = QPushButton("Mission")
+        self.mission_btn.setToolTip("Open mission planning")
         self.mission_btn.clicked.connect(self._open_mission)
         view_tools.addWidget(self.mission_btn)
         self.swap_view_btn.clicked.connect(self._swap_views)
@@ -446,7 +458,7 @@ class MainWindow(QMainWindow):
         self.rover_map = RoverMap()
         map_layout.addWidget(self.rover_map,1)
         map_buttons = QHBoxLayout()
-        map_buttons.addWidget(QLabel("Rover map"),1)
+        map_buttons.addWidget(QLabel("Map"),1)
         self.map_locate_btn = QPushButton("◎")
         self.map_locate_btn.setToolTip("Follow rover GPS")
         self.map_locate_btn.setFixedWidth(28)
@@ -466,12 +478,13 @@ class MainWindow(QMainWindow):
         self.map_minimize_btn.clicked.connect(lambda: self._set_map_minimized(True))
         map_buttons.addWidget(self.map_minimize_btn)
         map_layout.addLayout(map_buttons)
-        self.map_restore_btn = QPushButton("Map  ▣")
+        self.map_restore_btn = QPushButton("Map")
         self.map_restore_btn.setToolTip("Restore rover map")
         self.map_restore_btn.setFixedSize(92, 32)
         self.map_restore_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.map_restore_btn.clicked.connect(lambda: self._set_map_minimized(False))
         self.camera_surface.set_views(self.camera_view, self.map_panel, self.map_restore_btn)
+        self.camera_surface.set_overlays(self.telemetry_overlay, self.camera_status)
         self.map_restore_btn.hide()
         body.addWidget(self.camera_surface,1)
         self.settings_panel = QWidget()
@@ -517,7 +530,7 @@ class MainWindow(QMainWindow):
         camera_note=QLabel("Video needs its own USB or network camera connection. LoRa carries driving commands, not video. Camera starts only when requested.")
         camera_note.setWordWrap(True); camera_note.setObjectName("Muted")
         camera_layout.addWidget(camera_note)
-        self.map_online=QCheckBox("Online map tiles")
+        self.map_online=QCheckBox("Online map")
         camera_layout.addWidget(self.map_online)
         offline_row = QHBoxLayout()
         self.map_load_btn = QPushButton("Open offline map…")
@@ -555,8 +568,8 @@ class MainWindow(QMainWindow):
         screen_layout.addLayout(controls)
         footer=QHBoxLayout()
         footer.addWidget(self.message,1)
-        footer.addWidget(self.axis_label)
-        footer.addWidget(self.output_label)
+        wheel_layout.addWidget(self.axis_label)
+        safety.addWidget(self.output_label)
         screen_layout.addLayout(footer)
         self.controller_label.hide()
         self.setCentralWidget(screen)
@@ -633,6 +646,7 @@ class MainWindow(QMainWindow):
     def _camera_status_changed(self, text):
         self.camera_status.setText(text if len(text) <= 32 else text[:29]+"…")
         self.camera_status.setToolTip(text)
+        self.camera_status.adjustSize()
 
     def _set_camera_reconnect(self, enabled):
         self.camera_view.auto_reconnect = bool(enabled)
@@ -677,7 +691,7 @@ class MainWindow(QMainWindow):
         self.camera_surface.primary_map = self.settings.map_primary
         self.camera_surface.minimized = bool(minimized)
         self.camera_surface.arrange()
-        self.swap_view_btn.setText("Camera focus ⇄" if self.settings.map_primary else "Map focus ⇄")
+        self.swap_view_btn.setText("Camera" if self.settings.map_primary else "Map")
         self.settings.map_minimized = bool(minimized)
         if persist:
             self._save_map_preferences()
@@ -688,7 +702,7 @@ class MainWindow(QMainWindow):
         self.camera_surface.primary_map = self.settings.map_primary
         self.camera_surface.minimized = False
         self.camera_surface.arrange(animate=True)
-        self.swap_view_btn.setText("Camera focus ⇄" if self.settings.map_primary else "Map focus ⇄")
+        self.swap_view_btn.setText("Camera" if self.settings.map_primary else "Map")
         self._save_map_preferences()
 
     def _open_offline_map(self):
@@ -1129,12 +1143,9 @@ class MainWindow(QMainWindow):
         wheel = self.inputs.snapshot()
         mav = self.mav.snapshot()
         self.rover_map.set_snapshot(mav)
-        gps=f"GPS {mav.satellites or '—'}" if position_fresh(mav) else "GPS —"
         speed=f"{mav.speed:.1f} m/s" if position_fresh(mav) and mav.speed is not None else "—"
         battery=f"{mav.voltage:.1f} V" if (mav.state == LinkState.CONNECTED and mav.voltage is not None
             and mav.battery_timestamp is not None and time.monotonic()-mav.battery_timestamp <= 5) else "—"
-        self.telemetry_label.setText(f"{gps}   Speed {speed}   Battery {battery}")
-        self.telemetry_label.hide()  # Detailed values have dedicated cockpit tiles.
         self.hud_values["speed"].setText(speed)
         remaining = f" · {mav.battery_remaining}%" if battery != "—" and mav.battery_remaining is not None else ""
         self.hud_values["battery"].setText(battery + remaining)
@@ -1142,8 +1153,8 @@ class MainWindow(QMainWindow):
         self.hud_values["link"].setText(f"{mav.heartbeat_age or 0:.1f} s" if mav.state == LinkState.CONNECTED else
                                         "Stale" if mav.state == LinkState.STALE else "Waiting" if mav.running else "Offline")
         backpack = self._connected_settings.link_mode == "elrs_backpack"
-        self.authority_label.setText("HANDSET CONTROL · telemetry only" if backpack else
-                                     "PC CONTROL · live input" if mav.control_enabled else "PC control · manual enable")
+        self.authority_label.setText("Handset control" if backpack else
+                                     "PC control active" if mav.control_enabled else "PC · manual enable")
 
         devices = self.wheel.devices()
         displayed_guids = [self.device_combo.itemData(i) for i in range(self.device_combo.count())]
@@ -1182,8 +1193,8 @@ class MainWindow(QMainWindow):
                 self.link_label.setText("Waiting for MAVLink heartbeat…")
 
         self.vehicle_label.setText(f"{'ARMED' if mav.armed else 'DISARMED'} • {mav.mode or 'mode —'}" if mav.state == LinkState.CONNECTED else
-                                   "Arm / mode unknown" + (" · last " + mav.mode if mav.mode else ""))
-        self.vehicle_label.setStyleSheet("color:#fbbf24;font-weight:700;" if mav.armed else "color:#91a0b2;")
+                                   "Arm / mode unknown")
+        self.vehicle_label.setStyleSheet("background:transparent;color:#fbbf24;font-weight:700;" if mav.armed else "background:transparent;color:#ffffff;")
         self.traffic_label.setText(f"RX {mav.rx_messages} • TX {mav.tx_messages}")
         self.output_label.setText(
             f"CH{self.settings.steering_channel} {mav.steer_pwm} • "
