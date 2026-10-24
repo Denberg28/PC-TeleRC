@@ -122,7 +122,7 @@ def setup_request(mhz: str, power: int, key: str) -> bytes:
 
 
 RESULTS = {
-    b'SKETCH_PAIRING_LOCKED': 'Pairing is defined in the sketch. Edit its password/frequency and upload again; saved pairing cannot override it.',
+    b'SKETCH_PAIRING_LOCKED': 'Pairing is defined in the sketch. Scalable LoRa uses the saved private network project; older sets use matching sketch settings. Saved pairing cannot override it.',
     b'SAVED_RESTART_BOARD': 'Saved. Close USB and restart this board. Provision its partner with the same frequency, power and key.',
     b'ACTIVE_DISCONNECT_AND_ERASE_NVS_FIRST': 'Active radio unchanged. Hold BOOT after startup to pause supported firmware, then read again. For older boards, follow the firmware setup guide.',
     b'STORAGE_FAILED': 'Board storage failed. Read settings before retrying.',

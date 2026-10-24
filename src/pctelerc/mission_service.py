@@ -10,6 +10,7 @@ from .core import LinkState
 from .mavlink import MavlinkSnapshot
 from .mission_protocol.client import Client, compare, fingerprint
 from .mission_transport import MissionUSB
+from .firmware_profiles import route_interrupted
 
 
 class Cancelled(RuntimeError):
@@ -47,6 +48,7 @@ class MissionService:
         self.capabilities = dict(relays=0, mask=0, firmware="")
         self.gps_boot = None
         self.phase = "Offline"
+        self._confirmed = False
 
     def _phase(self, value):
         self.phase = value
@@ -68,6 +70,8 @@ class MissionService:
             raise ValueError("Select the BASE COM port and rover ID 1–20")
         self.stop_event.clear()
         self.hold_event.clear()
+        self._confirmed = False
+        self.capabilities = dict(relays=0, mask=0, firmware="")
         self.pulse()
         self.jobs = queue.Queue(maxsize=1)
         self.thread = threading.Thread(
@@ -79,6 +83,7 @@ class MissionService:
     def close(self):
         with self._gate:
             self.stop_event.set()
+            self._confirmed = False
         if self.thread:
             self.thread.join(timeout=1)
         return not self.running
@@ -93,6 +98,8 @@ class MissionService:
 
         with self._gate:
             self._check()
+            if not self._confirmed:
+                raise RuntimeError("Wait for a fresh addressed rover heartbeat before mission actions")
             self.jobs.put_nowait(
                 (action, copy.deepcopy(items), bool(continue_on_loss), bool(auxiliary))
             )
@@ -100,6 +107,20 @@ class MissionService:
     def hold(self):
         with self._gate:
             self.hold_event.set()
+
+    def _base_status(self, text):
+        self.events.message.emit("BASE: " + text)
+        if route_interrupted(text):
+            self.verified_digest = ""
+            self.events.verified.emit("")
+            # Initial discovery is expected. Once an addressed FC has confirmed
+            # this session, never carry verification or queued work across loss.
+            if self._confirmed:
+                self._confirmed = False
+                while not self.jobs.empty():
+                    self.jobs.get_nowait()
+                raise RuntimeError("LoRa route interrupted; state UNKNOWN. Reconnect and re-upload; no automatic resume")
+            self._phase("Finding rover · " + text[:70])
 
     def _check(self, *, allow_hold=False):
         if self.stop_event.is_set() or time.monotonic() - self.ui_at > 2:
@@ -267,10 +288,10 @@ class MissionService:
             c.check = self._check
             c.log = lambda *a: self.events.message.emit(" ".join(map(str, a)))
             link.check = self._check
-            link.status = lambda text: self.events.message.emit("BASE: " + text)
+            link.status = self._base_status
             if hasattr(link, "handshake"):
                 self.capabilities = link.handshake()
-                self.events.capabilities.emit(dict(self.capabilities))
+                self.events.capabilities.emit(dict(self.capabilities, profile=getattr(link, 'profile', None)))
             original_recv = link.recv_match
 
             def receive(*args, **kwargs):
@@ -281,6 +302,7 @@ class MissionService:
 
             link.recv_match = receive
             c.heartbeat()
+            self._confirmed = True
             self._phase(
                 "AUTO · monitor only" if self.snapshot.mode == "AUTO" else "Ready"
             )
@@ -388,6 +410,7 @@ class MissionService:
             self.events.message.emit(failure)
         finally:
             self.stop_event.set()
+            self._confirmed = False
             if link is not None:
                 try:
                     link.close()

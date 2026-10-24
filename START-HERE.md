@@ -1,3 +1,9 @@
+# PC TeleRC 1.1.0rc1
+
+Read FIRMWARE-COMPATIBILITY.md for the current scalable LoRa baseline, matching
+private sketches, rover IDs and recovery workflow. The included public baseline
+is RF-OFF until privately provisioned. Your existing pairing keys remain valid.
+
 # PC TeleRC v1.0.1
 
 Run PC-TeleRC.exe from the portable folder, or use the Windows installer. Source

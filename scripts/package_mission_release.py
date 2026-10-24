@@ -5,13 +5,14 @@ import hashlib
 import argparse
 import re
 import zipfile
+import tomllib
 from mission_release_support import check_public_config, public_mission_files
 from release_safety import check_file
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "release-dist"
 OUT.mkdir(exist_ok=True)
-APP = "1.0.1"
+APP = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
 FW = "0.2.0rc1"
 EXCLUDE = {
     "__pycache__",
@@ -24,8 +25,10 @@ EXCLUDE = {
     "dist",
     "installer-dist",
     "stable-release",
+    "firmware-support-release",
     "incoming",
     "firmware-dist",
+    "firmware-baseline-dist",
     "firmware-v1-evidence",
     "pc_telerc.egg-info",
     ".ruff_cache",
@@ -68,7 +71,7 @@ def files(root):
             continue
         if relative.parts[:2] == ("bridge", "releases"):
             continue
-        if path.name == "SOURCE_COMMIT.txt":
+        if path.name in {"SOURCE_COMMIT.txt", "windows-tests.xml"}:
             continue
         if path.suffix == ".h":
             text = path.read_text(encoding="utf-8")

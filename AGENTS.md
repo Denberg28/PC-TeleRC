@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+24 October 2026: update Windows application for the verified ArduRover baseline
+1.1.0rc1 (scalable LoRa 0.4.0rc1 and PWM converter 1.0.5). Work from the reviewed
+v1.0.1 application lineage; default main retains an older independent firmware
+collection. Publish a separate v1.1.0rc1 candidate after current Windows/frozen
+and actual native BASE compatibility checks. Reuse the exact hash-pinned public
+firmware archive and eleven board-build records; firmware bytes and private
+pairing keys remain unchanged. Keep stable v1.0.1 available. Route resets after
+an addressed FC connection cancel verification and mission work; reconnect and
+re-upload deliberately, with no ARM/START replay.
+
 24 October 2026: user explicitly authorizes final review, sanitation, matching
 firmware inclusion and stable software publication of the reviewed UI build.
 Use a new v1.0.1 tag; preserve v1.0.0 and older rollback assets. This authorization

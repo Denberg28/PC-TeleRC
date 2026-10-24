@@ -953,7 +953,7 @@ class MainWindow(QMainWindow):
         self.link_hint.setText({
             "elrs_backpack": "Join the Backpack telemetry Wi-Fi. ELRS MAVLink + Lua → Backpack → Telemetry → WiFi. PC listens on 14550; Backpack listens on 14555. Handset drives/arms; PC shows telemetry and FPV. Use the actual Backpack IPv4 in router mode.",
             "telerc_udp": "Join TeleRC-Rover Wi-Fi. ESP32-S3 and LilyGO use UDP 14550.",
-            "lora_usb": "Connect BASE by native USB (115200), select its COM port, then Apply & Connect. Matching compiled-password presets need no LoRa setup. BASE and ROVER must share frequency, password and relay count; supports ArduRover MANUAL or legacy DIRECT.",
+            "lora_usb": "Manual: rover 1 only. Connect the matching BASE by native USB (115200). For rovers 1–20 use Mission. Scalable LoRa uses the saved private network project; no password entry or relay-count edits are needed. Older sets require their matching configuration.",
             "elrs_serial": "Select the TX module USB port, then Apply & Connect. Wait for a rover heartbeat, release pedals, and enable PC Control. ELRS MAVLink mode · 460800 baud · 5 Hz. Pocket handover requires bench verification.",
         }[mode])
 

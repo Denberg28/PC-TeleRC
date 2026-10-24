@@ -13,6 +13,7 @@ import zipfile
 
 from mission_release_support import public_mission_files, validate_frozen_report
 from manual_companion import verify as verify_manual
+from firmware_baseline import obtain, NAME as BASELINE_NAME, SHA256 as BASELINE_SHA256, SOURCE as BASELINE_SOURCE
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +42,11 @@ def stage(commit):
     manual.mkdir(exist_ok=True)
     companion = verify_manual()
     shutil.copyfile(companion, manual / companion.name)
-    shutil.copyfile(ROOT / 'docs/FIRMWARE-COMPATIBILITY-v1.0.1.md', desktop / 'FIRMWARE-COMPATIBILITY.md')
+    baseline = obtain(ROOT / 'firmware-baseline-dist')
+    (desktop / 'Firmware-baseline').mkdir(exist_ok=True)
+    shutil.copyfile(baseline, desktop / 'Firmware-baseline' / BASELINE_NAME)
+    shutil.copyfile(ROOT / 'docs/FIRMWARE-BASELINE.md', desktop / 'FIRMWARE-COMPATIBILITY.md')
+    shutil.copyfile(ROOT / 'docs/FIRMWARE-COMPATIBILITY-v1.0.1.md', desktop / 'FIRMWARE-COMPATIBILITY-v1.0.1.md')
     shutil.copyfile(ROOT / "START-HERE.md", desktop / "START-HERE.md")
     for name in (
         "OFFLINE-MAPS",
@@ -59,7 +64,9 @@ def stage(commit):
             {
                 "version": version,
                 "source_commit": commit,
-                "firmware": "0.2.0rc1",
+                "firmware": "scalable 0.4.0rc1 + PWM converter 1.0.5",
+                "firmware_baseline_commit": BASELINE_SOURCE,
+                "firmware_baseline_sha256": BASELINE_SHA256,
                 "qualification": "Windows frozen UI/media passed; physical hardware pending",
             },
             indent=2,

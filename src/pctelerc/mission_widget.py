@@ -152,6 +152,7 @@ class MissionDialog(QDialog):
         self.refresh_btn.clicked.connect(lambda: refresh_ports(self.port))
         self.rover = QSpinBox()
         self.rover.setRange(1, 20)
+        self.rover.setToolTip("Match the rover sketch ID and FC SYSID_THISMAV; one active rover at a time")
         self.rover.setFixedWidth(70)
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.clicked.connect(self._connect)
@@ -172,6 +173,10 @@ class MissionDialog(QDialog):
         self.status.setWordWrap(True)
         self.telemetry = QLabel("No FC telemetry")
         self.telemetry.setObjectName("Muted")
+        self.firmware_label = QLabel("BASE firmware: not connected")
+        self.firmware_label.setObjectName("Muted")
+        self.firmware_label.setWordWrap(True)
+        root.addWidget(self.firmware_label)
         root.addWidget(self.status)
         root.addWidget(self.telemetry)
         body = QSplitter(Qt.Orientation.Horizontal)
@@ -438,6 +443,8 @@ class MissionDialog(QDialog):
 
     def _ready(self, ready):
         self.connected = ready
+        if not ready:
+            self.firmware_label.setText("BASE firmware: not connected")
         self._controls()
 
     def _verified(self, digest):
@@ -468,7 +475,11 @@ class MissionDialog(QDialog):
 
     def _capabilities(self, values):
         route = "Direct" if not values["relays"] else f"{values['relays']} relay(s)"
-        self.connect_btn.setToolTip(f"Mission {values['firmware']} · {route}")
+        profile = values.get('profile')
+        description = profile.description if profile else f"Mission {values['firmware']} · {route}"
+        self.connect_btn.setToolTip(description)
+        self.port.setToolTip(description + ' · one selected rover per session')
+        self.firmware_label.setText(description)
 
     def _update_telemetry(self):
         s = self._last_snapshot

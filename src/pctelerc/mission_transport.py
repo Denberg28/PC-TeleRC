@@ -5,6 +5,7 @@ import time
 import threading
 from pymavlink.dialects.v20 import common
 from .mission_protocol.usb_gateway import Decoder, encode, split_mav
+from .firmware_profiles import mission_capabilities
 
 
 class MissionUSB:
@@ -19,6 +20,7 @@ class MissionUSB:
         self.status = lambda text: None
         self.decoder = Decoder()
         self.capabilities = None
+        self.profile = None
         self.messages = deque(maxlen=64)
         self.mav = common.MAVLink(self, srcSystem=255, srcComponent=190)
         self.mav.robust_parsing = True
@@ -78,7 +80,7 @@ class MissionUSB:
                 return self.capabilities
             time.sleep(0.005)
         raise RuntimeError(
-            "Mission BASE not confirmed; check COM port, provisioned rover ID and matching 0.2.0 sketches"
+            "Mission BASE not confirmed; check native USB, rover ID and matching scalable 0.4.0 / mission 0.2.0 sketches"
         )
 
     def recv_match(self, blocking=False):
@@ -89,15 +91,12 @@ class MissionUSB:
             if rover != self.rover:
                 continue
             if kind == 3:
-                text = data.decode("ascii", errors="strict")
-                fields = text.split(";")
-                values = dict(field.split("=", 1) for field in fields[1:])
-                if fields[0] != "TM2" or values.get("fw") != "0.2.0":
-                    raise RuntimeError("Incompatible mission BASE firmware")
-                relays, mask = int(values["relays"]), int(values["mask"])
-                if relays not in (0, 1, 2) or not 0 <= mask <= 65535 or mask & 0xF0:
-                    raise RuntimeError("Invalid BASE capabilities")
-                self.capabilities = dict(relays=relays, mask=mask, firmware="0.2.0")
+                capabilities, profile = mission_capabilities(data)
+                if self.capabilities is not None and (
+                    self.capabilities != capabilities or self.profile != profile
+                ):
+                    raise RuntimeError("BASE capabilities changed; reconnect and re-upload the mission")
+                self.capabilities, self.profile = capabilities, profile
             elif kind == 2:
                 self.status(data.decode("ascii", errors="replace")[:100])
             elif kind == 1:

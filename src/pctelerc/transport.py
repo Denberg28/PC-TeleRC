@@ -166,9 +166,12 @@ class VehicleLoRa(VehicleSerial):
     def require_active_base(self, stop_event, timeout=2.0):
         import time
         from .lora import Board
-        self.write(b'TELERC_LORA_GET_V1')
+        retry_at = 0.0
         deadline = time.monotonic() + timeout
         while not stop_event.is_set() and time.monotonic() < deadline:
+            if time.monotonic() >= retry_at:
+                self.write(b'TELERC_LORA_GET_V1')
+                retry_at = time.monotonic() + .5
             board = Board.parse(self.read_packet())
             if board:
                 if board.role != 'BASE':

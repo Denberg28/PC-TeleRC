@@ -91,6 +91,10 @@ def run(report_path):
         checks["mission_plan_codec"] = len(parse_text(mission._text())) == 6
         checks["mission_planning_no_authority"] = (not mission.service.running and
             not mission.start_btn.isEnabled() and not window.mav.snapshot().running)
+        from .firmware_profiles import mission_capabilities
+        caps, profile = mission_capabilities(b"TM2;fw=0.2.0;relays=2;mask=0;unified=0.4.0")
+        mission._capabilities(dict(caps, profile=profile))
+        checks["firmware_baseline_identity"] = "Scalable LoRa 0.4.0" in mission.firmware_label.text() and not mission.start_btn.isEnabled()
         mission.reject(); app.processEvents()
         checks["mission_close_cleans_session"] = window._mission_dialog is None and not mission.timer.isActive()
         fixture = Path(__file__).parent / "assets" / "test-pattern.mp4"

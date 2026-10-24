@@ -31,6 +31,7 @@ class SourcePackageSafetyTests(unittest.TestCase):
         (root / "old.zip").write_bytes(b"legacy output must not enter source")
         (root / "old.apk").write_bytes(b"legacy output must not enter source")
         if PC:
+            shutil.copyfile(SCRIPTS.parent / "pyproject.toml", root / "pyproject.toml")
             import hashlib
             mission = root / "firmware/mission"
             mission.mkdir(parents=True)

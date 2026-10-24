@@ -77,6 +77,7 @@ def test_source_package_rejects_private_fleet_outside_firmware(tmp_path):
     # A generated fleet may accidentally be placed anywhere inside the source tree.
     root = tmp_path / "source"
     root.mkdir()
+    shutil.copyfile("pyproject.toml", root / "pyproject.toml")
     shutil.copytree(
         "scripts", root / "scripts", ignore=shutil.ignore_patterns("__pycache__")
     )
