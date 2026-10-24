@@ -1,3 +1,10 @@
+# PC TeleRC — fleet mission station
+
+Current development build: **1.2.0rc1**, with fleet BASE/ROVER **0.5.0rc1**.
+See [fleet setup and limits](docs/FLEET-STATION.md). The central map replaces the
+FPV cockpit, with separate rover controls and fresh/stale GPS labels.
+Existing releases remain available for rollback.
+
 # PC TeleRC v1.0.1
 
 Windows rover controller with a spacious FPV cockpit, transparent telemetry,

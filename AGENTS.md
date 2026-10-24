@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+24 October 2026: user authorizes a map-only fleet planner, per-rover Connect,
+Arm, Mission start and Disarm, concurrent movement labels, and removal of FPV.
+PC 1.2.0rc1 / isolated firmware/fleet 0.5.0rc1 is a candidate. Explicit normal
+PC arming in stationary HOLD is now authorized through TF3 fleet roles only;
+legacy mission paths remain unable to arm. Never force arm or bypass FC checks.
+Preserve every prior firmware path, existing private network keys and converter.
+Use one shared USB owner, per-ID queues/routes, real PC heartbeats, fair polling,
+measured radio admission and truthful stale GPS. Keep command unknown/no-retry
+semantics, RC takeover and independent cutoff. No physical qualification claim.
+
 24 October 2026: update Windows application for the verified ArduRover baseline
 1.1.0rc1 (scalable LoRa 0.4.0rc1 and PWM converter 1.0.5). Work from the reviewed
 v1.0.1 application lineage; default main retains an older independent firmware

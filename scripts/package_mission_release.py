@@ -29,6 +29,8 @@ EXCLUDE = {
     "incoming",
     "firmware-dist",
     "firmware-baseline-dist",
+    "fleet-dist",
+    "fleet-release",
     "firmware-v1-evidence",
     "pc_telerc.egg-info",
     ".ruff_cache",

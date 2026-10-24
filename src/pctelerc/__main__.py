@@ -6,14 +6,14 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .logging_setup import setup_logging
 from .single_instance import SingleInstanceGuard
-from .ui import MainWindow, STYLE
+from .fleet_window import FleetWindow, STYLE
 
 
 def main() -> int:
     if len(sys.argv) == 3 and sys.argv[1] == "--self-test-ui":
         import os
         os.environ.setdefault("QT_QPA_PLATFORM","offscreen")
-        from .self_test import run
+        from .fleet_self_test import run
         return run(sys.argv[2])
     setup_logging()
     app = QApplication(sys.argv)
@@ -33,7 +33,7 @@ def main() -> int:
 
     app.aboutToQuit.connect(guard.release)
 
-    window = MainWindow()
+    window = FleetWindow()
     window.show()
     return app.exec()
 

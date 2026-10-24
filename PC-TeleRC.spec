@@ -2,18 +2,18 @@
 from PyInstaller.utils.hooks import collect_all
 
 pymav_datas, pymav_bins, pymav_hidden = collect_all('pymavlink')
-pygame_datas, pygame_bins, pygame_hidden = collect_all('pygame')
+pygame_datas, pygame_bins, pygame_hidden = [], [], []
 
 analysis = Analysis(
     ['main.py'],
     pathex=['src'],
     binaries=pymav_bins + pygame_bins,
-    datas=pymav_datas + pygame_datas + [('src/pctelerc/assets', 'pctelerc/assets'), ('tests/fixtures/test-pattern.mp4', 'pctelerc/assets')],
+    datas=pymav_datas + pygame_datas + [('src/pctelerc/assets', 'pctelerc/assets')],
     hiddenimports=pymav_hidden + pygame_hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['pctelerc.camera','pctelerc.ui','pctelerc.self_test','PySide6.QtMultimedia','PySide6.QtMultimediaWidgets','pygame'],
     noarchive=False,
 )
 

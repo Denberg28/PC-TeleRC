@@ -102,8 +102,11 @@ class MissionMap(RoverMap):
 
 
 class MissionDialog(QDialog):
-    def __init__(self, prepare_link, parent=None, service=None, draft_path=None):
+    def __init__(self, prepare_link, parent=None, service=None, draft_path=None, *, embedded=False, rover_id=1):
         super().__init__(parent)
+        self.embedded = embedded
+        if embedded:
+            self.setWindowFlags(Qt.WindowType.Widget)
         self.prepare_link = prepare_link
         self.service = service or MissionService()
         self.plan = Plan()
@@ -152,6 +155,7 @@ class MissionDialog(QDialog):
         self.refresh_btn.clicked.connect(lambda: refresh_ports(self.port))
         self.rover = QSpinBox()
         self.rover.setRange(1, 20)
+        self.rover.setValue(rover_id)
         self.rover.setToolTip("Match the rover sketch ID and FC SYSID_THISMAV; one active rover at a time")
         self.rover.setFixedWidth(70)
         self.connect_btn = QPushButton("Connect")
@@ -168,7 +172,10 @@ class MissionDialog(QDialog):
             self.close_btn,
         ):
             link.addWidget(w)
-        root.addLayout(link)
+        self.link_controls = QWidget()
+        self.link_controls.setLayout(link)
+        root.addWidget(self.link_controls)
+        self.link_controls.setVisible(not embedded)
         self.status = QLabel("Planning · offline")
         self.status.setWordWrap(True)
         self.telemetry = QLabel("No FC telemetry")
@@ -204,6 +211,12 @@ class MissionDialog(QDialog):
         self.editor = editor
         self.editor.setMinimumWidth(330)
         body.setSizes([700, 360])
+        if embedded:
+            self.setMinimumSize(330,0)
+            self.map.hide()
+            self.map.set_online(False)
+            self.map._timer.stop()
+            self.plan_toggle.hide()
         self._editing_controls = []
         self.mode = QComboBox()
         self.mode.addItem("Waypoint", None)
@@ -305,7 +318,7 @@ class MissionDialog(QDialog):
             *[w for row in self.functions for w in row],
         ]:
             widget.setMinimumHeight(28)
-        policy = QHBoxLayout()
+        policy = QVBoxLayout() if embedded else QHBoxLayout()
         self.continue_loss = QCheckBox("Continue AUTO on link loss")
         self.continue_loss.setToolTip(
             "Requires the FC continuation profile. Default is HOLD on GCS loss."
@@ -324,6 +337,8 @@ class MissionDialog(QDialog):
         )
         warning.setWordWrap(True)
         warning.setObjectName("Warn")
+        if embedded:
+            warning.setText('HOLD leaves accessory state unconfirmed.')
         root.addWidget(warning)
         row = QHBoxLayout()
         self.upload_btn = QPushButton("Upload & verify")
@@ -357,6 +372,13 @@ class MissionDialog(QDialog):
         root.addWidget(self.help_panel)
         self.help_panel.setMaximumHeight(190)
         self.help_panel.hide()
+        if embedded:
+            self.start_btn.hide()
+            help_text.setText('Upload disarmed and verify the exact route. Use this rover’s Arm and Mission start buttons. '
+                'Disarm requests HOLD, confirms stationary telemetry, then sends normal disarm. '
+                'The BASE polls connected rovers fairly within a measured airtime budget. '
+                'Stale labels are last-known positions. No automatic arm, start, reconnect or replay. '
+                'FPV is provided by external monitors. HOLD does not confirm accessory OFF.')
         self.help_toggle.toggled.connect(self.help_panel.setVisible)
         self.map.location.connect(self._add)
         e = self.service.events
@@ -597,6 +619,7 @@ class MissionDialog(QDialog):
         editable_fc = fresh and not s.armed and s.mode in ("MANUAL", "HOLD")
         self.upload_btn.setEnabled(
             self.connected and running and not self.busy and allowed and editable_fc
+            and (getattr(self.service,'operation_gate',None) is None or not self.service.operation_gate.locked())
         )
         self.upload_btn.setToolTip(
             getattr(self, "_plan_error", "")
@@ -626,6 +649,11 @@ class MissionDialog(QDialog):
         self.map._center = (self.lat.value(), self.lon.value())
         self.map._follow = False
         self.map.update()
+
+        if self.embedded and hasattr(self,'external_map'):
+            self.external_map._center=self.map._center
+            self.external_map.follow_rover=None
+            self.external_map.update()
 
     def _add(self, lat, lon):
         if self.service.running:
@@ -873,6 +901,12 @@ class MissionDialog(QDialog):
     def done(self, result):
         if self._shutdown():
             super().done(result)
+
+    def keyPressEvent(self,event):
+        if self.embedded and event.key()==Qt.Key.Key_Escape:
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def closeEvent(self, event):
         if not self._shutdown():

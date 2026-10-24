@@ -4,30 +4,27 @@
   "release_channel": "candidate",
   "product": "PC-TeleRC",
   "tier": "industrial",
-  "application_version": "1.1.0rc1",
+  "application_version": "1.2.0rc1",
   "android_version_code": null,
   "protocol_profiles": [
-    "scalable-lora-tu2",
-    "unified-lora-tu1",
-    "lora-mission-tm2",
-    "legacy-lora-manual",
-    "wifi-mavlink-v1"
+    "fleet-tf3-tu2"
   ],
   "managed_vehicle_target": 20,
   "validated_simultaneous_radio_vehicle_count": null,
-  "active_mission_sessions": 1,
+  "active_mission_sessions": "radio-admitted subset of IDs 1..20",
   "stable_qualified": false,
   "hardware_validation": "NOT_TESTED",
   "wifi_command_authentication": "UNIMPLEMENTED",
   "failsafe_owner": "ArduRover for autopilot profiles; local controller for direct-drive profiles",
-  "release_tag": "v1.1.0rc1",
-  "stable_scope": "previous stable v1.0.1 preserved",
+  "release_tag": "v1.2.0rc1",
+  "stable_scope": "candidate; older stable and 1.1.0rc1 preserved",
   "manual_firmware": "1.0.1",
-  "mission_firmware": "scalable 0.4.0rc1; legacy TM2 0.2.0rc1 retained",
-  "firmware_baseline": "1.1.0rc1",
-  "manual_rover_ids": [
-    1
-  ],
+  "mission_firmware": "0.5.0rc1",
+  "firmware_baseline": "fleet 0.5.0rc1",
+  "manual_rover_ids": [],
   "mission_rover_ids": "1..20",
-  "pwm_converter": "1.0.5"
+  "pwm_converter": "1.0.5",
+  "primary_view": "fleet map",
+  "integrated_fpv": false,
+  "pc_arming": "explicit normal FC arming in stationary HOLD; no force"
 }

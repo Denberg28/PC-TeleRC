@@ -13,6 +13,9 @@ from .mission_transport import MissionUSB
 from .firmware_profiles import route_interrupted
 
 
+ARM_ACK_TIMEOUT = 12
+
+
 class Cancelled(RuntimeError):
     pass
 
@@ -30,13 +33,14 @@ class Events(QObject):
 class MissionService:
     """The UI owns a 2-second lease; a stalled/closed UI cannot sustain a mission link."""
 
-    def __init__(self, transport_factory=MissionUSB):
+    def __init__(self, transport_factory=MissionUSB, *, fleet_actions=False, operation_gate=None):
         self.events = Events()
         self.transport_factory = transport_factory
         self.thread = None
         self.jobs = queue.Queue(maxsize=1)
         self.stop_event = threading.Event()
         self.hold_event = threading.Event()
+        self.disarm_event = threading.Event()
         self.ui_at = time.monotonic()
         self.quiet_until = 0.0
         self.verified_digest = ""
@@ -49,6 +53,9 @@ class MissionService:
         self.gps_boot = None
         self.phase = "Offline"
         self._confirmed = False
+        self.fleet_actions = fleet_actions
+        self.operation_gate = operation_gate
+        self._owns_operation = False
 
     def _phase(self, value):
         self.phase = value
@@ -70,6 +77,7 @@ class MissionService:
             raise ValueError("Select the BASE COM port and rover ID 1–20")
         self.stop_event.clear()
         self.hold_event.clear()
+        self.disarm_event.clear()
         self._confirmed = False
         self.capabilities = dict(relays=0, mask=0, firmware="")
         self.pulse()
@@ -91,7 +99,7 @@ class MissionService:
     def submit(self, action, items, continue_on_loss=False, auxiliary=False):
         if not self.running or self.stop_event.is_set():
             raise RuntimeError("Connect the addressed mission BASE first")
-        if action not in ("upload", "start"):
+        if action not in (("upload", "start", "arm", "disarm") if self.fleet_actions else ("upload", "start")):
             raise ValueError("Unknown mission action")
         # Deep immutable job snapshot independent of subsequent GUI edits.
         import copy
@@ -100,16 +108,42 @@ class MissionService:
             self._check()
             if not self._confirmed:
                 raise RuntimeError("Wait for a fresh addressed rover heartbeat before mission actions")
-            self.jobs.put_nowait(
-                (action, copy.deepcopy(items), bool(continue_on_loss), bool(auxiliary))
-            )
+            if self.operation_gate is not None:
+                if not self.operation_gate.acquire(blocking=False):
+                    raise RuntimeError("Another rover operation is in progress; fleet monitoring continues")
+                self._owns_operation = True
+            try:
+                self.jobs.put_nowait(
+                    (action, copy.deepcopy(items), bool(continue_on_loss), bool(auxiliary))
+                )
+            except Exception:
+                self._release_operation()
+                raise
+
+    def _release_operation(self):
+        with self._gate:
+            if self._owns_operation:
+                self._owns_operation = False
+                self.operation_gate.release()
 
     def hold(self):
         with self._gate:
             self.hold_event.set()
 
+    def request_disarm(self):
+        with self._gate:
+            self._check(allow_hold=True)
+            if not self.fleet_actions or not self._confirmed:
+                raise RuntimeError('Connect a fleet-capable rover before DISARM')
+            self.disarm_event.set()
+            self.hold_event.set()
+
     def _base_status(self, text):
         self.events.message.emit("BASE: " + text)
+        if self.fleet_actions and text.startswith(('Fleet capacity;', 'Incompatible rover;', 'Host lease expired;', 'BUSY;', 'Command queue full', 'RF fault;', 'RF OFF;')):
+            self.verified_digest = ""
+            self.events.verified.emit("")
+            raise RuntimeError(text)
         if route_interrupted(text):
             self.verified_digest = ""
             self.events.verified.emit("")
@@ -163,6 +197,8 @@ class MissionService:
                     else "Disarmed · monitor only"
                 )
         elif kind == "GPS_RAW_INT":
+            if self.fleet_actions and (not m.time_usec or (self.gps_boot is not None and m.time_usec<=self.gps_boot)):
+                return
             if m.time_usec and self.gps_boot == m.time_usec:
                 return
             self.gps_boot = m.time_usec
@@ -269,6 +305,51 @@ class MissionService:
             "START blocked: need fresh 3D GPS and two stationary position reports"
         )
 
+    def _arm_action(self, c, arm, digest, policy, *, held=False):
+        """Explicit fleet-only normal arming, no force value and no retries."""
+        if arm:
+            if self.verified_digest != digest or c.start_attempted:
+                raise RuntimeError("Upload and verify this rover's exact mission before ARM")
+            c.hold()
+            c.heartbeat(disarmed=True)
+            if c.parameter('ARMING_CHECK') != 1 or c.parameter('ARMING_REQUIRE') <= 0:
+                raise RuntimeError("ARM blocked: enable FC arming requirements and full pre-arm checks deliberately")
+            c.loss_policy(policy, min_timeout=3+2*self.capabilities['relays'])
+        else:
+            self.verified_digest = ""
+            self.events.verified.emit("")
+            if not held:
+                c.hold()
+        self._navigation_ready(c)
+        m = c.heartbeat()
+        if m.custom_mode not in (0,4) or (arm and m.custom_mode!=4):
+            raise RuntimeError("ARM requires confirmed stationary HOLD; FC mode changed")
+        if bool(m.base_mode & 128) == arm:
+            if arm:
+                raise RuntimeError("Rover already armed elsewhere; ARM is not repeated")
+            self._phase('Disarmed · HOLD' if m.custom_mode==4 else 'Disarmed · monitor only')
+            return
+        c.check()
+        c.link.mav.command_long_send(c.rover,1,400,0,1 if arm else 0,0,0,0,0,0,0)
+        accepted = False
+        end = time.monotonic()+ARM_ACK_TIMEOUT
+        while time.monotonic() < end:
+            m = c.recv(['COMMAND_ACK','HEARTBEAT'],.3)
+            if m is None:
+                continue
+            if m.get_type() == 'COMMAND_ACK' and m.command == 400:
+                if getattr(m,'target_system',255) not in (0,255) or getattr(m,'target_component',190) not in (0,190):
+                    continue
+                if m.result not in (0,5):
+                    raise RuntimeError(f"FC refused {'ARM' if arm else 'DISARM'} ({m.result}); no retry")
+                accepted |= m.result == 0
+            if accepted and m.get_type() == 'HEARTBEAT' and bool(m.base_mode & 128) == arm:
+                if arm and m.custom_mode not in (0,4):
+                    raise RuntimeError('FC mode changed during ARM; inspect live state; no START is queued')
+                self._phase('Armed · not started' if arm else 'Disarmed · HOLD' if m.custom_mode==4 else 'Disarmed · monitor only')
+                return
+        raise RuntimeError('ARM/DISARM state UNKNOWN; inspect live FC state; command is not retried')
+
     def _run(self, port, rover):
         link = None
         failure = None
@@ -292,6 +373,8 @@ class MissionService:
             if hasattr(link, "handshake"):
                 self.capabilities = link.handshake()
                 self.events.capabilities.emit(dict(self.capabilities, profile=getattr(link, 'profile', None)))
+            if self.fleet_actions and not getattr(link, 'fleet_authority', False):
+                raise RuntimeError('Fleet-capable BASE/ROVER firmware is required for addressed ARM/DISARM')
             original_recv = link.recv_match
 
             def receive(*args, **kwargs):
@@ -325,6 +408,9 @@ class MissionService:
                     try:
                         c.hold()
                         self._phase("HOLD confirmed")
+                        if self.disarm_event.is_set():
+                            self._phase('HOLD confirmed · checking disarm')
+                            self._arm_action(c,False,'',False,held=True)
                     except Exception as exc:
                         self._phase("HOLD unconfirmed")
                         self.events.message.emit(
@@ -333,6 +419,7 @@ class MissionService:
                         raise
                     finally:
                         self.hold_event.clear()
+                        self.disarm_event.clear()
                         c.check = self._check
                         link.check = self._check
                         self.events.busy.emit(False)
@@ -355,8 +442,12 @@ class MissionService:
                     continue
                 self.events.busy.emit(True)
                 digest = fingerprint(items, rover)
+                fatal = False
                 try:
-                    if action == "upload":
+                    if action in ('arm','disarm'):
+                        self._phase('Checking ARM' if action == 'arm' else 'HOLD → checking disarm')
+                        self._arm_action(c,action == 'arm',digest,policy)
+                    elif action == "upload":
                         self.verified_digest = ""
                         self.events.verified.emit("")
                         self._phase("Uploading")
@@ -397,6 +488,7 @@ class MissionService:
                     self.events.verified.emit("")
                     self.events.message.emit(str(exc))
                 except Exception as exc:
+                    fatal = True
                     self.verified_digest = ""
                     self.events.verified.emit("")
                     self.events.message.emit(f"ABORT / UNKNOWN: {exc}")
@@ -405,6 +497,8 @@ class MissionService:
                     raise
                 finally:
                     self.events.busy.emit(False)
+                    if not fatal:
+                        self._release_operation()
         except Exception as exc:
             failure = str(exc)
             self.events.message.emit(failure)
@@ -416,6 +510,7 @@ class MissionService:
                     link.close()
                 except Exception:
                     pass
+            self._release_operation()
             self.quiet_until = time.monotonic() + 5
             self.verified_digest = ""
             self.events.verified.emit("")
