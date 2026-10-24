@@ -1,0 +1,59 @@
+name: Scalable LoRa incremental nodes candidate
+on:
+  push:
+    branches: [dev/scalable-lora-v0.4.0]
+permissions:
+  contents: read
+concurrency:
+  group: scalable-lora-v0.4.0
+  cancel-in-progress: true
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: arduino/setup-arduino-cli@v2
+        with: {version: '1.3.1'}
+      - name: Test incremental enrollment, actual routing, graph recovery and current PC interfaces
+        run: |
+          python -m pip install -r firmware/scalable/requirements.txt pytest==9.1.1
+          python -m compileall -q firmware/scalable/tools firmware/scalable/tests
+          python firmware/scalable/tools/assemble_examples.py
+          git diff --exit-code -- firmware/scalable/sketches
+          python -m unittest discover -s scripts -p test_release_safety.py -v
+          python -m pytest --noconftest firmware/scalable/tests -q
+          python firmware/scalable/tests/run_native.py --sanitize
+      - name: Install pinned ESP32 and radio dependencies
+        run: |
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.2 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install RadioLib@7.2.1
+      - name: Compile ten actual-board profiles; package public RF-OFF images only
+        run: python firmware/scalable/tools/build_candidate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TeleRC-Scalable-LoRa-0.4.0rc1
+          path: |
+            scalable-dist/*.zip
+            scalable-dist/*.json
+            scalable-dist/*.md
+            scalable-dist/*.txt
+  publish:
+    needs: qualify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: TeleRC-Scalable-LoRa-0.4.0rc1
+          path: scalable-dist
+      - name: Verify downloaded assets and publish development candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python firmware/scalable/tools/publish.py

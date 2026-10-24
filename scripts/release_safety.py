@@ -5,6 +5,7 @@ This is a packaging boundary, not a general secret detector or vehicle safety te
 
 import argparse
 import io
+import json
 from pathlib import Path, PurePosixPath
 import re
 import stat
@@ -30,11 +31,19 @@ def check_name(name):
     for part in relative.parts:
         lower = part.lower()
         if (lower in PRIVATE_NAMES or PurePosixPath(lower).suffix in PRIVATE_SUFFIXES
+                or lower.endswith(".private.json")
                 or (lower.startswith(".env") and lower != ".env.example")):
             raise ValueError("Private configuration/signing file in release: " + name)
 
 
 def check_content(name, data):
+    if PurePosixPath(name).suffix.lower() == ".json":
+        try:
+            project = json.loads(data)
+        except (ValueError, UnicodeError):
+            project = None
+        if isinstance(project, dict) and project.get("protocol") == "TU2" and "master" in project:
+            raise ValueError("Private network project in release: " + name)
     if PRIVATE_KEY.search(data):
         raise ValueError("Private key material in release: " + name)
     if PurePosixPath(name).suffix.lower() == ".h":

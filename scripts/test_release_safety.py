@@ -30,6 +30,12 @@ class ReleaseSafetyTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 check_name(name)
 
+    def test_private_network_projects_are_rejected(self):
+        with self.assertRaises(ValueError):
+            check_name("NETWORK.private.json")
+        with self.assertRaises(ValueError):
+            check_content("renamed.json", b'{"protocol":"TU2","master":"test-only"}')
+
     def test_unsafe_paths_are_rejected(self):
         for name in ["../secret", "/absolute", "C:/secret", "a\\b", "a/./b", "a//b"]:
             with self.subTest(name=name), self.assertRaises(ValueError):
