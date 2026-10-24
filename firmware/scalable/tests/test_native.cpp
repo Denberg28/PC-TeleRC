@@ -198,7 +198,10 @@ void test_routing(){
  mesh::Link link;assert(link.observe(r,100,60));assert(!link.qualified(100));link.observe(r,101,60);link.observe(r,102,60);
  assert(link.qualified(103)&&link.manual(103,50));assert(!link.manual(103,100));assert(!link.fresh(30102));
  mesh::Route changed;changed.append(9);assert(link.observe(changed,104,10)&&!link.qualified(104));
- puts("PASS bounded route shape, loop/duplicate-ID rejection, qualification reset, expiry and manual airtime admission");
+ unsigned collisions=0;uint8_t nonce[12]={};
+ for(unsigned i=0;i<64;++i){nonce[0]=i;auto a=mesh::contention(nonce,1),b=mesh::contention(nonce,17);assert(a>=8&&a<=188&&b>=8&&b<=188);collisions+=a==b;}
+ assert(collisions<32); // IDs with equal low four bits must not collide persistently.
+ puts("PASS bounded route shape, no persistent contention groups, qualification reset, expiry and manual airtime admission");
 }
 
 int main(){setup();assert(running&&bootId);test_gate();test_routing();if(ROLE!=3){test_crypto();test_manual_gate();}

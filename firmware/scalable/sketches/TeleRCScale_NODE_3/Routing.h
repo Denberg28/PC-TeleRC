@@ -28,6 +28,10 @@ struct Link {
 };
 inline uint32_t contention(const uint8_t*nonce,uint8_t node){
  uint32_t hash=2166136261u;for(unsigned i=0;i<12;++i)hash=(hash^nonce[i])*16777619u;
- hash=(hash^node)*16777619u;return 8+(hash%16)*12;
+ hash=(hash^node)*16777619u;
+ // Avalanche the high bits before choosing a slot: FNV's low four bits alone
+ // would make IDs differing by 16 collide on every retry, regardless of nonce.
+ hash^=hash>>16;hash*=0x7feb352du;hash^=hash>>15;hash*=0x846ca68bu;hash^=hash>>16;
+ return 8+(hash%16)*12;
 }
 }
