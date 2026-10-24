@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "baseline": "PC TeleRC mission planning base build",
+  "designation_date": "2026-10-24",
+  "application_version": "1.2.0rc1",
+  "channel": "candidate",
+  "release_tag": "v1.2.0rc1",
+  "release_url": "https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc1",
+  "application_source_commit": "9f113241a7bad88f89b9da96e448489e85cda3d7",
+  "source_branch": "baseline/mission-planning-v1.2.0rc1",
+  "firmware": {
+    "fleet_version": "0.5.0rc1",
+    "source_commit": "6ba272867165eee31e21792ea259fce7225579f7",
+    "archive": "TeleRC-Fleet-LoRa-v0.5.0rc1.zip",
+    "sha256": "2c674f7278220a12287550532fa5a8b274455fc227c93e7042d9a42ed64a4751",
+    "pwm_converter_version": "1.0.5",
+    "existing_tu2_nodes_compatible": true,
+    "public_radio_images": "RF OFF; private provisioning required"
+  },
+  "dependencies": {
+    "python": "3.12",
+    "PySide6": "6.11.2",
+    "pymavlink": "2.4.50",
+    "pygame-ce": "2.5.8",
+    "pyserial": "3.5",
+    "PyInstaller": "6.22.3",
+    "pytest": "9.1.1",
+    "arduino_cli": "1.3.1",
+    "esp32_core": "3.3.2",
+    "RadioLib": "7.2.1"
+  },
+  "qualification": {
+    "windows_tests_passed": 355,
+    "frozen_checks_passed": 18,
+    "actual_board_profiles_passed": 11,
+    "hardware_validation": "NOT_TESTED",
+    "workflow_url": "https://github.com/Denberg28/PC-TeleRC/actions/runs/40101022159"
+  },
+  "assets": [
+    {
+      "name": "FIRMWARE-COMPATIBILITY.md",
+      "size_bytes": 5070,
+      "sha256": "8afaa0584a3e2688f35c6f8526c72b75365ce43463f604e7bec142853e8a1116"
+    },
+    {
+      "name": "PC-TeleRC-Mission-v1.2.0rc1-source.zip",
+      "size_bytes": 2808969,
+      "sha256": "08acd8a6b7ab87af937d76fdc8dcd4053d835f7e1bac1256e4bb0564be4e60a5"
+    },
+    {
+      "name": "PC-TeleRC-portable-v1.2.0rc1.zip",
+      "size_bytes": 81055949,
+      "sha256": "9f279d3f53a8dbc612393f425f8bf34b5c273941da71b7dff4a4b1a7a206c2e4"
+    },
+    {
+      "name": "PC-TeleRC-Setup-v1.2.0rc1.exe",
+      "size_bytes": 55463013,
+      "sha256": "5c4584fa1060abb9e076eb7451b19b2d5eb61eac9ebe909fdcbf3fdebc772422"
+    },
+    {
+      "name": "README.md",
+      "size_bytes": 1166,
+      "sha256": "5e085ae8115992f023395da0ab940f8ae130ebfbb804633fd97fa91b149ef316"
+    },
+    {
+      "name": "RELEASE_STATUS.json",
+      "size_bytes": 535,
+      "sha256": "01121afb747514e53378bb880f4096a40070f10969d6c42dbe7fab46bca50353"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size_bytes": 736,
+      "sha256": "cd4234f8292f5d585292e5edaa269af39899dc5790823d642bed5f6e5feb09a8"
+    },
+    {
+      "name": "TeleRC-Fleet-LoRa-v0.5.0rc1.zip",
+      "size_bytes": 1453400,
+      "sha256": "2c674f7278220a12287550532fa5a8b274455fc227c93e7042d9a42ed64a4751"
+    },
+    {
+      "name": "test-evidence.zip",
+      "size_bytes": 9136,
+      "sha256": "29ff98241c5d486f804e40b004ff76edec61f881e2bbd7935a2a92ff5475944f"
+    }
+  ]
+}

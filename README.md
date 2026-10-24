@@ -1,5 +1,9 @@
 # PC TeleRC — fleet mission station
 
+Mission-planning base build: **v1.2.0rc1**, designated 24 October 2026.
+Start future mission work from `baseline/mission-planning-v1.2.0rc1`.
+See the [baseline setup and version lock](docs/MISSION-PLANNING-BASELINE.md).
+
 Current development build: **1.2.0rc1**, with fleet BASE/ROVER **0.5.0rc1**.
 See [fleet setup and limits](docs/FLEET-STATION.md). The central map replaces the
 FPV cockpit, with separate rover controls and fresh/stale GPS labels.

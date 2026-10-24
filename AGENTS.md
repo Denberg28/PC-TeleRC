@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+24 October 2026: user designates PC TeleRC v1.2.0rc1 as the mission-planning
+base build. Start future mission-planning branches from
+baseline/mission-planning-v1.2.0rc1. The exact tested app source is
+9f113241a7bad88f89b9da96e448489e85cda3d7, with fleet firmware 0.5.0rc1 and
+PWM converter 1.0.5. See docs/MISSION-PLANNING-BASELINE.md and the root
+mission-planning-baseline.json for the asset lock. Preserve the published
+baseline and private pairing configuration; version subsequent behavior changes
+separately. Baseline designation retains candidate status and adds no physical
+qualification. This designation changes documentation and packaging only.
+
 24 October 2026: user authorizes a map-only fleet planner, per-rover Connect,
 Arm, Mission start and Disarm, concurrent movement labels, and removal of FPV.
 PC 1.2.0rc1 / isolated firmware/fleet 0.5.0rc1 is a candidate. Explicit normal
