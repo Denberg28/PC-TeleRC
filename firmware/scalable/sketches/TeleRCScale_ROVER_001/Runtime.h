@@ -310,15 +310,18 @@ void poll(){
  uint32_t now=millis();if(transmitting||pending.n)return;
  const uint32_t timeout=discovering?mission::TOKEN_MS:(queryProfile==unified::MISSION?mission::TOKEN_MS:700);
  if(waiting){if(uint32_t(now-baseQuery.at)<=timeout)return;waiting=false;baseQuery.active=false;++dropCount;
-  linkState.resetSamples();
+  if(!linkState.qualified(now))linkState.resetSamples();
   if(++misses>=3||discovering){misses=0;linkState.clear();clearCommands();status("Route lost; commands discarded; rediscovering");}
  }
  if(!session.fresh(now))clearCommands();
  if(int32_t(now-nextPoll)<0)return;
  if(!selected)selected=1;if(!roverKey(selected))return;
+ const uint32_t maxDataAir=(radio.getTimeOnAir(18+telerc::RADIO_MAX+secure::HEAD+secure::NONCE+secure::TAG+secure::MAC)+999)/1000;
+ if(session.fresh(now)&&session.profile==unified::MANUAL&&linkState.qualified(now)&&!linkState.manual(now,maxDataAir)){
+  clearCommands();linkState.clear();status("Route too slow for manual; searching; no control commands");
+ }
  if(!linkState.fresh(now)){linkState.clear();if(haveDiscovery&&uint32_t(now-discoveryAt)<mesh::DISCOVERY_MS)return;}
  discovering=!linkState.known;queryRoute=discovering?mesh::Route{}:linkState.path;
- const uint32_t maxDataAir=(radio.getTimeOnAir(18+telerc::RADIO_MAX+secure::HEAD+secure::NONCE+secure::TAG+secure::MAC)+999)/1000;
  queryProfile=(!discovering&&linkState.qualified(now)&&session.fresh(now)&&
   (session.profile!=unified::MANUAL||linkState.manual(now,maxDataAir)))?session.profile:unified::HEALTH;
  uint8_t query[17];esp_fill_random(query,16);query[16]=queryProfile;esp_fill_random(&transaction,sizeof(transaction));baseQuery.issue(query,now);

@@ -73,7 +73,8 @@ link recovery or closing the PC session does not guarantee it stopped.
 Manual admission additionally requires a rolling measured query/reply time plus
 worst-case command airtime and guard to fit a 350 ms budget. The rover 500 ms
 per-axis stop/release watchdog and PC 500 ms remote-status check remain unchanged.
-A slow route blocks manual commands; connection alone is not driving permission.
+A slow route blocks manual commands and triggers bounded rediscovery; connection
+alone is not driving permission.
 This estimate is conservative software admission, not a physical stopping guarantee.
 
 ## Compatibility, installation and workflow

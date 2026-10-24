@@ -167,6 +167,13 @@ void test_base_radio(){
  assert(!linkState.qualified(clockMs));
  for(int i=0;i<3;++i){clockMs+=30;poll();assert(pending.n&&queryProfile==unified::HEALTH);pending.n=0;waiting=true;memcpy(body,baseQuery.token,16);deliver(encrypted(RESPONSE,body,50,queryRoute));}
  assert(linkState.qualified(clockMs)&&fc.tx.empty());
+ // A single lost transaction does not destroy an already qualified mission
+ // route; protocol retries remain possible. Repeated loss still clears it.
+ session.claim(unified::MISSION,1,clockMs+1600);clockMs+=1600;queryProfile=unified::MISSION;discovering=false;waiting=true;
+ baseQuery.at=clockMs;clockMs+=TOKEN_MS+1;nextPoll=0;poll();assert(linkState.known&&linkState.successes==3&&misses==1);
+ pending.n=0;waiting=false;session.profile=unified::MANUAL;session.at=clockMs;
+ linkState.worstRtt=1000;nextPoll=0;poll();assert(!linkState.known&&!mailbox.rcN); // Slow routes trigger bounded rediscovery, never a weaker watchdog.
+
  puts("PASS read-only discovery, route qualification and old-command discard");
 }
 void test_node(){
