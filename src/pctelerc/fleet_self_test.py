@@ -51,7 +51,9 @@ def run(report_path):
    window.add_location(13.6,123.2);window.select_rover(2);window.add_location(13.7,123.3)
    checks['isolated_plans']=window.panels[1].plan.points[0].latitude==13.6 and window.panels[2].plan.points[0].latitude==13.7
    checks['map_edit_offline']=not any(p.service.running for p in window.panels.values())
-   now=time.monotonic()
+   # Some Windows clocks coalesce consecutive reads. Give the next simulated
+   # GPS sample a distinct source time without weakening duplicate rejection.
+   now=time.monotonic()-.1
    for rover in (1,2,3):
     s=MavlinkSnapshot(running=True,state=LinkState.CONNECTED,vehicle_system=rover,vehicle_component=1,
      gps_fix=3,latitude=13.6+rover*.001,longitude=123.2,last_heartbeat=now,position_timestamp=now)
