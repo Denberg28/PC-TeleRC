@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import zipfile
 import xml.etree.ElementTree as ET
-from fleet_release_support import FW_NAME as NAME, verify_firmware, verify_report, VERSION
+from fleet_release_support import FW_NAME as NAME, verify_firmware, verify_report, VERSION, FIRMWARE_COMMIT
 from mission_release_support import REQUIRED_CHECKS
 from release_safety import check_directory
 
@@ -35,7 +35,7 @@ def validate(folder, commit):
     actual = {p.name:sha(p) for p in folder.iterdir() if p.name != 'SHA256SUMS.txt'}
     if listed != actual:
         raise ValueError('Release checksum mismatch')
-    firmware_sha = verify_firmware(folder/NAME, commit)
+    firmware_sha = verify_firmware(folder/NAME, FIRMWARE_COMMIT)
     status = json.loads((folder/'RELEASE_STATUS.json').read_text())
     if status['source_commit'] != commit or status['version'] != VERSION or status['firmware_sha256'] != firmware_sha:
         raise ValueError('Release source/version mismatch')
@@ -66,7 +66,7 @@ def main():
     for name in (f'PC-TeleRC-portable-v{VERSION}.zip',f'PC-TeleRC-Setup-v{VERSION}.exe',f'PC-TeleRC-Mission-v{VERSION}-source.zip'):
         shutil.copyfile(ROOT/'incoming'/name, OUT/name)
     shutil.copyfile(ROOT/'incoming'/NAME, OUT/NAME)
-    firmware_sha = verify_firmware(OUT/NAME, commit)
+    firmware_sha = verify_firmware(OUT/NAME, FIRMWARE_COMMIT)
     shutil.copyfile(ROOT/f'docs/releases/v{VERSION}.md', OUT/'README.md')
     shutil.copyfile(ROOT/'docs/FLEET-STATION.md', OUT/'FIRMWARE-COMPATIBILITY.md')
     with zipfile.ZipFile(OUT/'test-evidence.zip','w',zipfile.ZIP_DEFLATED) as z:
@@ -74,7 +74,7 @@ def main():
             z.write(ROOT/'incoming'/name, name)
     (OUT/'RELEASE_STATUS.json').write_text(json.dumps(dict(version=VERSION,source_commit=commit,
         channel='candidate',hardware_validation='NOT_TESTED',windows_build_gates='PASS',
-        firmware_source_commit=commit,firmware_sha256=firmware_sha,
+        firmware_source_commit=FIRMWARE_COMMIT,firmware_sha256=firmware_sha,
         firmware_target_builds=11,private_keys_included=False,integrated_fpv=False,
         mission_rover_ids='1..20; measured radio capacity admission',normal_pc_arm=True),indent=2)+'\n')
     (OUT/'SHA256SUMS.txt').write_text(''.join(sha(p)+'  '+p.name+'\n' for p in sorted(OUT.iterdir())))

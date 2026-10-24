@@ -18,6 +18,7 @@ class FleetMap(MissionMap):
         self.trails = {}
         self.selected_rover = 1
         self.follow_rover = None
+        self.auto_fit = True
 
     def observe(self,rover,snapshot):
         if snapshot.vehicle_system != rover or not 1 <= rover <= 20:
@@ -38,6 +39,10 @@ class FleetMap(MissionMap):
             self.positions[rover] = (*point,snapshot.position_timestamp)
             if self.follow_rover == rover:
                 self._center = point
+            elif self.auto_fit:
+                shown=self.project(point)
+                if old is None or not self.rect().adjusted(40,40,-100,-40).contains(shown.toPoint()):
+                    self.fit_fleet()
         self.update()
 
     def fresh(self,rover,now=None):
@@ -60,9 +65,11 @@ class FleetMap(MissionMap):
     def mouseMoveEvent(self,event):
         if self._drag is not None:
             self.follow_rover=None
+            self.auto_fit=False
         super().mouseMoveEvent(event)
 
     def fit_fleet(self):
+        self.auto_fit=True
         points = [p[:2] for p in self.positions.values()]
         if not points:
             return

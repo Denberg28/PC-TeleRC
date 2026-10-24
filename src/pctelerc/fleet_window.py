@@ -146,6 +146,7 @@ class FleetWindow(QMainWindow):
         self.map.points=list(self.panels[rover].map.points);self.map.update()
         if self.map.points and rover not in self.map.positions:
             self.map._center=self.map.points[0]
+            self.map.auto_fit=False
 
     def toggle_base(self):
         if self.hub is not None:
@@ -200,6 +201,7 @@ class FleetWindow(QMainWindow):
 
     def follow_selected(self):
         self.map.follow_rover=self.selected
+        self.map.auto_fit=False
         if self.selected in self.map.positions:self.map._center=self.map.positions[self.selected][:2]
         self.map.update()
 

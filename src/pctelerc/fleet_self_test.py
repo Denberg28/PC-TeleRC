@@ -1,7 +1,8 @@
 """Frozen map-only fleet verification; no USB, controller or radio is opened."""
 from dataclasses import replace
+from contextlib import closing
 from pathlib import Path
-import json,sqlite3,tempfile,time,math
+import json,sqlite3,tempfile,time,math,os
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QBuffer,QIODevice
 from PySide6.QtGui import QImage
@@ -23,6 +24,8 @@ def run(report_path):
  checks={}
  with tempfile.TemporaryDirectory() as folder:
   folder=Path(folder)
+  old_data=os.environ.get('LOCALAPPDATA')
+  os.environ['LOCALAPPDATA']=str(folder/'operator-data')
   def forbidden(_):raise RuntimeError('Self-test must never acquire USB')
   window=ui.FleetWindow(hub_factory=forbidden,draft_root=folder/'plans')
   try:
@@ -36,7 +39,7 @@ def run(report_path):
    image=QImage(256,256,QImage.Format.Format_RGB32);image.fill(0xff2468ac)
    buf=QBuffer();buf.open(QIODevice.OpenModeFlag.WriteOnly);image.save(buf,'PNG')
    path=folder/'map.mbtiles'
-   with sqlite3.connect(path) as db:
+   with closing(sqlite3.connect(path)) as db, db:
     db.execute('CREATE TABLE metadata (name TEXT, value TEXT)')
     db.executemany('INSERT INTO metadata VALUES (?,?)',[('format','png'),('center','123.2,13.6,1')])
     db.execute('CREATE TABLE tiles (zoom_level INTEGER,tile_column INTEGER,tile_row INTEGER,tile_data BLOB)')
@@ -68,6 +71,8 @@ def run(report_path):
    window.close();app.processEvents()
    checks['close_cleans_sessions']=not any(p.service.running or p.timer.isActive() for p in window.panels.values())
    ui.load_settings,ui.save_settings=old_load,old_save
+   if old_data is None:os.environ.pop('LOCALAPPDATA',None)
+   else:os.environ['LOCALAPPDATA']=old_data
  result=dict(version=__version__,passed=CHECKS.issubset(checks) and all(v is True for v in checks.values()),checks=checks)
  Path(report_path).write_text(json.dumps(result,indent=2))
  return 0 if result['passed'] else 1

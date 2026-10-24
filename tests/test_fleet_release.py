@@ -15,7 +15,8 @@ def seal(root):
  (root/'SHA256SUMS.txt').write_text(''.join(release.sha(p)+'  '+p.name+'\n' for p in sorted(root.iterdir()) if p.name!='SHA256SUMS.txt'))
 
 @pytest.fixture
-def bundle(tmp_path):
+def bundle(tmp_path,monkeypatch):
+ monkeypatch.setattr(release,'FIRMWARE_COMMIT',COMMIT)
  root=tmp_path
  for name in release.REQUIRED-{'SHA256SUMS.txt'}:(root/name).write_bytes(b'fixture')
  records=[];entries={};prefix=FW_NAME[:-4]+'/'
@@ -45,7 +46,7 @@ def bundle(tmp_path):
 def test_matching_complete_fleet_build_passes(bundle):release.validate(bundle,COMMIT)
 
 def test_another_source_cannot_be_published(bundle):
- with pytest.raises(ValueError,match='qualification mismatch'):release.validate(bundle,'b'*40)
+ with pytest.raises(ValueError,match='source/version mismatch'):release.validate(bundle,'b'*40)
 
 def test_resealed_installer_removal_is_rejected(bundle):
  (bundle/f'PC-TeleRC-Setup-v{release.VERSION}.exe').unlink();seal(bundle)

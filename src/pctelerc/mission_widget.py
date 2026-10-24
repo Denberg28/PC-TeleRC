@@ -653,6 +653,7 @@ class MissionDialog(QDialog):
         if self.embedded and hasattr(self,'external_map'):
             self.external_map._center=self.map._center
             self.external_map.follow_rover=None
+            self.external_map.auto_fit=False
             self.external_map.update()
 
     def _add(self, lat, lon):

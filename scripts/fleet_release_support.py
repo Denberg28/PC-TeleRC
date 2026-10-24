@@ -7,6 +7,7 @@ sys.path.insert(0,str(ROOT/'src'))
 from pctelerc.fleet_contract import FROZEN_CHECKS
 FW_NAME='TeleRC-Fleet-LoRa-v0.5.0rc1.zip'
 VERSION='1.2.0rc1'
+FIRMWARE_COMMIT='6ba272867165eee31e21792ea259fce7225579f7'
 
 def sha(path):
  with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
