@@ -40,6 +40,7 @@ from .lora_setup_widget import refresh_ports
 from .config import data_dir
 from .fleet import draft_path as fleet_draft_path
 from .route_draft import decode as decode_draft, MAX_BYTES
+from .stored_mission_view import StoredMissionView
 
 
 class MissionMap(RoverMap):
@@ -387,6 +388,8 @@ class MissionDialog(QDialog):
         row = QHBoxLayout()
         self.inspect_btn = QPushButton("Load from FC")
         self.inspect_btn.clicked.connect(self._inspect_fc)
+        self.inspect_btn.setToolTip("Read the selected rover’s stored mission; PC draft stays unchanged")
+        root.addWidget(self.inspect_btn)
         self.upload_btn = QPushButton("Upload & verify")
         self.start_btn = QPushButton("Start mission")
         self.hold_btn = QPushButton("HOLD")
@@ -394,7 +397,7 @@ class MissionDialog(QDialog):
         self.upload_btn.clicked.connect(lambda: self._submit("upload"))
         self.start_btn.clicked.connect(lambda: self._submit("start"))
         self.hold_btn.clicked.connect(self._hold)
-        for w in (self.inspect_btn, self.upload_btn, self.start_btn, self.hold_btn):
+        for w in (self.upload_btn, self.start_btn, self.hold_btn):
             row.addWidget(w)
         root.addLayout(row)
         self.help_panel = QWidget()
@@ -458,6 +461,7 @@ class MissionDialog(QDialog):
             self.rover.setValue(self._selected_rover)
             self.rover.blockSignals(False)
             return
+        self._close_stored_viewer()
         self.draft_timer.stop()
         self._save_draft()
         self._history_paused = True
@@ -520,6 +524,7 @@ class MissionDialog(QDialog):
     def _ready(self, ready):
         self.connected = ready
         if not ready:
+            self._close_stored_viewer()
             self.firmware_label.setText("BASE firmware: not connected")
         self._controls()
 
@@ -532,27 +537,32 @@ class MissionDialog(QDialog):
             if not self.connected or self.busy or not self.service.running:
                 raise RuntimeError("Connect rover first")
             self.service.submit("inspect", [])
+            self._close_stored_viewer()
+            self.digest = ""
             self.busy = True
             self._controls()
         except (RuntimeError, ValueError, queue.Full) as exc:
             self._message(str(exc))
 
-    def _show_stored_mission(self, rows):
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"FC stored mission · Rover {self.rover.value()}")
-        layout = QVBoxLayout(dialog)
-        notice = QLabel(f"{len(rows)} FC mission rows. Read-only; PC draft unchanged; START not authorized.")
-        notice.setWordWrap(True)
-        layout.addWidget(notice)
-        preview = QPlainTextEdit()
-        preview.setReadOnly(True)
-        preview.setPlainText(json.dumps(rows, indent=2, sort_keys=True))
-        layout.addWidget(preview)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
-        dialog.resize(700, 460)
-        dialog.exec()
+    def _close_stored_viewer(self):
+        viewer=getattr(self,'_fc_viewer',None)
+        if viewer is not None:
+            viewer.close()
+            self._fc_viewer=None
+
+    def _stored_viewer_closed(self,viewer):
+        if getattr(self,'_fc_viewer',None) is viewer:self._fc_viewer=None
+
+    def _show_stored_mission(self,payload):
+        if (not self.connected or not self.service.running
+                or payload['rover'] != self.rover.value() or payload['generation'] != self.service.generation
+                or (self.embedded and hasattr(self,'external_map') and self.external_map.selected_rover != self.rover.value())):
+            return
+        self._close_stored_viewer()
+        viewer=StoredMissionView(payload,self)
+        self._fc_viewer=viewer
+        viewer.destroyed.connect(lambda:self._stored_viewer_closed(viewer))
+        viewer.show()
 
     def _busy(self, busy):
         self.busy = busy
@@ -1009,6 +1019,7 @@ class MissionDialog(QDialog):
             self._message(str(exc))
 
     def _disconnect(self):
+        self._close_stored_viewer()
         if not self.service.close():
             self._message("Closing the mission link; reconnect remains locked")
             return
@@ -1078,6 +1089,7 @@ class MissionDialog(QDialog):
                 return
             if not self.connected or self.busy or not self.service.running:
                 raise RuntimeError("Session changed during confirmation")
+            if action == 'upload':self._close_stored_viewer()
             self.service.submit(
                 action, items, self.continue_loss.isChecked(), self.aux.isChecked()
             )
@@ -1097,6 +1109,7 @@ class MissionDialog(QDialog):
     def _shutdown(self):
         if getattr(self, "_shutdown_complete", False):
             return True
+        self._close_stored_viewer()
         if not self.service.close():
             self._message("Mission worker is still closing; try closing again")
             return False

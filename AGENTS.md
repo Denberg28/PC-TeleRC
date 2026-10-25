@@ -5,6 +5,19 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+26 October 2026: continue the authorized rc7 FC-readback release from
+`dev/mission-v1.2.0rc7-fc-readback`. User designates published rc6 source
+8412c91ea9c0fd753f1fb4d0be73f0f502fd72ef as the baseline; preserve its release
+and every firmware byte. The earlier rc7 Windows build failed the protocol
+parity test. Keep the shared Client/CLI transaction core identical and implement
+bounded read-only inspection separately. Loading clears verification, preserves
+the draft, handles empty/home-only storage, rejects stale session results and
+shows a modeless snapshot so HOLD remains accessible. A local read-only timeout
+may return to monitor-only when real telemetry remains fresh; actual link loss
+still closes the session. No mission changes, ARM/START or automatic replay from
+inspection. Require current source/Windows/frozen, loss/duplicate/cancellation,
+identity isolation and sanitation checks before candidate publication.
+
 25 October 2026: user reports failed rc5 route export and requests professional
 compact popups plus review of waypoint workflow and rover movement. Build rc6
 from b391f318faab9771d412afc5b6394b2587bf758a. Repair the unused zero duration on

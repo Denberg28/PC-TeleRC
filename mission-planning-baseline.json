@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "baseline": "PC TeleRC mission planning base build",
-  "designation_date": "2026-10-24",
-  "application_version": "1.2.0rc1",
+  "designation_date": "2026-10-25",
+  "application_version": "1.2.0rc6",
   "channel": "candidate",
-  "release_tag": "v1.2.0rc1",
-  "release_url": "https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc1",
-  "application_source_commit": "9f113241a7bad88f89b9da96e448489e85cda3d7",
-  "source_branch": "baseline/mission-planning-v1.2.0rc1",
+  "release_tag": "v1.2.0rc6",
+  "release_url": "https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc6",
+  "application_source_commit": "8412c91ea9c0fd753f1fb4d0be73f0f502fd72ef",
+  "source_branch": "baseline/mission-planning-v1.2.0rc6",
   "firmware": {
     "fleet_version": "0.5.0rc1",
     "source_commit": "6ba272867165eee31e21792ea259fce7225579f7",
@@ -30,11 +30,11 @@
     "RadioLib": "7.2.1"
   },
   "qualification": {
-    "windows_tests_passed": 355,
-    "frozen_checks_passed": 18,
+    "windows_tests_passed": 469,
+    "frozen_checks_passed": 45,
     "actual_board_profiles_passed": 11,
     "hardware_validation": "NOT_TESTED",
-    "workflow_url": "https://github.com/Denberg28/PC-TeleRC/actions/runs/40101022159"
+    "workflow_url": "https://github.com/Denberg28/PC-TeleRC/actions/runs/40192991190"
   },
   "assets": [
     {
@@ -43,34 +43,34 @@
       "sha256": "8afaa0584a3e2688f35c6f8526c72b75365ce43463f604e7bec142853e8a1116"
     },
     {
-      "name": "PC-TeleRC-Mission-v1.2.0rc1-source.zip",
-      "size_bytes": 2808969,
-      "sha256": "08acd8a6b7ab87af937d76fdc8dcd4053d835f7e1bac1256e4bb0564be4e60a5"
+      "name": "PC-TeleRC-Mission-v1.2.0rc6-source.zip",
+      "size_bytes": 2850987,
+      "sha256": "adbce4080689d3b6348c32d8aa632854c69d5307b75c1ecdb9a44a292ebacbb3"
     },
     {
-      "name": "PC-TeleRC-portable-v1.2.0rc1.zip",
-      "size_bytes": 81055949,
-      "sha256": "9f279d3f53a8dbc612393f425f8bf34b5c273941da71b7dff4a4b1a7a206c2e4"
+      "name": "PC-TeleRC-portable-v1.2.0rc6.zip",
+      "size_bytes": 81097924,
+      "sha256": "076a07072e9a2af50013077c80eefe93beea51739b9c56554ff1d3bbe64d1601"
     },
     {
-      "name": "PC-TeleRC-Setup-v1.2.0rc1.exe",
-      "size_bytes": 55463013,
-      "sha256": "5c4584fa1060abb9e076eb7451b19b2d5eb61eac9ebe909fdcbf3fdebc772422"
+      "name": "PC-TeleRC-Setup-v1.2.0rc6.exe",
+      "size_bytes": 55504752,
+      "sha256": "1f73231d783d290929247c772cba3930b4747c64f0661f26f5ab113a09f81b2e"
     },
     {
       "name": "README.md",
-      "size_bytes": 1166,
-      "sha256": "5e085ae8115992f023395da0ab940f8ae130ebfbb804633fd97fa91b149ef316"
+      "size_bytes": 2787,
+      "sha256": "37d67cafeb1cd4dd9fba1b95aa824668ea692a514da0c262d895abb8a1c20d8a"
     },
     {
       "name": "RELEASE_STATUS.json",
       "size_bytes": 535,
-      "sha256": "01121afb747514e53378bb880f4096a40070f10969d6c42dbe7fab46bca50353"
+      "sha256": "979c8e39e21c689e26a29dc2922f7103b3127bcb19e1bdcae2ee4e3a4992198e"
     },
     {
       "name": "SHA256SUMS.txt",
       "size_bytes": 736,
-      "sha256": "cd4234f8292f5d585292e5edaa269af39899dc5790823d642bed5f6e5feb09a8"
+      "sha256": "f4c88e531a49b9a8a8b37fee51f606570bf7c835209c4ea0971bf22378768aa8"
     },
     {
       "name": "TeleRC-Fleet-LoRa-v0.5.0rc1.zip",
@@ -79,8 +79,8 @@
     },
     {
       "name": "test-evidence.zip",
-      "size_bytes": 9136,
-      "sha256": "29ff98241c5d486f804e40b004ff76edec61f881e2bbd7935a2a92ff5475944f"
+      "size_bytes": 12352,
+      "sha256": "fb268938785d05c19557b606e356316519969fd69fb392db6727ec363668aa3e"
     }
   ]
 }

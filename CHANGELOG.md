@@ -1,3 +1,12 @@
+## 1.2.0rc7 — 26 October 2026
+
+- Load from FC: modeless, read-only mission snapshot with empty/home-only handling.
+- Bound inspection retries/deadlines; reject incomplete or changed mission snapshots.
+- Keep HOLD accessible and ignore results from retired sessions or rovers.
+- Loading clears verification, leaves PC drafts intact and grants no ARM/START authority.
+- Preserve shared upload/start protocol semantics, firmware and pairing byte-for-byte.
+- Pin published rc6 source and assets as the mission-planning baseline.
+
 ## 1.2.0rc6 — 25 October 2026
 
 - Fix route export after actual Go here menu placement; recover older zero-duration drafts.

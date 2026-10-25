@@ -210,6 +210,19 @@ def run(report_path):
    m.observe(1,replace(sample,running=True,state=LinkState.CONNECTED,last_heartbeat=now,position_timestamp=now,
     gps_timestamp=now,latitude=0,longitude=0))
    checks['invalid_gps_stays_stale']=m.positions[1]==retained and not m.fresh(1) and 'stale' in m.labels()[1]
+   from .stored_mission_view import StoredMissionView
+   from PySide6.QtWidgets import QAbstractItemView
+   panel=window.panels[window.selected]
+   checks['fc_load_control_visible']=panel.inspect_btn.isVisibleTo(window) and window.rect().contains(panel.inspect_btn.mapTo(window,panel.inspect_btn.rect().bottomRight())) and not panel.inspect_btn.isEnabled()
+   draft=panel._draft_text();digest=panel.digest
+   snapshot=dict(rover=window.selected,generation=panel.service.generation,rows=parse_text(panel._text()),read_at=time.time())
+   viewer=StoredMissionView(snapshot,window);viewer.show();app.processEvents()
+   checks['fc_view_read_only_modeless']=not viewer.isModal() and app.activeModalWidget() is None and viewer.table.editTriggers()==QAbstractItemView.EditTrigger.NoEditTriggers
+   checks['fc_snapshot_no_draft_mutation']=draft==panel._draft_text() and digest==panel.digest and window.hub is None
+   viewer.close();app.processEvents()
+   panel._show_stored_mission(dict(snapshot,generation=-1))
+   checks['fc_stale_result_ignored']=getattr(panel,'_fc_viewer',None) is None and not panel.service.running
+
 
 
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)

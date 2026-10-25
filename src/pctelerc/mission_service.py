@@ -11,6 +11,7 @@ from .mavlink import MavlinkSnapshot
 from .mission_protocol.client import Client, compare, fingerprint
 from .mission_transport import MissionUSB
 from .firmware_profiles import route_interrupted
+from .mission_readback import read_stored_mission,ReadbackError
 
 
 ARM_ACK_TIMEOUT = 12
@@ -38,6 +39,7 @@ class MissionService:
         self.events = Events()
         self.transport_factory = transport_factory
         self.thread = None
+        self.generation = 0
         self.jobs = queue.Queue(maxsize=1)
         self.stop_event = threading.Event()
         self.hold_event = threading.Event()
@@ -76,6 +78,7 @@ class MissionService:
             )
         if not port.strip() or not 1 <= rover <= 20:
             raise ValueError("Select the BASE COM port and rover ID 1–20")
+        self.generation += 1
         self.stop_event.clear()
         self.hold_event.clear()
         self.disarm_event.clear()
@@ -91,6 +94,7 @@ class MissionService:
 
     def close(self):
         with self._gate:
+            self.generation += 1
             self.stop_event.set()
             self._confirmed = False
         if self.thread:
@@ -446,12 +450,25 @@ class MissionService:
                 fatal = False
                 try:
                     if action == "inspect":
+                        self.verified_digest = ""
+                        self.events.verified.emit("")
                         self._phase("Reading FC mission")
-                        stored = c.download(allow_empty=True)
-                        self._check()
-                        self.events.stored_mission.emit(stored)
-                        self._phase("FC mission retrieved · not start-authorized")
-                        self.events.message.emit(f"Read {len(stored)} FC mission rows; draft unchanged")
+                        generation = self.generation
+                        try:
+                            stored = read_stored_mission(c,self.capabilities['relays'],
+                                lambda i,n,attempt:self._phase(f'Reading FC mission · {i}/{n}' + (' · retry' if attempt else '')))
+                        except ReadbackError as exc:
+                            # Inspection did not write vehicle state. If the real
+                            # heartbeat is still fresh, retain monitor-only service.
+                            self._check()
+                            self._phase('FC read incomplete · monitor only')
+                            self.events.message.emit(str(exc))
+                        else:
+                            self._check()
+                            self.events.stored_mission.emit(dict(rover=rover,generation=generation,
+                                rows=stored,read_at=time.time()))
+                            self._phase("FC mission retrieved · monitor only")
+                            self.events.message.emit(f"Read {len(stored)} FC mission rows; PC draft unchanged")
                     elif action in ('arm','disarm'):
                         self._phase('Checking ARM' if action == 'arm' else 'HOLD → checking disarm')
                         self._arm_action(c,action == 'arm',digest,policy)

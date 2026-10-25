@@ -1,25 +1,25 @@
-# Mission-planning base build — PC TeleRC v1.2.0rc1
+# Mission-planning base build — PC TeleRC v1.2.0rc6
 
-Designated on 24 October 2026 as the starting baseline for future PC TeleRC mission-planning development.
+Designated on 25 October 2026 as the starting baseline for future PC TeleRC mission-planning development.
 
 | Component | Locked baseline |
 | --- | --- |
-| Windows application | 1.2.0rc1 |
-| Application source | `9f113241a7bad88f89b9da96e448489e85cda3d7` |
+| Windows application | 1.2.0rc6 |
+| Application source | `8412c91ea9c0fd753f1fb4d0be73f0f502fd72ef` |
 | Fleet BASE / ROVER / NODE | 0.5.0rc1 |
 | Firmware source | `6ba272867165eee31e21792ea259fce7225579f7` |
 | ESP32-S3 four-BTS7960 converter | 1.0.5, unchanged |
 | Board toolchain | Arduino CLI 1.3.1; ESP32 core 3.3.2; RadioLib 7.2.1 |
 | Release channel | Candidate; physical qualification pending |
 
-[Download the baseline release](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc1).
+[Download the baseline release](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc6).
 [Read the fleet setup guide](FLEET-STATION.md).
 The root `mission-planning-baseline.json` pins all nine published assets by size and SHA-256.
 
 ## Starting point for development
 
-Create future feature or fix branches from `baseline/mission-planning-v1.2.0rc1`.
-The baseline branch adds designation documentation and the lock manifest to the exact tested release source; application and firmware bytes remain unchanged.
+Create future feature or fix branches from `baseline/mission-planning-v1.2.0rc6`.
+The baseline branch points to the exact published rc6 source. The rc7 feature branch carries the designation documentation and lock manifest; rc6 release assets remain unchanged.
 
 Use a new version for changed application or firmware behavior. Keep this baseline and its published assets available for rollback. Update matching compatibility notes, manifests and affected checks with each subsequent release. Do not replace the baseline assets or treat documentation-only baseline designation as new binary-build evidence.
 
@@ -33,7 +33,7 @@ Rover IDs 1–20 are addresses, not an assurance of 20 simultaneous links. Measu
 
 ## Installation
 
-1. Install `PC-TeleRC-Setup-v1.2.0rc1.exe`, or extract the portable archive and launch its executable.
+1. Install `PC-TeleRC-Setup-v1.2.0rc6.exe`, or extract the portable archive and launch its executable.
 2. Use matching fleet BASE/ROVER 0.5.0rc1. Existing TU2 0.4.0 nodes and PWM converter 1.0.5 need no re-upload for this update.
 3. For the existing network, use the preserved private `TeleRC-Private-Fleet-v0.5.0rc1.zip` sketches. Retain existing pairing keys and radio settings; do not initialize a replacement network. Match each FC `SYSID_THISMAV` to its rover number.
 4. Follow the fleet guide to connect, upload/read back, deliberately arm and explicitly start each rover.
@@ -42,7 +42,7 @@ Public LoRa example images are keyless with RF OFF. Private network files and pr
 
 ## Accepted software evidence
 
-The release passed 355 Windows regressions, all 18 frozen-app checks, native firmware ASan/UBSan guards, two encrypted multi-rover graph tests and 11 actual board-build profiles. Publication verified the complete public asset boundary and downloaded checksums. See the published `test-evidence.zip` and firmware `BUILD_REPORT.json`.
+The release passed 469 Windows regressions, all 45 frozen-app checks, native firmware ASan/UBSan guards, two encrypted multi-rover graph tests and 11 actual board-build profiles. Publication verified the complete public asset boundary and downloaded checksums. See the published `test-evidence.zip` and firmware `BUILD_REPORT.json`.
 
 The earlier firmware build evidence is reused only because firmware bytes are unchanged. This designation adds no physical qualification. Real RF capacity, range, motor stopping, power/EMI behavior, FC mission operation, failsafe timing and RC takeover still need physical acceptance tests. The Windows app remains unsigned.
 

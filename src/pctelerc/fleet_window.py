@@ -231,6 +231,8 @@ class FleetWindow(QMainWindow):
 
     def select_rover(self,rover):
         if rover not in self.panels:return
+        if self.selected in self.panels and self.selected != rover:
+            self.panels[self.selected]._close_stored_viewer()
         self.map.cancel_route_edit()
         if self.map._route_menu is not None:self.map._route_menu.close()
         self.selected=rover;self.map.selected_rover=rover

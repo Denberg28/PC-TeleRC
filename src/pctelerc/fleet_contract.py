@@ -7,3 +7,5 @@ FROZEN_CHECKS |= frozenset('map_action_popup planned_home_return planned_hold_ro
 FROZEN_CHECKS |= frozenset('draft_undo_redo draft_history_rover_isolated native_plan_roundtrip native_plan_editable draft_recovery_no_authority'.split())
 
 FROZEN_CHECKS |= frozenset('popup_route_file_roundtrip legacy_menu_draft_recovery compact_arrival_hold invalid_gps_stays_stale'.split())
+
+FROZEN_CHECKS |= frozenset('fc_load_control_visible fc_view_read_only_modeless fc_snapshot_no_draft_mutation fc_stale_result_ignored'.split())
