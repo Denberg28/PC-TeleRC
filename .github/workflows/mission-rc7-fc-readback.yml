@@ -1,0 +1,40 @@
+name: PC TeleRC v1.2.0rc7 FC readback candidate
+on:
+  push:
+    branches: [dev/mission-v1.2.0rc7-fc-readback]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip check
+      - name: Syntax tests
+        run: python -m compileall -q src tests main.py
+      - name: Regression tests
+        run: python -m pytest -q
+      - name: PyInstaller portable build
+        run: pyinstaller --noconfirm --clean PC-TeleRC.spec
+      - name: Package executable
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist/PC-TeleRC/PC-TeleRC.exe)) { throw 'Missing EXE' }
+          Compress-Archive -Path dist/PC-TeleRC/* -DestinationPath PC-TeleRC-v1.2.0rc7-portable.zip -Force
+          Get-FileHash PC-TeleRC-v1.2.0rc7-portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  PC-TeleRC-v1.2.0rc7-portable.zip" } | Set-Content SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-v1.2.0rc7-Windows-candidate
+          path: |
+            PC-TeleRC-v1.2.0rc7-portable.zip
+            SHA256.txt
+          if-no-files-found: error
