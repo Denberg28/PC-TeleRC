@@ -292,11 +292,15 @@ class MissionDialog(QDialog):
         self.advanced_toggle.toggled.connect(
             lambda expanded: self.editor.setMinimumHeight(0 if embedded else 550 if expanded else 410)
         )
-        output_layout.addWidget(QLabel("Function · Output · OFF / ON (µs)"))
+        output_layout.addWidget(QLabel("F1–F3 · dedicated auxiliary outputs"))
         self.functions = []
         for i in range(3):
-            row = QHBoxLayout()
-            row.addWidget(QLabel(f"F{i + 1}"))
+            # Native Windows spin-box arrows and minimum size hints are wider
+            # than the Linux style. A form remains readable in the narrow pane
+            # instead of forcing all three numeric fields onto one clipped row.
+            row = QFormLayout()
+            row.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+            row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
             ch = QSpinBox()
             ch.setRange(0, 16)
             ch.setSpecialValueText("Unset")
@@ -309,8 +313,8 @@ class MissionDialog(QDialog):
             on.setToolTip("ON PWM")
             on.setRange(1000, 2000)
             on.setValue(1900)
-            for w in (ch, off, on):
-                row.addWidget(w)
+            for label,w in ((f"F{i + 1} output",ch),("OFF (µs)",off),("ON (µs)",on)):
+                row.addRow(label,w)
                 w.valueChanged.connect(self._invalidate)
             output_layout.addLayout(row)
             self.functions.append((ch, off, on))
