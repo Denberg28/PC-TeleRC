@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
     QSplitter,
     QScrollArea,
     QFrame,
+    QSizePolicy,
+    QLayout,
 )
 
 from .mission_plan import Plan, Point, Function, parse_text
@@ -230,6 +232,10 @@ class MissionDialog(QDialog):
             self.editor_scroll.setMinimumWidth(0)
             self.editor.setMinimumWidth(0)
             self.editor.setMinimumHeight(0)
+            # QScrollArea must grow content vertically, never promote native
+            # Windows minimum-size hints into a wider, clipped child widget.
+            self.editor.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred)
+            el.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
             body.setMinimumHeight(120)
             body.setChildrenCollapsible(False)
             self.map.hide()
@@ -247,6 +253,8 @@ class MissionDialog(QDialog):
         )
         el.addWidget(self.mode)
         coords = QFormLayout()
+        coords.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        coords.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.lat = QDoubleSpinBox()
         self.lat.setRange(-85, 85)
         self.lat.setDecimals(7)
@@ -278,6 +286,9 @@ class MissionDialog(QDialog):
         ]:
             b = QPushButton(label)
             b.clicked.connect(callback)
+            if embedded:
+                b.ensurePolished()
+                b.setMinimumWidth(b.fontMetrics().horizontalAdvance(label)+18)
             row.addWidget(b)
             self._editing_controls.append(b)
         el.addLayout(row)

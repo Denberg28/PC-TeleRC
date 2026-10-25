@@ -87,7 +87,12 @@ def test_route_actions_fit_and_expansion_scrolls_without_horizontal_clipping(win
         origin=button.mapTo(window,button.rect().topLeft())
         assert window.rect().contains(origin) and origin.x()+button.width()<=window.width()
     p.advanced_toggle.setChecked(True);qt_application.processEvents()
-    assert p.editor_scroll.horizontalScrollBar().maximum()==0
+    details = dict(viewport=p.editor_scroll.viewport().width(),content=p.editor.width(),
+        minimum=p.editor.minimumSizeHint().width(),native_minimum=p.editor.minimumWidth())
+    assert p.editor_scroll.horizontalScrollBar().maximum()==0, details
+    for field in (p.mode,p.lat,p.lon,p.speed,*[field for row in p.functions for field in row]):
+        origin=field.mapTo(p.editor,field.rect().topLeft())
+        assert origin.x()>=0 and origin.x()+field.width()<=p.editor_scroll.viewport().width(), (field,details)
     assert window.roster.horizontalScrollBar().maximum()==0
     assert p.import_btn.isVisibleTo(window) and p.export_btn.isVisibleTo(window)
     assert not window.split.opaqueResize() and window.hub is None
