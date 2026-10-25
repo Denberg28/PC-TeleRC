@@ -449,7 +449,7 @@ class MissionService:
                         self._phase("Reading FC mission")
                         self._check()
                         # Read-only transaction: never marks a plan verified for START.
-                        stored = c.download()
+                        stored = c.download(allow_empty=True)
                         self._check()
                         self.events.stored_mission.emit(stored)
                         self._phase("FC mission retrieved · not start-authorized")
