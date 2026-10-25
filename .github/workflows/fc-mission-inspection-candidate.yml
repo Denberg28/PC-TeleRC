@@ -40,3 +40,29 @@ jobs:
             SHA256.txt
           if-no-files-found: error
           retention-days: 14
+
+  windows-portable-unqualified:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install packaging dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Build candidate executable
+        run: pyinstaller --noconfirm --clean PC-TeleRC.spec
+      - name: Package and hash UNQUALIFIED build
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'dist/PC-TeleRC/PC-TeleRC.exe')) { throw 'EXE missing' }
+          Copy-Item 'docs/FC-MISSION-INSPECTION-SAFETY.md' 'dist/PC-TeleRC/'
+          Compress-Archive 'dist/PC-TeleRC/*' 'PC-TeleRC-FC-Inspection-RC-UNQUALIFIED.zip' -Force
+          Get-FileHash 'PC-TeleRC-FC-Inspection-RC-UNQUALIFIED.zip' -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  PC-TeleRC-FC-Inspection-RC-UNQUALIFIED.zip" } | Set-Content 'SHA256-UNQUALIFIED.txt'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FC-Inspection-RC-UNQUALIFIED-build-not-for-field-use
+          path: |
+            PC-TeleRC-FC-Inspection-RC-UNQUALIFIED.zip
+            SHA256-UNQUALIFIED.txt
+          if-no-files-found: error
