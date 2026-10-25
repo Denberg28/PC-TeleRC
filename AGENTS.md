@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+25 October 2026: user reports drag flicker and a stuck/glitching map after rc2.
+Fix the shared inverse longitude conversion (the old expression adds a spurious
+180-degree shift), real pan gestures and click placement in application rc3.
+Keep manual pan/zoom from being overwritten by automatic follow/fit, and never
+turn a cancelled/dragged gesture into a waypoint. Require actual mouse-event,
+geographic and rendered-terrain regressions plus frozen Windows drag checks.
+Preserve firmware, private pairing, command gates and saved route formats.
+Document that earlier map clicks may have saved wrong longitudes; do not
+silently rotate or rewrite existing user routes.
+
 25 October 2026: user authorizes fixing map resize flicker, transitions, padding
 and scrolling, replacing the number selector with Add/Remove rover buttons, and
 visible route import/export. Develop application-only v1.2.0rc2 from the pinned

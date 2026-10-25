@@ -1,12 +1,12 @@
 name: Map-only fleet station candidate
 on:
   push:
-    branches: [release/fleet-ui-v1.2.0rc2]
+    branches: [release/map-drag-v1.2.0rc3]
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: fleet-map-v1.2.0rc2
+  group: fleet-map-v1.2.0rc3
   cancel-in-progress: true
 jobs:
   firmware:
@@ -69,7 +69,7 @@ jobs:
           }
           & $compiler 'installer\PC-TeleRC.iss'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item installer-dist\PC-TeleRC-Setup-v1.2.0rc2.exe release-dist\
+          Copy-Item installer-dist\PC-TeleRC-Setup-v1.2.0rc3.exe release-dist\
           Copy-Item frozen-ui-check.json,windows-tests.xml,frozen-stdout.txt,frozen-stderr.txt release-dist\
           Copy-Item fleet-dist\TeleRC-Fleet-LoRa-v0.5.0rc1.zip release-dist\
       - uses: actions/upload-artifact@v4

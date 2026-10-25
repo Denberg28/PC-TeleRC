@@ -83,7 +83,7 @@ def main():
     if any(r['tag_name']==TAG for r in releases):
         raise ValueError('Refusing to replace an existing release')
     gh('release','create',TAG,'--repo',repo,'--target',commit,'--draft','--prerelease','--latest=false',
-       '--title',f'PC TeleRC v{VERSION} — Fleet map and route workflow','--notes-file',str(OUT/'README.md'),
+       '--title',f'PC TeleRC v{VERSION} — Map drag and coordinate correction','--notes-file',str(OUT/'README.md'),
        *[str(p) for p in sorted(OUT.iterdir())])
     release = next(r for r in json.loads(gh('api',f'repos/{repo}/releases?per_page=100')) if r['tag_name']==TAG)
     expected = {p.name:sha(p) for p in OUT.iterdir()}

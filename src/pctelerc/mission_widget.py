@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 from .mission_plan import Plan, Point, Function, parse_text
 from .mission_protocol.client import fingerprint
 from .mission_service import MissionService
-from .rover_map import RoverMap, world_pixel
+from .rover_map import RoverMap, world_pixel, world_location
 from .lora_setup_widget import refresh_ports
 from .config import data_dir
 from .fleet import draft_path as fleet_draft_path
@@ -52,31 +52,27 @@ class MissionMap(RoverMap):
         self.setMinimumSize(350, 250)
 
     def mousePressEvent(self, event):
-        self.press = (
-            event.position() if event.button() == Qt.MouseButton.LeftButton else None
-        )
-        self.moved = False
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.press = QPointF(event.position())
+            self.moved = False
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if (
-            self.press is not None
-            and (event.position() - self.press).manhattanLength() > 5
-        ):
-            self.moved = True
         super().mouseMoveEvent(event)
+        self.moved = self._dragging
 
     def mouseReleaseEvent(self, event):
-        if self.press is not None and not self.moved and self._center is not None:
+        if event.button() != Qt.MouseButton.LeftButton:
+            return super().mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
+        if (self.press is not None and not self._last_dragged and self._center is not None
+                and self.rect().contains(event.position().toPoint())):
             x, y = world_pixel(*self._center, self._zoom)
-            size = 256 * 2**self._zoom
             x += event.position().x() - self.width() / 2
-            y = max(0, min(size, y + event.position().y() - self.height() / 2))
-            lat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / size))))
-            lon = (x / size * 360 + 180) % 360 - 180
+            y += event.position().y() - self.height() / 2
+            lat, lon = world_location(x, y, self._zoom)
             self.location.emit(lat, lon)
         self.press = None
-        super().mouseReleaseEvent(event)
 
     def _paint_overlays(self, painter):
         super()._paint_overlays(painter)

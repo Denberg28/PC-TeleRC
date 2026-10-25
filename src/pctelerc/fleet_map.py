@@ -65,13 +65,13 @@ class FleetMap(MissionMap):
         size = 256*2**self._zoom
         return QPointF(self.width()/2+(x-cx+size/2)%size-size/2,self.height()/2+y-cy)
 
-    def mouseMoveEvent(self,event):
-        if self._drag is not None:
-            self.follow_rover=None
-            self.auto_fit=False
-        super().mouseMoveEvent(event)
+    def _manual_view(self):
+        super()._manual_view()
+        self.follow_rover=None
+        self.auto_fit=False
 
     def fit_fleet(self):
+        self.cancel_pan()
         self.auto_fit=True
         points = [p[:2] for p in self.positions.values()]
         if not points:

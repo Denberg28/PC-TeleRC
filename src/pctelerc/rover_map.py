@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import time
 
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, QUrl
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, QUrl
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import QWidget
@@ -26,6 +26,14 @@ def world_pixel(latitude, longitude, zoom):
     return x, y
 
 
+def world_location(x, y, zoom):
+    """Inverse of world_pixel, including dateline wrapping and Mercator bounds."""
+    size = 256 * (2 ** zoom)
+    x, y = x % size, max(0, min(size, y))
+    return (math.degrees(math.atan(math.sinh(math.pi * (1 - 2*y/size)))),
+            x/size*360 - 180)
+
+
 def position_fresh(snapshot, now=None):
     now = time.monotonic() if now is None else now
     return (snapshot.state == LinkState.CONNECTED and snapshot.gps_fix >= 3
@@ -37,6 +45,7 @@ def position_fresh(snapshot, now=None):
 class RoverMap(QWidget):
     TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     CACHE_SECONDS = 7 * 24 * 3600
+    DRAG_THRESHOLD = 5
     # Same display-only starting view as TeleRC; never a measured rover fix.
     DEFAULT_CENTER = (13.6218, 123.1948)
 
@@ -63,6 +72,12 @@ class RoverMap(QWidget):
         self._generation = 0
         self._last_position = None
         self._drag = None
+        self._drag_origin = None
+        self._drag_world = None
+        self._dragging = False
+        self._last_dragged = False
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setMouseTracking(True)
         self._follow = True
         self._cache_dir = cache_dir or data_dir() / "map-cache"
         self._view_path = self._cache_dir.parent / "map-view.json"
@@ -100,6 +115,7 @@ class RoverMap(QWidget):
         self.update()
 
     def locate_rover(self):
+        self.cancel_pan()
         self._follow = True
         if self._last_position is not None:
             self._center = self._last_position
@@ -107,27 +123,75 @@ class RoverMap(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self._center is not None:
-            self._drag = event.position()
+            self._drag = QPointF(event.position())
+            self._drag_origin = QPointF(event.position())
+            self._drag_world = world_pixel(*self._center, self._zoom)
+            self._dragging = False
+            self._last_dragged = False
             event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def _manual_view(self):
+        self._follow = False
+
+    def _pan_to(self, point):
+        if self._drag_origin is None or self._drag_world is None:
+            return
+        delta = point - self._drag_origin
+        if not self._dragging:
+            if delta.manhattanLength() < self.DRAG_THRESHOLD:
+                return
+            self._dragging = True
+            self._drag_world = world_pixel(*self._center, self._zoom)
+            self._manual_view()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        self._drag = QPointF(point)
+        x, y = self._drag_world
+        center = world_location(x-delta.x(), y-delta.y(), self._zoom)
+        if center != self._center:
+            self._center = center
+            self.update()
+
+    def cancel_pan(self):
+        self._drag = self._drag_origin = self._drag_world = None
+        self._dragging = False
+        self._last_dragged = True
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
 
     def mouseMoveEvent(self, event):
-        if self._drag is not None and self._center is not None:
-            delta = event.position() - self._drag
-            self._drag = event.position()
-            x, y = world_pixel(*self._center, self._zoom)
-            size = 256 * 2 ** self._zoom
-            x, y = x - delta.x(), max(0, min(size, y - delta.y()))
-            self._center = (math.degrees(math.atan(math.sinh(math.pi * (1 - 2*y/size)))), (x/size*360+180)%360-180)
-            self._follow = False
-            self.update()
+        if self._drag is not None:
+            if event.buttons() & Qt.MouseButton.LeftButton:
+                self._pan_to(event.position())
+            else:
+                self.cancel_pan()
             event.accept()
+        else:
+            super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        self._drag = None
+        if event.button() == Qt.MouseButton.LeftButton and self._drag is not None:
+            self._pan_to(event.position())
+            dragged = self._dragging
+            self.cancel_pan()
+            self._last_dragged = dragged
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+    def event(self, event):
+        if event.type() in (QEvent.Type.UngrabMouse,QEvent.Type.WindowDeactivate,QEvent.Type.Hide):
+            if getattr(self, '_drag', None) is not None:
+                self.cancel_pan()
+        return super().event(event)
 
     def wheelEvent(self, event):
-        self.zoom(1 if event.angleDelta().y() > 0 else -1)
-        event.accept()
+        delta = event.angleDelta().y() or event.pixelDelta().y()
+        if delta:
+            self.zoom(1 if delta > 0 else -1)
+            event.accept()
+        else:
+            event.ignore()
 
     def set_online(self, online):
         self._online = online
@@ -155,10 +219,13 @@ class RoverMap(QWidget):
         self.update()
 
     def zoom(self, step):
+        self.cancel_pan()
+        self._manual_view()
         self._zoom = max(0, min(22 if self._offline_map else 19, self._zoom + step))
         self.update()
 
     def shutdown(self):
+        self.cancel_pan()
         self._closed = True
         if self._center is not None:
             try:

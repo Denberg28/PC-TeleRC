@@ -12,7 +12,7 @@ def stage(commit):
  archive=ROOT/'fleet-dist'/FW_NAME;digest=verify_firmware(archive,FIRMWARE_COMMIT)
  target=desktop/'Fleet-firmware';target.mkdir(exist_ok=True);shutil.copyfile(archive,target/FW_NAME)
  shutil.copyfile(ROOT/'docs/FLEET-STATION.md',desktop/'START-HERE.md')
- shutil.copyfile(ROOT/'docs/releases/v1.2.0rc2.md',desktop/'RELEASE.md')
+ shutil.copyfile(ROOT/'docs/releases/v1.2.0rc3.md',desktop/'RELEASE.md')
  shutil.copyfile(ROOT/'docs/THIRD-PARTY.md',desktop/'THIRD-PARTY.md')
  shutil.copyfile(report,desktop/report.name)
  (desktop/'build-provenance.json').write_text(json.dumps(dict(version=VERSION,source_commit=commit,

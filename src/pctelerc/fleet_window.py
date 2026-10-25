@@ -281,6 +281,7 @@ class FleetWindow(QMainWindow):
         except Exception as exc:self.status.setText(f'Rover {rover} · {exc}')
 
     def follow_selected(self):
+        self.map.cancel_pan()
         self.map.follow_rover=self.selected
         self.map.auto_fit=False
         if self.selected in self.map.positions:self.map._center=self.map.positions[self.selected][:2]

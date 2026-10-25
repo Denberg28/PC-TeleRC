@@ -4,8 +4,9 @@ from contextlib import closing
 from pathlib import Path
 import json,sqlite3,tempfile,time,math,os
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QBuffer,QIODevice,Qt
-from PySide6.QtGui import QImage
+from PySide6.QtCore import QBuffer,QIODevice,Qt,QEvent,QPointF
+from PySide6.QtGui import QImage,QMouseEvent
+from .rover_map import world_pixel,world_location
 
 from .fleet_contract import FROZEN_CHECKS as CHECKS
 
@@ -84,6 +85,37 @@ def run(report_path):
    for _ in range(10):window.tick()
    window.map.update=original_update
    checks['idle_map_no_repaint']=not calls
+   m=window.map;m._center=(13.62,123.19);m._zoom=17;m.follow_rover=1
+   expected=world_pixel(*m._center,m._zoom)
+   checks['projection_round_trip']=all(math.isclose(a,b,abs_tol=1e-8) for a,b in zip(world_location(*expected,m._zoom),m._center))
+   def mouse(kind,point,button=Qt.MouseButton.NoButton,buttons=Qt.MouseButton.LeftButton):
+    p=QPointF(*point)
+    app.sendEvent(m,QMouseEvent(kind,p,p,button,buttons,Qt.KeyboardModifier.NoModifier))
+   def count():return sum(len(panel.plan.points) for panel in window.panels.values())
+   before=count();pan_ok=True
+   start=(m.width()/2,m.height()/2)
+   mouse(QEvent.Type.MouseButtonPress,start,Qt.MouseButton.LeftButton)
+   for dx,dy in ((10,4),(20,8),(40,16)):
+    mouse(QEvent.Type.MouseMove,(start[0]+dx,start[1]+dy))
+    actual=world_pixel(*m._center,m._zoom)
+    pan_ok &= math.isclose(actual[0],expected[0]-dx,abs_tol=1e-6) and math.isclose(actual[1],expected[1]-dy,abs_tol=1e-6)
+   mouse(QEvent.Type.MouseButtonRelease,(start[0]+40,start[1]+16),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   checks['drag_pan_continuity']=bool(pan_ok)
+   checks['drag_no_route_edit']=count()==before and window.hub is None
+   view=m._center;now=time.monotonic()
+   m.observe(1,replace(m.snapshots[1],running=True,state=LinkState.CONNECTED,last_heartbeat=now,
+    position_timestamp=now,latitude=13.63,longitude=123.19,gps_fix=3))
+   checks['manual_view_survives_telemetry']=m._center==view and m.follow_rover is None and not m.auto_fit
+   before=count();m._center=(13.62,123.19)
+   mouse(QEvent.Type.MouseButtonPress,start,Qt.MouseButton.LeftButton)
+   mouse(QEvent.Type.MouseButtonRelease,start,Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   point=window.panels[window.selected].plan.points[-1]
+   checks['click_location_correct']=count()==before+1 and math.isclose(point.latitude,13.62,abs_tol=1e-7) and math.isclose(point.longitude,123.19,abs_tol=1e-7)
+   before=count();view=m._center
+   mouse(QEvent.Type.MouseButtonPress,start,Qt.MouseButton.LeftButton)
+   app.sendEvent(m,QEvent(QEvent.Type.WindowDeactivate))
+   mouse(QEvent.Type.MouseButtonRelease,(start[0]+100,start[1]+50),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   checks['drag_interrupt_no_edit']=count()==before and m._center==view and m._drag is None
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:
    window.close();app.processEvents()
