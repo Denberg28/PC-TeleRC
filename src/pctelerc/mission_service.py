@@ -28,6 +28,7 @@ class Events(QObject):
     busy = Signal(bool)
     phase = Signal(str)
     capabilities = Signal(object)
+    stored_mission = Signal(object)
 
 
 class MissionService:
@@ -99,7 +100,7 @@ class MissionService:
     def submit(self, action, items, continue_on_loss=False, auxiliary=False):
         if not self.running or self.stop_event.is_set():
             raise RuntimeError("Connect the addressed mission BASE first")
-        if action not in (("upload", "start", "arm", "disarm") if self.fleet_actions else ("upload", "start")):
+        if action not in (("upload", "start", "arm", "disarm", "inspect") if self.fleet_actions else ("upload", "start", "inspect")):
             raise ValueError("Unknown mission action")
         # Deep immutable job snapshot independent of subsequent GUI edits.
         import copy
@@ -441,10 +442,21 @@ class MissionService:
                         )
                     continue
                 self.events.busy.emit(True)
-                digest = fingerprint(items, rover)
+                digest = fingerprint(items, rover) if action != "inspect" else ""
                 fatal = False
                 try:
-                    if action in ('arm','disarm'):
+                    if action == "inspect":
+                        self._phase("Reading FC mission")
+                        self._check()
+                        # Read-only transaction: never marks a plan verified for START.
+                        stored = c.download(allow_empty=True)
+                        self._check()
+                        self.events.stored_mission.emit(stored)
+                        self._phase("FC mission retrieved · not start-authorized")
+                        self.events.message.emit(
+                            f"Read {len(stored)} mission rows from FC; local draft unchanged"
+                        )
+                    elif action in ('arm','disarm'):
                         self._phase('Checking ARM' if action == 'arm' else 'HOLD → checking disarm')
                         self._arm_action(c,action == 'arm',digest,policy)
                     elif action == "upload":
