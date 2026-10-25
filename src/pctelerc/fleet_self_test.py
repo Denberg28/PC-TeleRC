@@ -4,7 +4,7 @@ from contextlib import closing
 from pathlib import Path
 import json,sqlite3,tempfile,time,math,os
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QBuffer,QIODevice
+from PySide6.QtCore import QBuffer,QIODevice,Qt
 from PySide6.QtGui import QImage
 
 from .fleet_contract import FROZEN_CHECKS as CHECKS
@@ -68,6 +68,22 @@ def run(report_path):
    window.tick()
    checks['stale_controls_disabled']=all(not b.isEnabled() for card in window.cards.values() for k,b in card.items() if k in ('arm','start','disarm'))
    window.select_rover(3);checks['selection_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values())
+   window.resize(1366,720);app.processEvents()
+   panel=window.panels[3]
+   checks['resize_opaque_map']=window.map.testAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent) and not window.split.opaqueResize()
+   checks['route_file_controls_visible']=all(b.isVisibleTo(window) and window.rect().contains(b.mapTo(window,b.rect().bottomRight())) for b in (panel.import_btn,panel.export_btn))
+   panel.advanced_toggle.setChecked(True);app.processEvents()
+   checks['compact_layout_no_horizontal_scroll']=panel.editor_scroll.horizontalScrollBar().maximum()==0 and window.roster.horizontalScrollBar().maximum()==0
+   panel.advanced_toggle.setChecked(False)
+   window.add_next_rover();added=window.selected
+   checks['roster_add_remove']=added==4 and not hasattr(window,'add_id') and window.remove_rover(added) and set(window.panels)=={1,2,3} and window.hub is None
+   # Display refresh must not continually dirty the terrain at the 10Hz
+   # heartbeat/UI lease rate. The independent one-second map timer ages labels.
+   original_update=window.map.update;calls=[]
+   window.map.update=lambda:calls.append(True)
+   for _ in range(10):window.tick()
+   window.map.update=original_update
+   checks['idle_map_no_repaint']=not calls
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:
    window.close();app.processEvents()

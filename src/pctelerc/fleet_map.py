@@ -23,6 +23,7 @@ class FleetMap(MissionMap):
     def observe(self,rover,snapshot):
         if snapshot.vehicle_system != rover or not 1 <= rover <= 20:
             return
+        was_fresh = self.fresh(rover)
         self.snapshots[rover] = snapshot
         valid = (position_fresh(snapshot) and snapshot.last_heartbeat is not None
             and 0 <= time.monotonic()-snapshot.last_heartbeat <= 5
@@ -43,7 +44,9 @@ class FleetMap(MissionMap):
                 shown=self.project(point)
                 if old is None or not self.rect().adjusted(40,40,-100,-40).contains(shown.toPoint()):
                     self.fit_fleet()
-        self.update()
+        current = self.positions.get(rover)
+        if (None if old is None else old[:2]) != (None if current is None else current[:2]) or was_fresh != self.fresh(rover):
+            self.update()
 
     def fresh(self,rover,now=None):
         now = time.monotonic() if now is None else now
@@ -84,11 +87,18 @@ class FleetMap(MissionMap):
                 break
         self.update()
 
-    def paintEvent(self,event):
-        super().paintEvent(event)
+    def forget(self, rover):
+        """Remove only this roster entry's display state; never issue commands."""
+        for values in (self.snapshots, self.positions, self.trails):
+            values.pop(rover, None)
+        if self.follow_rover == rover:
+            self.follow_rover = None
+        self.update()
+
+    def _paint_overlays(self,painter):
+        super()._paint_overlays(painter)
         if self._center is None:
             return
-        painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         occupied=[]
         labels=self.labels()

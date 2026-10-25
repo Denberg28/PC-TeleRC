@@ -42,6 +42,11 @@ class RoverMap(QWidget):
 
     def __init__(self, parent=None, *, cache_dir: Path | None = None):
         super().__init__(parent)
+        # Paint every pixel through one Qt backing-store pass. In particular,
+        # Windows must not erase a styled QWidget background between resize
+        # frames before the terrain and mission/fleet overlays are painted.
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setMinimumSize(220, 150)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._zoom = 17
@@ -205,7 +210,11 @@ class RoverMap(QWidget):
 
     def _remember(self, key, image):
         self._tiles[key] = image
-        if len(self._tiles) > 64:
+        # A large/high-DPI viewport can show more than 64 tiles. Evicting a
+        # still-visible tile on every frame causes loading flashes on resize.
+        visible = (math.ceil(self.width()/256)+2)*(math.ceil(self.height()/256)+2)
+        budget = max(64, min(256, visible*2))
+        while len(self._tiles) > budget:
             self._tiles.popitem(last=False)
 
     def _fallback_tile(self, key):
@@ -253,7 +262,8 @@ class RoverMap(QWidget):
                 reply.abort()
         reply.readyRead.connect(consume)
         def complete():
-            self._pending.pop(key, None)
+            if self._pending.get(key) is reply:
+                self._pending.pop(key, None)
             if self._closed or generation != self._generation:
                 reply.deleteLater(); return
             status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
@@ -282,6 +292,15 @@ class RoverMap(QWidget):
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.save()
+        self._paint_map(painter)
+        painter.restore()
+        self._paint_overlays(painter)
+
+    def _paint_overlays(self, painter):
+        """Subclass overlays share the same painter and backing-store frame."""
+
+    def _paint_map(self, painter):
         painter.fillRect(self.rect(), QColor("#182330"))
         if self._center is None:
             painter.setPen(QColor("#c2cedd"))

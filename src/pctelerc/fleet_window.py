@@ -6,7 +6,7 @@ import time
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLabel,
-    QPushButton,QComboBox,QSpinBox,QScrollArea,QStackedWidget,QSplitter,QFrame,
+    QPushButton,QComboBox,QScrollArea,QStackedWidget,QSplitter,QFrame,QSizePolicy,
     QDialog,QLineEdit,QDialogButtonBox,QFileDialog,QCheckBox)
 from . import __version__
 from .config import data_dir,load_settings,save_settings
@@ -20,8 +20,8 @@ from .core import LinkState
 
 STYLE = '''
 QWidget { background:#0f1724; color:#e2e8f0; font-size:12px; }
-QPushButton,QComboBox,QSpinBox,QLineEdit { background:#1e293b; border:1px solid #334155;
- border-radius:5px; padding:6px 9px; min-height:19px; }
+QPushButton,QComboBox,QSpinBox,QDoubleSpinBox,QLineEdit { background:#1e293b; border:1px solid #334155;
+ border-radius:5px; padding:5px 7px; min-height:19px; }
 QPushButton:hover { border-color:#34d399; }
 QPushButton:disabled { color:#64748b; border-color:#243044; }
 QPushButton#Primary { background:#145b48; border-color:#34d399; }
@@ -29,12 +29,21 @@ QPushButton#Danger { border-color:#b45354; }
 QFrame#RoverCard { border:1px solid #334155; border-radius:7px; }
 QLabel#Muted { color:#94a3b8; } QLabel#Warn { color:#fbbf24; }
 QScrollArea,QStackedWidget { border:0; }
+QScrollBar:vertical { background:#111b29; width:9px; margin:0; }
+QScrollBar::handle:vertical { background:#475569; border-radius:4px; min-height:28px; }
+QScrollBar::handle:vertical:hover { background:#64748b; }
+QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical { height:0; }
+QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical { background:none; }
+QSplitter::handle { background:#172231; width:5px; }
+QSplitter::handle:hover { background:#34d399; }
+QListWidget { background:#111b29; border:1px solid #243044; border-radius:5px; }
 '''
 
 
 class FleetWindow(QMainWindow):
     def __init__(self, *, hub_factory=FleetHub, draft_root=None):
         super().__init__()
+        self.setStyleSheet(STYLE)
         self.hub_factory, self.hub = hub_factory,None
         self.draft_root = Path(draft_root) if draft_root else data_dir()/'fleet-plans'
         self.panels,self.cards = {},{}
@@ -55,26 +64,38 @@ class FleetWindow(QMainWindow):
         self.refresh.clicked.connect(lambda:refresh_ports(self.port))
         self.base_button = QPushButton('Open BASE');self.base_button.clicked.connect(self.toggle_base)
         top.addWidget(self.port);top.addWidget(self.refresh);top.addWidget(self.base_button);top.addStretch()
-        self.add_id = QSpinBox();self.add_id.setRange(1,20);self.add_id.setValue(4)
-        top.addWidget(self.add_id)
-        add = QPushButton('Add rover');add.clicked.connect(lambda:self.add_rover(self.add_id.value()))
-        top.addWidget(add)
+        self.add_button = QPushButton('Add rover')
+        self.add_button.setToolTip('Add the lowest unused rover ID; restore its saved plan if available')
+        self.add_button.clicked.connect(self.add_next_rover)
+        self.remove_button = QPushButton('Remove rover')
+        self.remove_button.setToolTip('Remove the selected disconnected rover; keep its saved route')
+        self.remove_button.clicked.connect(lambda:self.remove_rover(self.selected))
+        top.addWidget(self.add_button);top.addWidget(self.remove_button)
         layout.addLayout(top)
         self.status = QLabel('Offline · plan missions, then connect each rover deliberately')
         self.status.setObjectName('Muted');self.status.setWordWrap(True);layout.addWidget(self.status)
         split = QSplitter(Qt.Orientation.Horizontal);layout.addWidget(split,1)
+        self.split = split
+        split.setChildrenCollapsible(False)
+        split.setOpaqueResize(False)
         roster = QWidget();self.roster_layout = QVBoxLayout(roster);self.roster_layout.setContentsMargins(0,0,8,0)
         self.roster_layout.addStretch()
         self.roster = QScrollArea();self.roster.setWidgetResizable(True);self.roster.setWidget(roster)
-        self.roster.setMinimumWidth(330);split.addWidget(self.roster)
+        self.roster.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.roster.setMinimumWidth(350);split.addWidget(self.roster)
         center = QWidget();center_layout = QVBoxLayout(center);center_layout.setContentsMargins(0,0,0,0)
         tools = QHBoxLayout()
         for label,callback in [('Fit fleet',lambda:self.map.fit_fleet()),('Follow selected',self.follow_selected),
-            ('+',lambda:self.map.zoom(1)),('−',lambda:self.map.zoom(-1)),('Offline map',self.open_offline_map)]:
+            ('+',lambda:self.map.zoom(1)),('−',lambda:self.map.zoom(-1))]:
             b=QPushButton(label);b.clicked.connect(callback);tools.addWidget(b)
+        center_layout.addLayout(tools)
+        source_tools = QHBoxLayout()
+        offline_button = QPushButton('Offline map');offline_button.clicked.connect(self.open_offline_map)
+        source_tools.addWidget(offline_button)
         self.online = QCheckBox('Online tiles');self.online.setChecked(self.settings.map_online)
-        tools.addWidget(self.online);center_layout.addLayout(tools)
+        source_tools.addWidget(self.online);source_tools.addStretch();center_layout.addLayout(source_tools)
         self.map = FleetMap();self.map.set_online(self.settings.map_online)
+        self.map.setMinimumWidth(280)
         self.online.toggled.connect(self.map.set_online)
         if self.settings.map_file:
             try:self.map.set_offline_map(self.settings.map_file)
@@ -85,9 +106,10 @@ class FleetWindow(QMainWindow):
         self.plan_title = QLabel('Rover 1 · mission plan');self.plan_title.setStyleSheet('font-size:16px; font-weight:600;')
         right_layout.addWidget(self.plan_title)
         self.stack = QStackedWidget();right_layout.addWidget(self.stack,1)
-        right.setMinimumWidth(340);split.addWidget(right)
+        right.setMinimumWidth(320);split.addWidget(right)
+        self.stack.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Expanding)
         split.setStretchFactor(0,0);split.setStretchFactor(1,1);split.setStretchFactor(2,0)
-        split.setSizes([340,800,360])
+        split.setSizes([350,790,360])
         self.roster_path=self.draft_root.parent/'fleet-roster.json'
         ids=[1,2,3]
         try:
@@ -101,6 +123,9 @@ class FleetWindow(QMainWindow):
         self.timer=QTimer(self);self.timer.timeout.connect(self.tick);self.timer.start(100)
 
     def add_rover(self,rover):
+        if type(rover) is not int or not 1 <= rover <= 20:
+            self.status.setText('Rover ID must be between 1 and 20')
+            return
         if rover in self.panels:
             self.select_rover(rover);return
         def transport(port,identity):
@@ -113,11 +138,12 @@ class FleetWindow(QMainWindow):
             draft_path=draft_path(self.draft_root,rover),embedded=True,rover_id=rover)
         panel.external_map=self.map
         self.panels[rover]=panel;self.stack.addWidget(panel)
-        service.events.snapshot.connect(lambda s,r=rover:self.map.observe(r,s))
-        service.events.message.connect(lambda text,r=rover:self.status.setText(f'Rover {r} · {text}'))
+        service.events.snapshot.connect(lambda s,r=rover,owner=service:self.observe_rover(r,owner,s))
+        service.events.message.connect(lambda text,r=rover,owner=service:self.rover_message(r,owner,text))
         card = QFrame();card.setObjectName('RoverCard');box=QVBoxLayout(card)
         select = QPushButton(f'Rover {rover}');select.clicked.connect(lambda:self.select_rover(rover));box.addWidget(select)
-        state = QLabel('Offline · no telemetry');state.setWordWrap(True);state.setObjectName('Muted');box.addWidget(state)
+        state = QLabel('Offline · no telemetry');state.setWordWrap(True);state.setObjectName('Muted')
+        state.setFixedHeight(30);box.addWidget(state)
         buttons=QHBoxLayout();buttons.setSpacing(5)
         connect,arm,start,disarm = [QPushButton(t) for t in ('Connect','Arm','Mission start','Disarm')]
         start.setObjectName('Primary');disarm.setObjectName('Danger')
@@ -131,13 +157,62 @@ class FleetWindow(QMainWindow):
         hold.clicked.connect(lambda:panel._hold());box.addWidget(hold)
         self.cards[rover]=dict(frame=card,select=select,state=state,connect=connect,arm=arm,start=start,disarm=disarm,hold=hold)
         self.roster_layout.insertWidget(self.roster_layout.count()-1,card)
+        self.save_roster()
+        self.tick()
+
+    def observe_rover(self, rover, owner, snapshot):
+        panel = self.panels.get(rover)
+        if panel is not None and panel.service is owner:
+            self.map.observe(rover, snapshot)
+
+    def rover_message(self, rover, owner, text):
+        panel = self.panels.get(rover)
+        if panel is not None and panel.service is owner:
+            self.status.setText(f'Rover {rover} · {text}')
+
+    def save_roster(self):
         try:
             self.roster_path.parent.mkdir(parents=True,exist_ok=True)
             temp=self.roster_path.with_suffix('.tmp');temp.write_text(json.dumps(sorted(self.panels)));temp.replace(self.roster_path)
         except OSError:self.status.setText('Roster could not be saved; plans remain separate')
-        free=next((i for i in range(1,21) if i not in self.panels),20)
-        self.add_id.setValue(free)
-        self.tick()
+
+    def add_next_rover(self):
+        free = next((i for i in range(1,21) if i not in self.panels), None)
+        if free is None:
+            self.status.setText('All 20 rover IDs are already in the roster')
+            return
+        self.add_rover(free)
+        self.select_rover(free)
+
+    def remove_rover(self, rover):
+        panel = self.panels.get(rover)
+        if panel is None:
+            return False
+        if len(self.panels) == 1:
+            self.status.setText('Keep at least one rover in the roster')
+            return False
+        if panel.service.running or panel.busy:
+            self.status.setText(f'Disconnect Rover {rover} before removing it')
+            return False
+        if not panel._save_draft():
+            self.status.setText(f'Rover {rover} route could not be saved · export it before removal')
+            return False
+        if not panel._shutdown():
+            self.status.setText(f'Rover {rover} is still closing; try again')
+            return False
+        # Save the draft before detaching either widget. Late signals from this
+        # retired service cannot populate a newly added rover with the same ID.
+        card = self.cards.pop(rover)
+        del self.panels[rover]
+        self.stack.removeWidget(panel)
+        self.roster_layout.removeWidget(card['frame'])
+        card['frame'].deleteLater();panel.deleteLater()
+        self.map.forget(rover)
+        if self.selected == rover:
+            self.select_rover(min(self.panels, key=lambda i:abs(i-rover)))
+        self.save_roster();self.tick()
+        self.status.setText(f'Rover {rover} removed · saved route retained')
+        return True
 
     def select_rover(self,rover):
         if rover not in self.panels:return
@@ -242,8 +317,15 @@ class FleetWindow(QMainWindow):
             name='Primary' if rover==self.selected else ''
             if card['select'].objectName()!=name:
                 card['select'].setObjectName(name);card['select'].style().unpolish(card['select']);card['select'].style().polish(card['select'])
-        if self.selected in self.panels:self.map.points=list(self.panels[self.selected].map.points)
-        self.map.update()
+        if self.selected in self.panels:
+            points = list(self.panels[self.selected].map.points)
+            if points != self.map.points:
+                self.map.points = points
+                self.map.update()
+        selected = self.panels.get(self.selected)
+        self.add_button.setEnabled(len(self.panels) < 20)
+        self.remove_button.setEnabled(len(self.panels) > 1 and selected is not None
+            and not selected.service.running and not selected.busy)
 
     def closeEvent(self,event):
         self.timer.stop();self.close_base()

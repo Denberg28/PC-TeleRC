@@ -1,2 +1,3 @@
 """Shared fleet release contract; importable without Qt or hardware libraries."""
 FROZEN_CHECKS=frozenset('fleet_map_central no_camera_controls no_video_runtime initial_no_authority per_rover_controls map_labels identity_isolated live_position_update stale_position_retained stale_controls_disabled offline_map_decode offline_no_fake_gps offline_no_network isolated_plans selection_no_authority map_edit_offline logo close_cleans_sessions'.split())
+FROZEN_CHECKS |= frozenset('resize_opaque_map route_file_controls_visible roster_add_remove idle_map_no_repaint compact_layout_no_horizontal_scroll'.split())

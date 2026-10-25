@@ -103,10 +103,10 @@ def test_fleet_upload_arm_start_priority_disarm_and_other_rover_monitoring(qt_ap
  hub=FleetHub('COM9',Serial);sv=services(hub,(1,2));s=sv[1]
  items=parse_text(Plan([Point(13.6,123.2)]).wpl())
  try:
-  s.submit('upload',items);wait(sv.values(),lambda:bool(s.verified_digest))
-  s.submit('arm',items);wait(sv.values(),lambda:s.phase=='Armed · not started')
+  s.submit('upload',items);wait(sv.values(),lambda:bool(s.verified_digest) and not hub.operation.locked())
+  s.submit('arm',items);wait(sv.values(),lambda:s.phase=='Armed · not started' and not hub.operation.locked())
   assert hub.port.peers[1].arm_values==[(1,0)] and not hub.port.peers[2].commands
-  s.submit('start',items);wait(sv.values(),lambda:s.phase=='AUTO · running')
+  s.submit('start',items);wait(sv.values(),lambda:s.phase=='AUTO · running' and not hub.operation.locked())
   s.request_disarm();wait(sv.values(),lambda:s.phase=='Disarmed · HOLD')
   assert hub.port.peers[1].arm_values==[(1,0),(0,0)]
   assert hub.port.peers[1].commands.count(300)==1 and not hub.port.peers[2].commands
@@ -122,7 +122,7 @@ def test_lost_arm_ack_is_unknown_and_never_retried(qt_application,monkeypatch):
  hub=FleetHub('COM9',Serial);sv=services(hub,(1,2));s=sv[1]
  items=parse_text(Plan([Point(13.6,123.2)]).wpl())
  try:
-  s.submit('upload',items);wait(sv.values(),lambda:bool(s.verified_digest))
+  s.submit('upload',items);wait(sv.values(),lambda:bool(s.verified_digest) and not hub.operation.locked())
   hub.port.peers[1].arm_acks=False;s.submit('arm',items)
   wait(sv.values(),lambda:not s.running)
   assert hub.port.peers[1].arm_values==[(1,0)] and not s.verified_digest

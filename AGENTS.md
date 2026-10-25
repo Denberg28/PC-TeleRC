@@ -5,6 +5,14 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+25 October 2026: user authorizes fixing map resize flicker, transitions, padding
+and scrolling, replacing the number selector with Add/Remove rover buttons, and
+visible route import/export. Develop application-only v1.2.0rc2 from the pinned
+mission baseline. Preserve firmware, private keys and all command safety rules.
+Removal must never stop an active session or discard an unsaved draft. Imported
+routes are offline drafts only. Require current Windows and frozen resize/roster/
+file-control checks, sanitation and exact unchanged-firmware verification.
+
 24 October 2026: user designates PC TeleRC v1.2.0rc1 as the mission-planning
 base build. Start future mission-planning branches from
 baseline/mission-planning-v1.2.0rc1. The exact tested app source is

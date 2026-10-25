@@ -76,11 +76,10 @@ class MissionMap(RoverMap):
         self.press = None
         super().mouseReleaseEvent(event)
 
-    def paintEvent(self, event):
-        super().paintEvent(event)
+    def _paint_overlays(self, painter):
+        super()._paint_overlays(painter)
         if self._center is None:
             return
-        painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         cx, cy = world_pixel(*self._center, self._zoom)
         size = 256 * 2**self._zoom
@@ -135,6 +134,9 @@ class MissionDialog(QDialog):
         self.resize(1100, 760)
         self.setMinimumSize(850, 600)
         root = QVBoxLayout(self)
+        if embedded:
+            root.setContentsMargins(0, 0, 0, 0)
+            root.setSpacing(6)
         toolbar = QHBoxLayout()
         toolbar.addWidget(QLabel("Plan  →  Connect  →  Upload  →  Start"), 1)
         self.plan_toggle = QPushButton("Hide plan")
@@ -145,6 +147,17 @@ class MissionDialog(QDialog):
         toolbar.addWidget(self.plan_toggle)
         toolbar.addWidget(self.help_toggle)
         root.addLayout(toolbar)
+        self.import_btn = QPushButton("Import route")
+        self.export_btn = QPushButton("Export route")
+        self.import_btn.setToolTip("Import a QGC WPL route into this rover's offline draft")
+        self.export_btn.setToolTip("Save this rover's planned route as QGC WPL; no command is sent")
+        self.import_btn.clicked.connect(self._import)
+        self.export_btn.clicked.connect(self._export)
+        if embedded:
+            files = QHBoxLayout()
+            files.addWidget(self.import_btn)
+            files.addWidget(self.export_btn)
+            root.addLayout(files)
         link = QHBoxLayout()
         self.port = QComboBox()
         self.port.setEditable(True)
@@ -196,6 +209,7 @@ class MissionDialog(QDialog):
         self.editor_scroll = QScrollArea()
         self.editor_scroll.setWidgetResizable(True)
         self.editor_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.editor_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.editor_scroll.setMinimumWidth(350)
         self.editor_scroll.setWidget(editor)
         body.addWidget(self.editor_scroll)
@@ -212,7 +226,12 @@ class MissionDialog(QDialog):
         self.editor.setMinimumWidth(330)
         body.setSizes([700, 360])
         if embedded:
-            self.setMinimumSize(330,0)
+            self.setMinimumSize(300,0)
+            self.editor_scroll.setMinimumWidth(0)
+            self.editor.setMinimumWidth(0)
+            self.editor.setMinimumHeight(0)
+            body.setMinimumHeight(120)
+            body.setChildrenCollapsible(False)
             self.map.hide()
             self.map.set_online(False)
             self.map._timer.stop()
@@ -247,6 +266,8 @@ class MissionDialog(QDialog):
         el.addLayout(row)
         self.rows = QListWidget()
         self.rows.setMinimumHeight(90)
+        self.rows.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.rows.setTextElideMode(Qt.TextElideMode.ElideRight)
         el.addWidget(self.rows, 1)
         row = QHBoxLayout()
         for label, callback in [
@@ -269,7 +290,7 @@ class MissionDialog(QDialog):
         self.output_settings.hide()
         self.advanced_toggle.toggled.connect(self.output_settings.setVisible)
         self.advanced_toggle.toggled.connect(
-            lambda expanded: self.editor.setMinimumHeight(550 if expanded else 410)
+            lambda expanded: self.editor.setMinimumHeight(0 if embedded else 550 if expanded else 410)
         )
         output_layout.addWidget(QLabel("Function · Output · OFF / ON (µs)"))
         self.functions = []
@@ -301,15 +322,12 @@ class MissionDialog(QDialog):
         self.speed.setSuffix(" m/s")
         self.speed.valueChanged.connect(self._invalidate)
         el.addWidget(self.speed)
-        row = QHBoxLayout()
-        load = QPushButton("Import WPL")
-        save = QPushButton("Export WPL")
-        load.clicked.connect(self._import)
-        save.clicked.connect(self._export)
-        row.addWidget(load)
-        row.addWidget(save)
-        el.addLayout(row)
-        self._editing_controls += [self.mode, self.lat, self.lon, add, load, self.speed]
+        if not embedded:
+            row = QHBoxLayout()
+            row.addWidget(self.import_btn)
+            row.addWidget(self.export_btn)
+            el.addLayout(row)
+        self._editing_controls += [self.mode, self.lat, self.lon, add, self.import_btn, self.speed]
         self._editing_controls += [w for row in self.functions for w in row]
         for widget in [
             self.lat,
@@ -589,8 +607,10 @@ class MissionDialog(QDialog):
             temp = self._draft_path.with_suffix(".tmp")
             temp.write_text(text, encoding="utf-8")
             temp.replace(self._draft_path)
+            return True
         except (OSError, ValueError):
             self._message("Draft could not be saved; use Export WPL")
+            return False
 
     def _controls(self):
         running = self.service.running
@@ -703,6 +723,11 @@ class MissionDialog(QDialog):
                 )
             self.map.points = [(p.latitude, p.longitude) for p in self.plan.points]
         self.map.update()
+        if self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover == self.rover.value():
+            points = list(self.map.points)
+            if self.external_map.points != points:
+                self.external_map.points = points
+                self.external_map.update()
 
     def _move(self, delta):
         if self.service.running:
@@ -749,6 +774,9 @@ class MissionDialog(QDialog):
         return self.plan.wpl()
 
     def _import(self):
+        if self.service.running:
+            self._message("Disconnect this rover before importing a route")
+            return
         path, _ = QFileDialog.getOpenFileName(
             self, "Import QGC WPL 110", "", "Waypoints (*.waypoints *.txt)"
         )
@@ -759,6 +787,8 @@ class MissionDialog(QDialog):
                 raise ValueError("Plan file too large")
             text = Path(path).read_text(encoding="utf-8")
             items = parse_text(text)
+            if self.service.running:
+                raise ValueError("Session changed; disconnect before importing a route")
             self.imported = text
             self._render()
             self._invalidate()
@@ -767,7 +797,13 @@ class MissionDialog(QDialog):
                 self.map._center = (p["x"] / 1e7, p["y"] / 1e7)
                 self.map._follow = False
                 self.map.update()
-        except (OSError, ValueError) as exc:
+                if self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover == self.rover.value():
+                    self.external_map._center = self.map._center
+                    self.external_map.follow_rover = None
+                    self.external_map.auto_fit = False
+                    self.external_map.update()
+            self._message("Route imported into this rover's draft; review before upload")
+        except (OSError, ValueError, UnicodeError) as exc:
             self._message(str(exc))
 
     def _export(self):
@@ -781,11 +817,26 @@ class MissionDialog(QDialog):
             self, "Export reviewed route", "", "Waypoints (*.waypoints)"
         )
         if path:
+            temporary = None
             try:
-                Path(path).write_text(text, encoding="utf-8")
+                target = Path(path)
+                if not target.suffix:
+                    target = target.with_suffix('.waypoints')
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=target.parent,
+                        prefix='.'+target.name+'.', suffix='.tmp', delete=False) as output:
+                    temporary = Path(output.name)
+                    output.write(text)
+                temporary.replace(target)
                 self._message("Plan exported; no connection or command sent")
             except OSError as exc:
                 self._message(str(exc))
+            finally:
+                if temporary is not None:
+                    try:
+                        temporary.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
     def _connect(self):
         try:
