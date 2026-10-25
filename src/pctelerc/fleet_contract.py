@@ -5,3 +5,5 @@ FROZEN_CHECKS |= frozenset('projection_round_trip drag_pan_continuity drag_no_ro
 FROZEN_CHECKS |= frozenset('map_action_popup planned_home_return planned_hold_roundtrip waypoint_drag route_line_drag_insert route_gesture_rover_isolated route_actions_no_authority'.split())
 
 FROZEN_CHECKS |= frozenset('draft_undo_redo draft_history_rover_isolated native_plan_roundtrip native_plan_editable draft_recovery_no_authority'.split())
+
+FROZEN_CHECKS |= frozenset('popup_route_file_roundtrip legacy_menu_draft_recovery compact_arrival_hold invalid_gps_stays_stale'.split())

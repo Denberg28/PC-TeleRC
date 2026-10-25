@@ -3,7 +3,6 @@ import json
 import pytest
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QInputDialog
 from pctelerc.fleet_window import FleetWindow
 from pctelerc.mission_plan import Plan, Point, parse_text
 from pctelerc.mission_widget import MissionDialog
@@ -36,7 +35,7 @@ def test_map_click_menu_actions_home_and_return_are_offline(window,monkeypatch,q
     assert not next(a for a in m._route_menu.actions() if a.data()=='rth').isEnabled()
     choose(w,'home');assert p.plan.home==pytest.approx((13.6,123.2))
     m.show_route_menu(13.6001,123.2001);choose(w,'go')
-    monkeypatch.setattr(QInputDialog,'getInt',lambda *_:(7,True))
+    monkeypatch.setattr('pctelerc.route_editor.choose_hold',lambda *_:(7,True))
     m.show_route_menu(13.6002,123.2002);choose(w,'hold')
     m.show_route_menu(13.6003,123.2003);choose(w,'rth')
     assert [p.kind for p in p.plan.points]==['go','hold','rth']
@@ -113,7 +112,7 @@ def test_hold_dialog_rechecks_rover_and_session(window,monkeypatch):
     def choose_and_switch(*_):
         window.select_rover(2)
         return 5,True
-    monkeypatch.setattr(QInputDialog,'getInt',choose_and_switch)
+    monkeypatch.setattr('pctelerc.route_editor.choose_hold',choose_and_switch)
     m.show_route_menu(13.6,123.2);choose(window,'hold')
     assert not any(p.plan.points for p in window.panels.values())
 

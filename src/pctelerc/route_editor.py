@@ -1,8 +1,9 @@
 """Planning gestures only. No transport or vehicle-command access."""
 from PySide6.QtCore import QEvent, QPointF, Qt
 from PySide6.QtGui import QColor, QPen
-from PySide6.QtWidgets import QInputDialog, QMenu, QLabel, QWidgetAction
+from PySide6.QtWidgets import QMenu, QLabel, QWidgetAction, QWidget, QVBoxLayout
 from .rover_map import world_pixel, world_location
+from .route_popups import choose_hold
 
 
 class RouteEditor:
@@ -121,41 +122,48 @@ class RouteEditor:
         if self._route_menu is not None:
             self._route_menu.close()
         menu = QMenu(self)
-        menu.setStyleSheet('QMenu { background:#172231; color:#e2e8f0; border:1px solid #475569; } '
-            'QMenu::section { color:#94a3b8; background:#111b29; padding:5px 10px; } '
-            'QMenu::item { padding:7px 12px; } QMenu::item:selected { background:#145b48; } '
-            'QMenu::item:disabled { color:#64748b; }')
+        menu.setStyleSheet('QMenu { background:#132032; color:#e8edf5; border:1px solid #354961; '
+            'border-radius:8px; padding:6px 0; font-size:13px; } '
+            'QMenu::item { padding:9px 16px; min-width:190px; } '
+            'QMenu::item:selected { background:#20443e; color:#f1fff9; } '
+            'QMenu::item:disabled { color:#78879b; } '
+            'QMenu::separator { height:1px; background:#2b3d53; margin:6px 12px; }')
         menu.setToolTipsVisible(True)
         menu.setObjectName("RouteActions")
-        for text in (f"Rover {self.selected_rover} · planned route", f"{lat:.7f}, {lon:.7f}"):
-            header = QWidgetAction(menu)
-            label = QLabel(text)
-            label.setStyleSheet('color:#94a3b8; background:#111b29; padding:5px 10px;')
-            header.setDefaultWidget(label)
-            menu.addAction(header)
+        header = QWidgetAction(menu)
+        header_widget = QWidget()
+        header_widget.setStyleSheet('background:transparent;')
+        header_layout = QVBoxLayout(header_widget)
+        header_layout.setContentsMargins(16,8,16,9);header_layout.setSpacing(5)
+        title = QLabel(f'Rover {self.selected_rover} · '+(f'Waypoint {index+1}' if index >= 0 else 'Route'))
+        title.setStyleSheet('color:#eef3fa; font-size:13px; font-weight:600; background:transparent;')
+        coordinates = QLabel(f'{lat:.6f}, {lon:.6f}')
+        coordinates.setStyleSheet('color:#94a6bd; font-size:11px; background:transparent;')
+        header_layout.addWidget(title);header_layout.addWidget(coordinates)
+        header.setDefaultWidget(header_widget);menu.addAction(header);menu.addSeparator()
         rover, revision = self.selected_rover, self._route_revision
-        def emit(name, value=0):
+        def emit(name, value=5):
             if self.route_editable and self.selected_rover == rover and self._route_revision == revision:
                 self.route_action.emit(name, lat, lon, index, value)
-        def action(label, name, value=0):
+        def action(label, name, value=5):
             item = menu.addAction(label)
             item.setData(name)
             item.triggered.connect(lambda: emit(name, value))
             return item
-        action("Go Here · waypoint", "go")
-        hold = menu.addAction("Hold here…")
+        action("Go here" if index < 0 else "Waypoint", "go").setToolTip("Add or update an offline waypoint; no movement command is sent")
+        hold = menu.addAction("Hold on arrival…")
         hold.setData("hold")
-        def choose_hold():
+        def apply_hold():
             # Capture identity: a dialog must never edit a newly selected rover.
-            seconds, ok = QInputDialog.getInt(self, "Planned hold", "Pause on arrival (seconds)", 5, 2, 10)
+            seconds, ok = choose_hold(self)
             if ok:
                 emit("hold", seconds)
-        hold.triggered.connect(choose_hold)
-        rth = action("RTH · return to planned home", "rth")
+        hold.triggered.connect(apply_hold)
+        rth = action("Return home", "rth")
         rth.setEnabled(self.planned_home is not None and "rth" not in self.route_kinds)
         rth.setToolTip("Adds a final waypoint at the marked planning home; does not change FC RTL mode")
         menu.addSeparator()
-        action("Set planned home here", "home")
+        action("Set planned home", "home")
         if index >= 0:
             action("Remove waypoint", "remove")
         self._route_menu = menu

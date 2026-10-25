@@ -1,3 +1,12 @@
+## 1.2.0rc6 — 25 October 2026
+
+- Fix route export after actual Go here menu placement; recover older zero-duration drafts.
+- Clear saved-file location and errors; correct filenames/extensions and remember last file.
+- Compact route menu and arrival-hold dialog; include Arm in the workflow reminder.
+- Display actual heading/speed and retain stale positions for invalid or expired GPS.
+- Add popup/file/legacy-draft frozen checks and addressed movement workflow regression.
+- Preserve firmware, private pairing, normal arming and one-shot mission start.
+
 ## 1.2.0rc5 — 25 October 2026
 
 - Per-rover offline Undo/Redo for 50 edits, including route dragging and imports.

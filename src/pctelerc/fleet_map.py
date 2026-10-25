@@ -29,11 +29,9 @@ class FleetMap(RouteEditor, MissionMap):
         if snapshot.vehicle_system != rover or not 1 <= rover <= 20:
             return
         was_fresh = self.fresh(rover)
+        old_snapshot = self.snapshots.get(rover)
         self.snapshots[rover] = snapshot
-        valid = (position_fresh(snapshot) and snapshot.last_heartbeat is not None
-            and 0 <= time.monotonic()-snapshot.last_heartbeat <= 5
-            and math.isfinite(snapshot.latitude) and math.isfinite(snapshot.longitude)
-            and -85 <= snapshot.latitude <= 85 and -180 <= snapshot.longitude <= 180)
+        valid = self.fresh(rover)
         old = self.positions.get(rover)
         if valid and (old is None or snapshot.position_timestamp > old[2]):
             point = (snapshot.latitude,snapshot.longitude)
@@ -50,14 +48,18 @@ class FleetMap(RouteEditor, MissionMap):
                 if old is None or not self.rect().adjusted(40,40,-100,-40).contains(shown.toPoint()):
                     self.fit_fleet()
         current = self.positions.get(rover)
-        if (None if old is None else old[:2]) != (None if current is None else current[:2]) or was_fresh != self.fresh(rover):
+        if (None if old is None else old[:2]) != (None if current is None else current[:2]) or was_fresh != self.fresh(rover) or (old_snapshot is not None and old_snapshot.heading != snapshot.heading):
             self.update()
 
     def fresh(self,rover,now=None):
         now = time.monotonic() if now is None else now
         s = self.snapshots.get(rover)
         return bool(s is not None and s.running and position_fresh(s,now)
-            and s.last_heartbeat is not None and 0 <= now-s.last_heartbeat <= 5)
+            and s.last_heartbeat is not None and 0 <= now-s.last_heartbeat <= 5
+            and all(type(v) in (int,float) and math.isfinite(v) for v in (s.latitude,s.longitude))
+            and -85 <= s.latitude <= 85 and -180 <= s.longitude <= 180
+            and not (abs(s.latitude) < 1e-7 and abs(s.longitude) < 1e-7)
+            and (s.gps_timestamp is None or 0 <= now-s.gps_timestamp <= 5))
 
     def labels(self,now=None):
         now = time.monotonic() if now is None else now
@@ -117,7 +119,14 @@ class FleetMap(RouteEditor, MissionMap):
                 painter.setPen(QPen(color,2));painter.drawPath(path)
             p = self.project(point[:2])
             painter.setBrush(color);painter.setPen(QPen(QColor('white'),2 if rover==self.selected_rover else 1))
-            painter.drawEllipse(p,6,6)
+            heading = self.snapshots[rover].heading
+            if self.fresh(rover) and heading is not None and math.isfinite(heading) and 0 <= heading < 360:
+                painter.save();painter.translate(p);painter.rotate(heading)
+                marker = QPainterPath();marker.moveTo(0,-11);marker.lineTo(7,7)
+                marker.lineTo(0,4);marker.lineTo(-7,7);marker.closeSubpath()
+                painter.drawPath(marker);painter.restore()
+            else:
+                painter.drawEllipse(p,6,6)
             label = labels[rover]
             x,y = p.x()+10,p.y()-10
             width=painter.fontMetrics().horizontalAdvance(label)+4

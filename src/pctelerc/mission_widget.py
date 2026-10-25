@@ -137,7 +137,7 @@ class MissionDialog(QDialog):
             root.setContentsMargins(0, 0, 0, 0)
             root.setSpacing(6)
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("Plan  →  Connect  →  Upload  →  Start"), 1)
+        toolbar.addWidget(QLabel("Plan · Connect · Upload · Arm · Start"), 1)
         self.plan_toggle = QPushButton("Hide plan")
         self.plan_toggle.setCheckable(True)
         self.plan_toggle.setChecked(True)
@@ -722,6 +722,7 @@ class MissionDialog(QDialog):
             if self.plan.home is None or len(self.plan.points) >= 60 or any(p.kind == 'rth' for p in self.plan.points):return
             self.plan.points.append(Point(*self.plan.home, kind='rth'))
         elif action in ('go','hold'):
+            if action == 'go':seconds = 5
             if action == 'hold' and (type(seconds) is not int or not 2 <= seconds <= 10):return
             if 0 <= index < len(self.plan.points):
                 point = self.plan.points[index]
@@ -876,7 +877,7 @@ class MissionDialog(QDialog):
             return
         identity, revision = self.rover.value(), self._draft_text()
         path, _ = QFileDialog.getOpenFileName(
-            self, "Import route", "", "TeleRC plan (*.telerc.json);;Waypoints (*.waypoints *.txt)"
+            self, "Import route", getattr(self, "_last_route_file", ""), "TeleRC plan (*.telerc.json);;Waypoints (*.waypoints *.txt)"
         )
         if not path:
             return
@@ -906,22 +907,37 @@ class MissionDialog(QDialog):
                     self.external_map.follow_rover = None
                     self.external_map.auto_fit = False
                     self.external_map.update()
-            self._message("Route imported into this rover's draft; review before upload")
+            self._last_route_file = str(Path(path).absolute())
+            self._file_message(f'Imported {Path(path).name} · review before upload')
         except (OSError, ValueError, UnicodeError, RecursionError) as exc:
-            self._message(str(exc))
+            self._file_message(f'Import failed: {exc}')
+
+    def _file_message(self, text):
+        self._message(text)
+        self.status.setText(text)
+        self.status.setToolTip(text)
 
     def _export(self):
         # Capture the draft before the file picker; nested Qt events must not
         # silently export another revision or newly selected rover.
-        draft = self._draft_text()
+        try:
+            data = decode_draft(self._draft_text())
+        except (ValueError, TypeError, RecursionError) as exc:
+            self._file_message(f'Export failed: {exc}')
+            return
+        draft = json.dumps(data, allow_nan=False)
         path, selected_filter = QFileDialog.getSaveFileName(
-            self, 'Export route', '', 'TeleRC plan (*.telerc.json);;Waypoints (*.waypoints)')
+            self, 'Export route', getattr(self, '_last_route_file', f'rover-{self.rover.value():03d}.telerc.json'),
+            'TeleRC plan (*.telerc.json);;Waypoints (*.waypoints)')
         if not path:return
         temporary = None
         try:
             target = Path(path)
-            native = target.suffix.lower() == '.json' or (not target.suffix and not selected_filter.startswith('Waypoints'))
-            if not target.suffix:target = target.with_suffix('.telerc.json' if native else '.waypoints')
+            suffix = target.suffix.lower()
+            native = suffix == '.json' or (suffix not in ('.waypoints', '.txt') and not selected_filter.startswith('Waypoints'))
+            extension = '.telerc.json' if native else '.waypoints'
+            if suffix not in ('.json', '.waypoints', '.txt'):
+                target = target.with_name(target.name+extension)
             if native:
                 decode_draft(draft)
                 text = draft
@@ -938,9 +954,10 @@ class MissionDialog(QDialog):
                 temporary = Path(output.name)
                 output.write(text)
             temporary.replace(target)
-            self._message('Editable plan exported' if native else 'WPL exported; planned-home metadata is not included')
+            self._last_route_file = str(target.absolute())
+            self._file_message(f'Saved {target.name} · {target.parent.absolute()}')
         except (OSError, ValueError) as exc:
-            self._message(str(exc))
+            self._file_message(f'Export failed: {exc}')
         finally:
             if temporary is not None:
                 try:temporary.unlink(missing_ok=True)
@@ -992,7 +1009,7 @@ class MissionDialog(QDialog):
             layout = QVBoxLayout(dialog)
             heading = QLabel(
                 f"Rover {rover}; {len(items) - 1} action rows; {policy}.\n"
-                f"{'Replaces the stored mission. Rover must be DISARMED MANUAL/HOLD.' if action == 'upload' else 'Arm with RC in MANUAL/HOLD. START is sent once; a missing ACK means UNKNOWN.'}\n"
+                f"{'Replaces the stored mission. Rover must be DISARMED in MANUAL or HOLD.' if action == 'upload' else 'Arm this rover in HOLD before starting. Start is sent once; missing confirmation means unknown state.'}\n"
                 "Review the exact route/actions below. HOLD does not guarantee accessory OFF.\n"
                 f"Type {phrase}"
             )
@@ -1019,7 +1036,7 @@ class MissionDialog(QDialog):
             buttons.accepted.connect(dialog.accept)
             buttons.rejected.connect(dialog.reject)
             layout.addWidget(buttons)
-            dialog.resize(800, 450)
+            dialog.resize(640, 400)
             if (
                 dialog.exec() != QDialog.DialogCode.Accepted
                 or confirmation.text().strip() != phrase

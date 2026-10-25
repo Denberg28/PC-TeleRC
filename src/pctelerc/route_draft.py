@@ -39,8 +39,16 @@ def decode(text):
             raise ValueError('Invalid draft actions')
         kind = point[3] if len(point) > 3 else 'go'
         seconds = point[4] if len(point) > 4 else 5
-        if kind not in ('go', 'hold', 'rth') or type(seconds) is not int or not 2 <= seconds <= 10:
+        if kind not in ('go', 'hold', 'rth') or type(seconds) is not int:
             raise ValueError('Invalid map action')
+        if kind == 'hold' and not 2 <= seconds <= 10:
+            raise ValueError('Hold must be 2–10 seconds')
+        if kind != 'hold':
+            # rc4/rc5 menu waypoints stored 0 in this unused field. Recover
+            # those drafts without changing any coordinates or active holds.
+            if seconds != 0 and not 2 <= seconds <= 10:
+                raise ValueError('Invalid map action')
+            seconds = 5
         restored.append([*point[:3], kind, seconds])
     home = data.get('home')
     if home is not None and not location(home):

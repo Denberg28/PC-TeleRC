@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+25 October 2026: user reports failed rc5 route export and requests professional
+compact popups plus review of waypoint workflow and rover movement. Build rc6
+from b391f318faab9771d412afc5b6394b2587bf758a. Repair the unused zero duration on
+Go here points, including existing drafts, without changing coordinates or
+loosening active-hold validation. Verify actual popup → file → import paths in
+the frozen Windows executable. Preserve firmware, pairing and all command gates.
+Heading/speed are display-only; invalid/stale GPS must not appear live. Run the
+addressed MAVLink planning/upload/arm/start/movement/HOLD regression. Publish a
+candidate only after the Windows, frozen, sanitation and asset checks pass.
+
 25 October 2026: continue development as application-only v1.2.0rc5 from rc4.
 Preserve every firmware byte, private pairing configuration and command gate.
 Add bounded per-rover offline Undo/Redo, editable native .telerc.json plans with

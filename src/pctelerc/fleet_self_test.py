@@ -3,8 +3,8 @@ from dataclasses import replace
 from contextlib import closing
 from pathlib import Path
 import json,sqlite3,tempfile,time,math,os
-from PySide6.QtWidgets import QApplication, QFileDialog
-from PySide6.QtCore import QBuffer,QIODevice,Qt,QEvent,QPointF
+from PySide6.QtWidgets import QApplication, QFileDialog, QDialogButtonBox, QDialog
+from PySide6.QtCore import QBuffer,QIODevice,Qt,QEvent,QPointF,QTimer
 from PySide6.QtGui import QImage,QMouseEvent
 from .rover_map import world_pixel,world_location
 
@@ -174,6 +174,43 @@ def run(report_path):
    finally:
     QFileDialog.getOpenFileName,QFileDialog.getSaveFileName=old_open,old_save_file
    checks['draft_recovery_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values()) and not any(p.digest for p in window.panels.values())
+   window.select_rover(1);panel=window.panels[1];panel._clear()
+   def choose(name,lat=13.62,lon=123.19):
+    m.show_route_menu(lat,lon)
+    popup=m._route_menu
+    next(a for a in popup.actions() if a.data()==name).trigger()
+    from shiboken6 import isValid
+    if isValid(popup):popup.close()
+   choose('home');choose('go',13.6201,123.1901)
+   hold_checks=[]
+   def hold_dialog():
+    from .route_popups import ArrivalHoldDialog
+    dialog=app.activeModalWidget()
+    hold_checks.append(isinstance(dialog,ArrivalHoldDialog) and dialog.width()==320 and dialog.height()<280)
+    if isinstance(dialog,ArrivalHoldDialog):
+     dialog.seconds.setValue(7)
+     dialog.accept()
+    elif dialog is not None:dialog.reject()
+   QTimer.singleShot(0,hold_dialog);choose('hold',13.6202,123.1902);choose('rth')
+   checks['compact_arrival_hold']=hold_checks==[True] and panel.plan.points[1].hold_seconds==7
+   expected=panel._text();path=folder/'popup-route.telerc.json'
+   old_open,old_save_file=QFileDialog.getOpenFileName,QFileDialog.getSaveFileName
+   try:
+    QFileDialog.getSaveFileName=lambda *_:(str(path),'TeleRC plan (*.telerc.json)')
+    QFileDialog.getOpenFileName=lambda *_:(str(path),'')
+    panel._export();window.select_rover(2);other=window.panels[2];other._import()
+    checks['popup_route_file_roundtrip']=path.is_file() and other.imported is None and other._text()==expected and 'Saved' in panel.status.text()
+    legacy=json.loads(path.read_text());legacy['points'][0][4]=0
+    path.write_text(json.dumps(legacy));other._import()
+    checks['legacy_menu_draft_recovery']=other._text()==expected and other.plan.points[0].hold_seconds==5
+   finally:
+    QFileDialog.getOpenFileName,QFileDialog.getSaveFileName=old_open,old_save_file
+   retained=m.positions[1]
+   sample=m.snapshots[1];now=time.monotonic()
+   m.observe(1,replace(sample,running=True,state=LinkState.CONNECTED,last_heartbeat=now,position_timestamp=now,
+    gps_timestamp=now,latitude=0,longitude=0))
+   checks['invalid_gps_stays_stale']=m.positions[1]==retained and not m.fresh(1) and 'stale' in m.labels()[1]
+
 
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:

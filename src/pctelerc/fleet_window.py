@@ -333,6 +333,8 @@ class FleetWindow(QMainWindow):
             age=f' · HB {now-s.last_heartbeat:.1f}s' if s.last_heartbeat else ''
             card['state'].setText((f'{"ARMED" if s.armed else "Disarmed"} · {s.mode}{age}' if fresh
                 else 'Stale · last-known state' if s.last_heartbeat else panel.service.phase))
+            if fresh and self.map.fresh(rover) and s.speed is not None:
+                card['state'].setText(card['state'].text()+f' · {s.speed:.2f} m/s')
             card['state'].setToolTip(panel.service.phase)
             card['connect'].setText('Disconnect' if running else 'Connect')
             card['connect'].setEnabled(running or (not pending and not operation_busy and now>=panel.service.quiet_until))
