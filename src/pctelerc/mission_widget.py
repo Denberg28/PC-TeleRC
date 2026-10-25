@@ -341,6 +341,9 @@ class MissionDialog(QDialog):
             warning.setText('HOLD leaves accessory state unconfirmed.')
         root.addWidget(warning)
         row = QHBoxLayout()
+        self.inspect_btn = QPushButton("Load from FC")
+        self.inspect_btn.setToolTip("Read the stored FC mission without replacing your draft or authorizing START.")
+        self.inspect_btn.clicked.connect(self._inspect_fc)
         self.upload_btn = QPushButton("Upload & verify")
         self.start_btn = QPushButton("Start mission")
         self.hold_btn = QPushButton("HOLD")
@@ -348,7 +351,7 @@ class MissionDialog(QDialog):
         self.upload_btn.clicked.connect(lambda: self._submit("upload"))
         self.start_btn.clicked.connect(lambda: self._submit("start"))
         self.hold_btn.clicked.connect(self._hold)
-        for w in (self.upload_btn, self.start_btn, self.hold_btn):
+        for w in (self.inspect_btn, self.upload_btn, self.start_btn, self.hold_btn):
             row.addWidget(w)
         root.addLayout(row)
         self.help_panel = QWidget()
@@ -386,6 +389,7 @@ class MissionDialog(QDialog):
         e.snapshot.connect(self._snapshot)
         e.ready.connect(self._ready)
         e.verified.connect(self._verified)
+        e.stored_mission.connect(self._show_stored_mission)
         e.busy.connect(self._busy)
         e.phase.connect(self._phase)
         e.capabilities.connect(self._capabilities)
@@ -472,6 +476,39 @@ class MissionDialog(QDialog):
     def _verified(self, digest):
         self.digest = digest
         self._controls()
+
+    def _inspect_fc(self):
+        try:
+            if not self.connected or self.busy or not self.service.running:
+                raise RuntimeError("Connect the selected rover before reading its mission")
+            # Empty draft is permitted. This operation changes no onboard data.
+            self.service.submit("inspect", [])
+            self.busy = True
+            self._controls()
+        except (RuntimeError, ValueError, queue.Full) as exc:
+            self._message(str(exc))
+
+    def _show_stored_mission(self, rows):
+        # Display a separate immutable view: never silently overwrite local edits.
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"FC stored mission · Rover {self.rover.value()}")
+        layout = QVBoxLayout(dialog)
+        notice = QLabel(
+            f"{len(rows)} rows read directly from the flight controller. "
+            "Read-only snapshot; not authorization to start. "
+            "The current PC draft has not been modified."
+        )
+        notice.setWordWrap(True)
+        layout.addWidget(notice)
+        preview = QPlainTextEdit()
+        preview.setReadOnly(True)
+        preview.setPlainText(json.dumps(rows, indent=2, sort_keys=True))
+        layout.addWidget(preview)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        dialog.resize(700, 460)
+        dialog.exec()
 
     def _busy(self, busy):
         self.busy = busy
@@ -617,6 +654,10 @@ class MissionDialog(QDialog):
             and 0 <= time.monotonic() - s.last_heartbeat <= 5
         )
         editable_fc = fresh and not s.armed and s.mode in ("MANUAL", "HOLD")
+        self.inspect_btn.setEnabled(
+            self.connected and running and not self.busy and fresh
+            and (getattr(self.service, "operation_gate", None) is None or not self.service.operation_gate.locked())
+        )
         self.upload_btn.setEnabled(
             self.connected and running and not self.busy and allowed and editable_fc
             and (getattr(self.service,'operation_gate',None) is None or not self.service.operation_gate.locked())
