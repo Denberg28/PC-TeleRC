@@ -365,7 +365,7 @@ class Client:
             self.log(f"Upload row {m.seq}/{len(items) - 1}")
         raise RuntimeError("Upload deadline exceeded; do not start")
 
-    def download(self):
+    def download(self, *, allow_empty=False):
         count = None
         for _ in range(RETRIES):
             self.link.mav.mission_request_list_send(self.rover, 1, 0)
@@ -373,6 +373,9 @@ class Client:
             if m is not None:
                 count = m.count
                 break
+        if count == 0 and allow_empty:
+            self.link.mav.mission_ack_send(self.rover, 1, 0, 0)
+            return []
         if count is None or not 2 <= count <= MAX_ITEMS:
             raise RuntimeError("Invalid or missing mission readback count")
         result = []
