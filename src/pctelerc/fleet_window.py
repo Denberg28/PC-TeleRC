@@ -4,7 +4,7 @@ from dataclasses import replace
 import json
 import time
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QShortcut, QKeySequence
 from PySide6.QtWidgets import (QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLabel,
     QPushButton,QComboBox,QScrollArea,QStackedWidget,QSplitter,QFrame,QSizePolicy,QLayout,
     QDialog,QLineEdit,QDialogButtonBox,QFileDialog,QCheckBox)
@@ -128,6 +128,9 @@ class FleetWindow(QMainWindow):
         except (OSError,ValueError,TypeError):pass
         for rover in ids:self.add_rover(rover)
         self.select_rover(ids[0])
+        for key, direction in (("Ctrl+Z", -1), ("Ctrl+Y", 1), ("Ctrl+Shift+Z", 1)):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.activated.connect(lambda d=direction: self.panels[self.selected]._history_step(d))
         self.timer=QTimer(self);self.timer.timeout.connect(self.tick);self.timer.start(100)
 
     def add_rover(self,rover):

@@ -5,6 +5,15 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+25 October 2026: continue development as application-only v1.2.0rc5 from rc4.
+Preserve every firmware byte, private pairing configuration and command gate.
+Add bounded per-rover offline Undo/Redo, editable native .telerc.json plans with
+planned-home/action/output/speed metadata, strict atomic draft decoding, and
+stable route list selection/scroll. WPL imports remain read-only. History and
+imports never restore verification, auxiliary-cutoff consent or session authority.
+Require current regression, Windows frozen recovery checks and sanitation before
+publishing this candidate; physical qualification remains pending.
+
 25 October 2026: user chooses native PC TeleRC map planning instead of the
 Mission Planner bridge. Application rc4 adds a planning-only map action popup,
 Go Here waypoints, 2–10 second arrival holds, explicit per-rover planned home,

@@ -3,7 +3,7 @@ from dataclasses import replace
 from contextlib import closing
 from pathlib import Path
 import json,sqlite3,tempfile,time,math,os
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QFileDialog
 from PySide6.QtCore import QBuffer,QIODevice,Qt,QEvent,QPointF
 from PySide6.QtGui import QImage,QMouseEvent
 from .rover_map import world_pixel,world_location
@@ -148,6 +148,33 @@ def run(report_path):
    mouse(QEvent.Type.MouseButtonRelease,(point.x()+30,point.y()+30),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
    checks['route_gesture_rover_isolated']=panel.map.points==saved and m._route_preview is None and window.hub is None
    checks['route_actions_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values())
+   panel=window.panels[window.selected];panel._clear()
+   panel.map_action('home',13.62,123.19)
+   panel.map_action('hold',13.6204,123.1905,seconds=8)
+   panel.map_action('rth',13.62,123.19)
+   saved=panel._draft_text();view=m._center
+   panel._clear();panel._history_step(-1)
+   undo_ok=panel._draft_text()==saved and m._center==view and not panel.digest
+   panel._history_step(1)
+   checks['draft_undo_redo']=undo_ok and not panel.plan.points and panel.plan.home is None
+   panel._history_step(-1)
+   window.select_rover(2);other=window.panels[2];other._clear()
+   other._add(13.7,123.3);other._history_step(-1)
+   checks['draft_history_rover_isolated']=not other.plan.points and panel._draft_text()==saved
+   window.select_rover(1)
+   path=folder/'roundtrip.telerc.json'
+   old_open,old_save_file=QFileDialog.getOpenFileName,QFileDialog.getSaveFileName
+   try:
+    QFileDialog.getSaveFileName=lambda *_:(str(path),'')
+    QFileDialog.getOpenFileName=lambda *_:(str(path),'')
+    panel._export();window.select_rover(2);other._import()
+    checks['native_plan_roundtrip']=other._draft_text()==saved and other._text()==panel._text()
+    other.move_map_point(0,13.6206,123.1906)
+    checks['native_plan_editable']=other.imported is None and m.route_editable and other.plan.points[0].latitude==13.6206
+   finally:
+    QFileDialog.getOpenFileName,QFileDialog.getSaveFileName=old_open,old_save_file
+   checks['draft_recovery_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values()) and not any(p.digest for p in window.panels.values())
+
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:
    window.close();app.processEvents()

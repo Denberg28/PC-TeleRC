@@ -1,3 +1,11 @@
+## 1.2.0rc5 — 25 October 2026
+
+- Per-rover offline Undo/Redo for 50 edits, including route dragging and imports.
+- Editable .telerc.json plans preserve home, Hold/RTH and output/speed settings.
+- Atomic bounded draft validation and import cancellation on draft/session/selection changes.
+- Preserve route-list selection/scroll and map view through draft recovery.
+- 41 frozen map/recovery checks required; firmware and private pairing unchanged.
+
 ## 0.1.5rc3 — checked release packaging
 
 - Shared Windows build path validates the complete fresh, version-matched frozen UI report.

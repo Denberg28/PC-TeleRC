@@ -4,9 +4,11 @@ Mission-planning base build: **v1.2.0rc1**, designated 24 October 2026.
 Start future mission work from `baseline/mission-planning-v1.2.0rc1`.
 See the [baseline setup and version lock](docs/MISSION-PLANNING-BASELINE.md).
 
-Current development build: **1.2.0rc3**, with unchanged fleet BASE/ROVER **0.5.0rc1**.
-Fixes map drag jumps and waypoint-click longitude conversion. Review routes
-created in earlier builds before upload. See [release notes](docs/releases/v1.2.0rc3.md).
+Current development build: **1.2.0rc5**, with unchanged fleet BASE/ROVER **0.5.0rc1**.
+Adds per-rover Undo/Redo, editable TeleRC plan import/export and stable route-list
+selection/scrolling. Native plans preserve planned home, Hold/RTH actions and
+output settings. WPL interchange remains supported. See [release notes](docs/releases/v1.2.0rc5.md).
+Review routes created before rc3 for incorrect longitudes before upload.
 See [fleet setup and limits](docs/FLEET-STATION.md). The central map replaces the
 FPV cockpit, with separate rover controls and fresh/stale GPS labels.
 Existing releases remain available for rollback.

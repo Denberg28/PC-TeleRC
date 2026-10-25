@@ -3,3 +3,5 @@ FROZEN_CHECKS=frozenset('fleet_map_central no_camera_controls no_video_runtime i
 FROZEN_CHECKS |= frozenset('resize_opaque_map route_file_controls_visible roster_add_remove idle_map_no_repaint compact_layout_no_horizontal_scroll'.split())
 FROZEN_CHECKS |= frozenset('projection_round_trip drag_pan_continuity drag_no_route_edit click_location_correct manual_view_survives_telemetry drag_interrupt_no_edit'.split())
 FROZEN_CHECKS |= frozenset('map_action_popup planned_home_return planned_hold_roundtrip waypoint_drag route_line_drag_insert route_gesture_rover_isolated route_actions_no_authority'.split())
+
+FROZEN_CHECKS |= frozenset('draft_undo_redo draft_history_rover_isolated native_plan_roundtrip native_plan_editable draft_recovery_no_authority'.split())

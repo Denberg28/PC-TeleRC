@@ -6,8 +6,8 @@ import math
 import queue
 import time
 
-from PySide6.QtCore import Qt, QTimer, Signal, QPointF
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtCore import Qt, QTimer, Signal, QPointF, QSignalBlocker
+from PySide6.QtGui import QColor, QPainter, QPen, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -39,6 +39,7 @@ from .rover_map import RoverMap, world_pixel, world_location
 from .lora_setup_widget import refresh_ports
 from .config import data_dir
 from .fleet import draft_path as fleet_draft_path
+from .route_draft import decode as decode_draft, MAX_BYTES
 
 
 class MissionMap(RoverMap):
@@ -147,8 +148,8 @@ class MissionDialog(QDialog):
         root.addLayout(toolbar)
         self.import_btn = QPushButton("Import route")
         self.export_btn = QPushButton("Export route")
-        self.import_btn.setToolTip("Import a QGC WPL route into this rover's offline draft")
-        self.export_btn.setToolTip("Save this rover's planned route as QGC WPL; no command is sent")
+        self.import_btn.setToolTip("Restore an editable TeleRC plan or import read-only QGC WPL")
+        self.export_btn.setToolTip("Save an editable TeleRC plan, or QGC WPL for mission interchange")
         self.import_btn.clicked.connect(self._import)
         self.export_btn.clicked.connect(self._export)
         if embedded:
@@ -288,6 +289,20 @@ class MissionDialog(QDialog):
             row.addWidget(b)
             self._editing_controls.append(b)
         el.addLayout(row)
+        history = QHBoxLayout()
+        self.undo_btn = QPushButton("Undo")
+        self.redo_btn = QPushButton("Redo")
+        self.undo_btn.setToolTip("Undo this rover's offline draft edit (Ctrl+Z)")
+        self.redo_btn.setToolTip("Redo this rover's offline draft edit (Ctrl+Y / Ctrl+Shift+Z)")
+        self.undo_btn.clicked.connect(lambda: self._history_step(-1))
+        self.redo_btn.clicked.connect(lambda: self._history_step(1))
+        history.addWidget(self.undo_btn);history.addWidget(self.redo_btn)
+        el.addLayout(history)
+        if not embedded:
+            for key, direction in (("Ctrl+Z", -1), ("Ctrl+Y", 1), ("Ctrl+Shift+Z", 1)):
+                shortcut = QShortcut(QKeySequence(key), self)
+                shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+                shortcut.activated.connect(lambda d=direction: self._history_step(d))
         self.advanced_toggle = QPushButton("Output settings")
         self.advanced_toggle.setCheckable(True)
         el.addWidget(self.advanced_toggle)
@@ -425,6 +440,9 @@ class MissionDialog(QDialog):
         self.timer.timeout.connect(self._pulse)
         self.timer.start(100)
         self._restore_draft()
+        self._history = [self._draft_text()]
+        self._history_index = 0
+        self._history_paused = False
         self._invalidate()
         self._selected_rover = self.rover.value()
         self.rover.valueChanged.connect(self._switch_rover)
@@ -439,6 +457,7 @@ class MissionDialog(QDialog):
             return
         self.draft_timer.stop()
         self._save_draft()
+        self._history_paused = True
         self._selected_rover = rover
         if self._fleet_root is not None:
             self._draft_path = fleet_draft_path(self._fleet_root, rover)
@@ -464,6 +483,9 @@ class MissionDialog(QDialog):
             off.setValue(1100)
             on.setValue(1900)
         self._restore_draft()
+        self._history = [self._draft_text()]
+        self._history_index = 0
+        self._history_paused = False
         self._render()
         self._invalidate()
         self._phase(f"Rover {rover} · Planning offline")
@@ -507,6 +529,7 @@ class MissionDialog(QDialog):
         self._controls()
 
     def _invalidate(self, *_):
+        self._record_history()
         self.digest = ""
         try:
             self._items_cache = parse_text(self._text())
@@ -544,98 +567,75 @@ class MissionDialog(QDialog):
             f"Rover {s.vehicle_system} · {s.mode} · {state} · {fresh}"
         )
 
+    def _draft_text(self):
+        return json.dumps(dict(version=1, wpl=self.imported,
+            points=[[p.latitude,p.longitude,p.actions,p.kind,p.hold_seconds] for p in self.plan.points],
+            home=self.plan.home, functions=[[w.value() for w in row] for row in self.functions],
+            speed=self.speed.value()), allow_nan=False)
+
+    def _apply_draft(self, data):
+        # Decode completely before applying anything; suppress intermediate
+        # value signals so restore/undo is a single planning transaction.
+        blockers = [QSignalBlocker(w) for w in (self.speed, self.aux, *[w for row in self.functions for w in row])]
+        self.imported = data['wpl']
+        self.plan = Plan(points=[Point(p[0],p[1],[(a[0],a[1]) for a in p[2]],p[3],p[4]) for p in data['points']],
+            home=None if data['home'] is None else tuple(data['home']))
+        for widgets, values in zip(self.functions,data['functions']):
+            for w, value in zip(widgets,values):w.setValue(value)
+        self.speed.setValue(data['speed'])
+        self.aux.setChecked(False)
+        del blockers
+        self._render()
+
+    def _record_history(self):
+        if not hasattr(self, '_history') or self._history_paused or self.service.running:
+            return
+        state = self._draft_text()
+        if state != self._history[self._history_index]:
+            del self._history[self._history_index+1:]
+            self._history.append(state)
+            # At most 50 reversible edits per rover, never telemetry or commands.
+            if len(self._history) > 51:self._history.pop(0)
+            self._history_index = len(self._history)-1
+
+    def _history_step(self, delta):
+        if self.service.running or self.busy or delta not in (-1,1):return
+        index = self._history_index+delta
+        if not 0 <= index < len(self._history):return
+        self._history_paused = True
+        try:
+            self._apply_draft(decode_draft(self._history[index]))
+            self._history_index = index
+            self._invalidate()
+        finally:
+            self._history_paused = False
+        self._message('Draft edit undone' if delta < 0 else 'Draft edit redone')
+
     def _restore_draft(self):
         try:
-            if self._draft_path.stat().st_size > 120000:
-                raise ValueError("Draft exceeds size limit")
-            data = json.loads(self._draft_path.read_text(encoding="utf-8"))
-            if data.get("version") != 1:
-                raise ValueError("Unsupported draft version")
-            if data.get("wpl") is not None:
-                parse_text(data["wpl"])
-                self.imported = data["wpl"]
-            else:
-                points = data["points"]
-                if len(points) > 60:
-                    raise ValueError("Draft exceeds point limit")
-                restored = []
-                for point in points:
-                    lat, lon = float(point[0]), float(point[1])
-                    if (
-                        not math.isfinite(lat)
-                        or not math.isfinite(lon)
-                        or not -85 <= lat <= 85
-                        or not -180 <= lon <= 180
-                    ):
-                        raise ValueError("Invalid draft location")
-                    actions = point[2]
-                    if len(actions) > 3 or any(
-                        type(a[0]) is not int
-                        or a[0] not in range(3)
-                        or type(a[1]) is not bool
-                        for a in actions
-                    ):
-                        raise ValueError("Invalid draft actions")
-                    kind = point[3] if len(point) > 3 else "go"
-                    seconds = point[4] if len(point) > 4 else 5
-                    if kind not in ("go", "hold", "rth") or type(seconds) is not int or not 2 <= seconds <= 10:
-                        raise ValueError("Invalid map action")
-                    restored.append(Point(lat, lon, [(a[0], a[1]) for a in actions], kind, seconds))
-                self.plan.points = restored
-                home = data.get("home")
-                if home is not None:
-                    if len(home) != 2 or not self._valid_map_location(*home):
-                        raise ValueError("Invalid planned home")
-                    self.plan.home = tuple(home)
-                returns = [i for i,p in enumerate(restored) if p.kind == "rth"]
-                if returns and (returns != [len(restored)-1] or self.plan.home is None
-                        or (restored[-1].latitude,restored[-1].longitude) != self.plan.home
-                        or restored[-1].actions):
-                    raise ValueError("Invalid return to planned home")
-                bindings = data["functions"]
-                if len(bindings) != 3:
-                    raise ValueError("Invalid function bindings")
-                for widgets, values in zip(self.functions, bindings):
-                    if len(values) != 3 or not all(type(v) is int for v in values):
-                        raise ValueError("Invalid function values")
-                    for widget, value in zip(widgets, values):
-                        if not widget.minimum() <= value <= widget.maximum():
-                            raise ValueError("Output value outside range")
-                        widget.setValue(value)
-                speed = float(data["speed"])
-                if not math.isfinite(speed) or not 0.1 <= speed <= 3:
-                    raise ValueError("Invalid draft speed")
-                self.speed.setValue(speed)
-            self._render()
+            if self._draft_path.stat().st_size > MAX_BYTES:raise ValueError('Draft exceeds size limit')
+            self._apply_draft(decode_draft(self._draft_path.read_text(encoding='utf-8')))
             if self.map.points:
                 self.map._center = self.map.points[0]
                 self.map._follow = False
         except FileNotFoundError:
             pass
-        except (OSError, ValueError, TypeError, KeyError, IndexError):
+        except (OSError, ValueError, TypeError, KeyError, IndexError, RecursionError):
             self.imported = None
             self.plan = Plan()
             self._render()
-            self._message("Saved draft could not be restored; rebuild the route")
+            self._message('Saved draft could not be restored; rebuild or import the route')
 
     def _save_draft(self):
-        data = dict(
-            version=1,
-            wpl=self.imported,
-            points=[[p.latitude, p.longitude, p.actions, p.kind, p.hold_seconds] for p in self.plan.points],
-            home=self.plan.home,
-            functions=[[w.value() for w in row] for row in self.functions],
-            speed=self.speed.value(),
-        )
         try:
-            text = json.dumps(data, allow_nan=False)
+            text = self._draft_text()
             self._draft_path.parent.mkdir(parents=True, exist_ok=True)
-            temp = self._draft_path.with_suffix(".tmp")
-            temp.write_text(text, encoding="utf-8")
+            temp = self._draft_path.with_suffix('.tmp')
+            temp.write_text(text, encoding='utf-8')
             temp.replace(self._draft_path)
             return True
         except (OSError, ValueError):
-            self._message("Draft could not be saved; use Export WPL")
+            self._message('Draft could not be saved; use Export route')
             return False
 
     def _controls(self):
@@ -647,6 +647,9 @@ class MissionDialog(QDialog):
             not running and time.monotonic() >= self.service.quiet_until
         )
         self.close_btn.setEnabled(running)
+        self.undo_btn.setEnabled(not running and not self.busy and getattr(self, '_history_index', 0) > 0)
+        self.redo_btn.setEnabled(not running and not self.busy
+            and getattr(self, '_history_index', 0)+1 < len(getattr(self, '_history', [])))
         for widget in self._editing_controls:
             widget.setEnabled(not running)
         self.continue_loss.setEnabled(not running)
@@ -786,6 +789,9 @@ class MissionDialog(QDialog):
         self._invalidate()
 
     def _render(self):
+        selected = self.rows.currentRow()
+        scroll = self.rows.verticalScrollBar().value()
+        self.rows.setUpdatesEnabled(False)
         self.rows.clear()
         if self.imported is not None:
             for r in parse_text(self.imported)[1:]:
@@ -810,6 +816,9 @@ class MissionDialog(QDialog):
                     + (f"Hold {p.hold_seconds}s " if p.kind == 'hold' else 'RTH · planned home ' if p.kind == 'rth' else '') + label
                 )
             self.map.points = [(p.latitude, p.longitude) for p in self.plan.points]
+        self.rows.setCurrentRow(min(selected, self.rows.count()-1))
+        self.rows.verticalScrollBar().setValue(scroll)
+        self.rows.setUpdatesEnabled(True)
         self.map.update()
         self.sync_external_route()
 
@@ -865,24 +874,31 @@ class MissionDialog(QDialog):
         if self.service.running:
             self._message("Disconnect this rover before importing a route")
             return
+        identity, revision = self.rover.value(), self._draft_text()
         path, _ = QFileDialog.getOpenFileName(
-            self, "Import QGC WPL 110", "", "Waypoints (*.waypoints *.txt)"
+            self, "Import route", "", "TeleRC plan (*.telerc.json);;Waypoints (*.waypoints *.txt)"
         )
         if not path:
             return
         try:
-            if Path(path).stat().st_size > 100000:
+            if Path(path).stat().st_size > MAX_BYTES:
                 raise ValueError("Plan file too large")
             text = Path(path).read_text(encoding="utf-8")
-            items = parse_text(text)
-            if self.service.running:
-                raise ValueError("Session changed; disconnect before importing a route")
-            self.imported = text
-            self._render()
+            native = Path(path).suffix.lower() == '.json'
+            data = decode_draft(text) if native else None
+            if not native:parse_text(text)
+            if (self.service.running or self.busy or self.rover.value() != identity
+                    or self._draft_text() != revision
+                    or (self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover != identity)):
+                raise ValueError("Session changed; select the rover and import again")
+            if native:self._apply_draft(data)
+            else:
+                self.imported = text
+                self._render()
             self._invalidate()
-            p = next((r for r in items[1:] if r["command"] == 16), None)
-            if p:
-                self.map._center = (p["x"] / 1e7, p["y"] / 1e7)
+            point = self.map.points[0] if self.map.points else None
+            if point:
+                self.map._center = point
                 self.map._follow = False
                 self.map.update()
                 if self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover == self.rover.value():
@@ -891,40 +907,44 @@ class MissionDialog(QDialog):
                     self.external_map.auto_fit = False
                     self.external_map.update()
             self._message("Route imported into this rover's draft; review before upload")
-        except (OSError, ValueError, UnicodeError) as exc:
+        except (OSError, ValueError, UnicodeError, RecursionError) as exc:
             self._message(str(exc))
 
     def _export(self):
+        # Capture the draft before the file picker; nested Qt events must not
+        # silently export another revision or newly selected rover.
+        draft = self._draft_text()
+        path, selected_filter = QFileDialog.getSaveFileName(
+            self, 'Export route', '', 'TeleRC plan (*.telerc.json);;Waypoints (*.waypoints)')
+        if not path:return
+        temporary = None
         try:
-            text = self._text()
-            parse_text(text)
-        except ValueError as exc:
+            target = Path(path)
+            native = target.suffix.lower() == '.json' or (not target.suffix and not selected_filter.startswith('Waypoints'))
+            if not target.suffix:target = target.with_suffix('.telerc.json' if native else '.waypoints')
+            if native:
+                decode_draft(draft)
+                text = draft
+            else:
+                data = decode_draft(draft)
+                plan = Plan(points=[Point(p[0],p[1],[(a[0],a[1]) for a in p[2]],p[3],p[4]) for p in data['points']],
+                    functions=[Function(*row) for row in data['functions']], speed=data['speed'],
+                    home=None if data['home'] is None else tuple(data['home']))
+                text = data['wpl'] if data['wpl'] is not None else plan.wpl()
+                parse_text(text)
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=target.parent,
+                    prefix='.'+target.name+'.', suffix='.tmp', delete=False) as output:
+                temporary = Path(output.name)
+                output.write(text)
+            temporary.replace(target)
+            self._message('Editable plan exported' if native else 'WPL exported; planned-home metadata is not included')
+        except (OSError, ValueError) as exc:
             self._message(str(exc))
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export reviewed route", "", "Waypoints (*.waypoints)"
-        )
-        if path:
-            temporary = None
-            try:
-                target = Path(path)
-                if not target.suffix:
-                    target = target.with_suffix('.waypoints')
-                import tempfile
-                with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=target.parent,
-                        prefix='.'+target.name+'.', suffix='.tmp', delete=False) as output:
-                    temporary = Path(output.name)
-                    output.write(text)
-                temporary.replace(target)
-                self._message("Plan exported; no connection or command sent")
-            except OSError as exc:
-                self._message(str(exc))
-            finally:
-                if temporary is not None:
-                    try:
-                        temporary.unlink(missing_ok=True)
-                    except OSError:
-                        pass
+        finally:
+            if temporary is not None:
+                try:temporary.unlink(missing_ok=True)
+                except OSError:pass
 
     def _connect(self):
         try:
