@@ -6,7 +6,7 @@ import time
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,QLabel,
-    QPushButton,QComboBox,QScrollArea,QStackedWidget,QSplitter,QFrame,QSizePolicy,
+    QPushButton,QComboBox,QScrollArea,QStackedWidget,QSplitter,QFrame,QSizePolicy,QLayout,
     QDialog,QLineEdit,QDialogButtonBox,QFileDialog,QCheckBox)
 from . import __version__
 from .config import data_dir,load_settings,save_settings
@@ -79,6 +79,8 @@ class FleetWindow(QMainWindow):
         split.setChildrenCollapsible(False)
         split.setOpaqueResize(False)
         roster = QWidget();self.roster_layout = QVBoxLayout(roster);self.roster_layout.setContentsMargins(0,0,8,0)
+        roster.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred)
+        self.roster_layout.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         self.roster_layout.addStretch()
         self.roster = QScrollArea();self.roster.setWidgetResizable(True);self.roster.setWidget(roster)
         self.roster.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -140,18 +142,22 @@ class FleetWindow(QMainWindow):
         self.panels[rover]=panel;self.stack.addWidget(panel)
         service.events.snapshot.connect(lambda s,r=rover,owner=service:self.observe_rover(r,owner,s))
         service.events.message.connect(lambda text,r=rover,owner=service:self.rover_message(r,owner,text))
-        card = QFrame();card.setObjectName('RoverCard');box=QVBoxLayout(card)
+        card = QFrame(self.roster.widget());card.setObjectName('RoverCard');box=QVBoxLayout(card)
         select = QPushButton(f'Rover {rover}');select.clicked.connect(lambda:self.select_rover(rover));box.addWidget(select)
         state = QLabel('Offline · no telemetry');state.setWordWrap(True);state.setObjectName('Muted')
         state.setFixedHeight(30);box.addWidget(state)
         buttons=QHBoxLayout();buttons.setSpacing(5)
-        connect,arm,start,disarm = [QPushButton(t) for t in ('Connect','Arm','Mission start','Disarm')]
+        connect,arm,start,disarm = [QPushButton(t,card) for t in ('Connect','Arm','Mission start','Disarm')]
         start.setObjectName('Primary');disarm.setObjectName('Danger')
         connect.clicked.connect(lambda:self.connect_rover(rover))
         arm.clicked.connect(lambda:self.confirm_action(rover,'arm'))
         start.clicked.connect(lambda:self.start_rover(rover))
         disarm.clicked.connect(lambda:self.confirm_action(rover,'disarm'))
-        for b in (connect,arm,start,disarm):buttons.addWidget(b)
+        for b in (connect,arm,start,disarm):
+            b.ensurePolished()
+            labels=('Connect','Disconnect') if b is connect else (b.text(),)
+            b.setMinimumWidth(max(b.fontMetrics().horizontalAdvance(text) for text in labels)+18)
+            buttons.addWidget(b)
         box.addLayout(buttons)
         hold=QPushButton('HOLD');hold.setToolTip('Request HOLD for this rover; await fresh FC confirmation')
         hold.clicked.connect(lambda:panel._hold());box.addWidget(hold)

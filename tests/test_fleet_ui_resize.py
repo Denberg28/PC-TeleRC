@@ -94,6 +94,10 @@ def test_route_actions_fit_and_expansion_scrolls_without_horizontal_clipping(win
         origin=field.mapTo(p.editor,field.rect().topLeft())
         assert origin.x()>=0 and origin.x()+field.width()<=p.editor_scroll.viewport().width(), (field,details)
     assert window.roster.horizontalScrollBar().maximum()==0
+    for card in window.cards.values():
+        for name in ('connect','arm','start','disarm','hold','select'):
+            button=card[name];origin=button.mapTo(window.roster.widget(),button.rect().topLeft())
+            assert origin.x()>=0 and origin.x()+button.width()<=window.roster.viewport().width(), name
     assert p.import_btn.isVisibleTo(window) and p.export_btn.isVisibleTo(window)
     assert not window.split.opaqueResize() and window.hub is None
 
