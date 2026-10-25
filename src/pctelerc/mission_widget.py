@@ -576,8 +576,22 @@ class MissionDialog(QDialog):
                         for a in actions
                     ):
                         raise ValueError("Invalid draft actions")
-                    restored.append(Point(lat, lon, [(a[0], a[1]) for a in actions]))
+                    kind = point[3] if len(point) > 3 else "go"
+                    seconds = point[4] if len(point) > 4 else 5
+                    if kind not in ("go", "hold", "rth") or type(seconds) is not int or not 2 <= seconds <= 10:
+                        raise ValueError("Invalid map action")
+                    restored.append(Point(lat, lon, [(a[0], a[1]) for a in actions], kind, seconds))
                 self.plan.points = restored
+                home = data.get("home")
+                if home is not None:
+                    if len(home) != 2 or not self._valid_map_location(*home):
+                        raise ValueError("Invalid planned home")
+                    self.plan.home = tuple(home)
+                returns = [i for i,p in enumerate(restored) if p.kind == "rth"]
+                if returns and (returns != [len(restored)-1] or self.plan.home is None
+                        or (restored[-1].latitude,restored[-1].longitude) != self.plan.home
+                        or restored[-1].actions):
+                    raise ValueError("Invalid return to planned home")
                 bindings = data["functions"]
                 if len(bindings) != 3:
                     raise ValueError("Invalid function bindings")
@@ -608,7 +622,8 @@ class MissionDialog(QDialog):
         data = dict(
             version=1,
             wpl=self.imported,
-            points=[[p.latitude, p.longitude, p.actions] for p in self.plan.points],
+            points=[[p.latitude, p.longitude, p.actions, p.kind, p.hold_seconds] for p in self.plan.points],
+            home=self.plan.home,
             functions=[[w.value() for w in row] for row in self.functions],
             speed=self.speed.value(),
         )
@@ -670,6 +685,66 @@ class MissionDialog(QDialog):
             and s.mode in ("MANUAL", "HOLD")
         )
         self.hold_btn.setEnabled(self.connected and running)
+        self.sync_external_route()
+
+    def sync_external_route(self):
+        if self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover == self.rover.value():
+            self.external_map.set_route(self.map.points,
+                [p.kind for p in self.plan.points] if self.imported is None else ['go']*len(self.map.points),
+                self.plan.home if self.imported is None else None,
+                not self.service.running and not self.busy and self.imported is None)
+
+    @staticmethod
+    def _valid_map_location(lat, lon):
+        return (all(type(v) in (int,float) and math.isfinite(v) for v in (lat,lon))
+            and -85 <= lat <= 85 and -180 <= lon <= 180
+            and not (abs(lat) < 1e-7 and abs(lon) < 1e-7))
+
+    def map_action(self, action, lat, lon, index=-1, seconds=5):
+        """Change this offline draft; never emit a vehicle command."""
+        if self.service.running or self.busy or self.imported is not None:
+            return
+        if not self._valid_map_location(lat, lon):
+            self._message('Choose valid map coordinates')
+            return
+        if action == 'home':
+            self.plan.home = (lat,lon)
+            for p in self.plan.points:
+                if p.kind == 'rth':
+                    p.latitude,p.longitude = self.plan.home
+        elif action == 'remove':
+            if not 0 <= index < len(self.plan.points):return
+            del self.plan.points[index]
+        elif action == 'rth':
+            if self.plan.home is None or len(self.plan.points) >= 60 or any(p.kind == 'rth' for p in self.plan.points):return
+            self.plan.points.append(Point(*self.plan.home, kind='rth'))
+        elif action in ('go','hold'):
+            if action == 'hold' and (type(seconds) is not int or not 2 <= seconds <= 10):return
+            if 0 <= index < len(self.plan.points):
+                point = self.plan.points[index]
+                point.kind,point.hold_seconds = action,seconds
+            else:
+                if len(self.plan.points) >= 60:return
+                point = Point(lat,lon,kind=action,hold_seconds=seconds)
+                # New map points stay before an existing final return leg.
+                position = len(self.plan.points)-(bool(self.plan.points) and self.plan.points[-1].kind == 'rth')
+                self.plan.points.insert(position,point)
+            self.lat.setValue(lat);self.lon.setValue(lon)
+        else:
+            return
+        self._render();self._invalidate()
+
+    def move_map_point(self, index, lat, lon, *, insert=False):
+        if (self.service.running or self.busy or self.imported is not None
+                or not self._valid_map_location(lat, lon)):
+            return
+        if insert:
+            if len(self.plan.points) >= 60 or not 1 <= index < len(self.plan.points):return
+            self.plan.points.insert(index,Point(lat,lon))
+        else:
+            if not 0 <= index < len(self.plan.points) or self.plan.points[index].kind == 'rth':return
+            self.plan.points[index].latitude,self.plan.points[index].longitude = lat,lon
+        self._render();self.rows.setCurrentRow(index);self._invalidate()
 
     def _center(self):
         if abs(self.lat.value()) < 1e-7 and abs(self.lon.value()) < 1e-7:
@@ -702,7 +777,8 @@ class MissionDialog(QDialog):
             return
         action = self.mode.currentData()
         actions = [] if action is None else [action]
-        self.plan.points.append(Point(lat, lon, actions))
+        position = len(self.plan.points)-(bool(self.plan.points) and self.plan.points[-1].kind == 'rth')
+        self.plan.points.insert(position, Point(lat, lon, actions))
         self.mode.setCurrentIndex(0)
         self.lat.setValue(lat)
         self.lon.setValue(lon)
@@ -730,15 +806,12 @@ class MissionDialog(QDialog):
                     f"F{f + 1} " + ("ON" if on else "OFF") for f, on in p.actions
                 )
                 self.rows.addItem(
-                    f"{i + 1} · {p.latitude:.7f}, {p.longitude:.7f} {label}"
+                    f"{i + 1} · {p.latitude:.7f}, {p.longitude:.7f} "
+                    + (f"Hold {p.hold_seconds}s " if p.kind == 'hold' else 'RTH · planned home ' if p.kind == 'rth' else '') + label
                 )
             self.map.points = [(p.latitude, p.longitude) for p in self.plan.points]
         self.map.update()
-        if self.embedded and hasattr(self, 'external_map') and self.external_map.selected_rover == self.rover.value():
-            points = list(self.map.points)
-            if self.external_map.points != points:
-                self.external_map.points = points
-                self.external_map.update()
+        self.sync_external_route()
 
     def _move(self, delta):
         if self.service.running:
@@ -748,6 +821,9 @@ class MissionDialog(QDialog):
         i = self.rows.currentRow()
         j = i + delta
         if 0 <= i < len(self.plan.points) and 0 <= j < len(self.plan.points):
+            if self.plan.points[i].kind == 'rth' or self.plan.points[j].kind == 'rth':
+                self._message('Return to planned home stays at the end of the route')
+                return
             self.plan.points[i], self.plan.points[j] = (
                 self.plan.points[j],
                 self.plan.points[i],
@@ -771,6 +847,7 @@ class MissionDialog(QDialog):
             return
         self.imported = None
         self.plan.points.clear()
+        self.plan.home = None
         self._render()
         self._invalidate()
 

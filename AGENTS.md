@@ -5,6 +5,16 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+25 October 2026: user chooses native PC TeleRC map planning instead of the
+Mission Planner bridge. Application rc4 adds a planning-only map action popup,
+Go Here waypoints, 2–10 second arrival holds, explicit per-rover planned home,
+and a final return waypoint to that planning home (not FC RTL). Drag a marker
+to move it; drag a segment to insert a point. Keep route gestures transactional,
+cancel on selection/session/view changes, preserve old drafts, and retain all
+upload/arming/START/HOLD gates. No firmware or pairing changes. The paused bridge
+work must not appear in the candidate. Require real mouse/menu regressions,
+Windows tests and frozen route-edit checks before publishing.
+
 25 October 2026: user reports drag flicker and a stuck/glitching map after rc2.
 Fix the shared inverse longitude conversion (the old expression adds a spurious
 180-degree shift), real pan gestures and click placement in application rc3.

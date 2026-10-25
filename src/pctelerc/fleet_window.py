@@ -102,7 +102,13 @@ class FleetWindow(QMainWindow):
         if self.settings.map_file:
             try:self.map.set_offline_map(self.settings.map_file)
             except (OSError,ValueError):self.status.setText('Offline map unavailable; choose another map')
-        self.map.location.connect(self.add_location)
+        self.map.location.connect(self.map_click)
+        self.map.route_action.connect(self.map_action)
+        self.map.route_moved.connect(lambda i,lat,lon:self.panels[self.selected].move_map_point(i,lat,lon))
+        self.map.route_inserted.connect(lambda i,lat,lon:self.panels[self.selected].move_map_point(i,lat,lon,insert=True))
+        hint = QLabel('Click: route actions · Drag point: move · Drag line: insert · H: planned home')
+        hint.setWordWrap(True);hint.setObjectName('Muted')
+        center_layout.addWidget(hint)
         center_layout.addWidget(self.map,1);split.addWidget(center)
         right = QWidget();right_layout = QVBoxLayout(right);right_layout.setContentsMargins(8,0,0,0)
         self.plan_title = QLabel('Rover 1 · mission plan');self.plan_title.setStyleSheet('font-size:16px; font-weight:600;')
@@ -222,9 +228,11 @@ class FleetWindow(QMainWindow):
 
     def select_rover(self,rover):
         if rover not in self.panels:return
+        self.map.cancel_route_edit()
+        if self.map._route_menu is not None:self.map._route_menu.close()
         self.selected=rover;self.map.selected_rover=rover
         self.stack.setCurrentWidget(self.panels[rover]);self.plan_title.setText(f'Rover {rover} · mission plan')
-        self.map.points=list(self.panels[rover].map.points);self.map.update()
+        self.panels[rover].sync_external_route()
         if self.map.points and rover not in self.map.positions:
             self.map._center=self.map.points[0]
             self.map.auto_fit=False
@@ -288,8 +296,17 @@ class FleetWindow(QMainWindow):
         self.map.update()
 
     def add_location(self,lat,lon):
-        panel=self.panels[self.selected];panel._add(lat,lon)
-        self.map.points=list(panel.map.points);self.map.update()
+        self.panels[self.selected]._add(lat,lon)
+
+    def map_click(self,lat,lon):
+        panel=self.panels[self.selected]
+        if panel.mode.currentData() is not None:
+            panel._add(lat,lon)
+        else:
+            self.map.show_route_menu(lat,lon)
+
+    def map_action(self,action,lat,lon,index,seconds):
+        self.panels[self.selected].map_action(action,lat,lon,index,seconds)
 
     def open_offline_map(self):
         path,_=QFileDialog.getOpenFileName(self,'Offline map','','Raster MBTiles (*.mbtiles)')
@@ -325,10 +342,7 @@ class FleetWindow(QMainWindow):
             if card['select'].objectName()!=name:
                 card['select'].setObjectName(name);card['select'].style().unpolish(card['select']);card['select'].style().polish(card['select'])
         if self.selected in self.panels:
-            points = list(self.panels[self.selected].map.points)
-            if points != self.map.points:
-                self.map.points = points
-                self.map.update()
+            self.panels[self.selected].sync_external_route()
         selected = self.panels.get(self.selected)
         self.add_button.setEnabled(len(self.panels) < 20)
         self.remove_button.setEnabled(len(self.panels) > 1 and selected is not None

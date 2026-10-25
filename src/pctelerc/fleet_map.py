@@ -2,13 +2,17 @@
 from collections import deque
 import math
 import time
-from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtCore import QPointF, QRectF, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPainterPath
 from .mission_widget import MissionMap
 from .rover_map import position_fresh, world_pixel
+from .route_editor import RouteEditor
 
 
-class FleetMap(MissionMap):
+class FleetMap(RouteEditor, MissionMap):
+    route_action = Signal(str, float, float, int, int)
+    route_moved = Signal(int, float, float)
+    route_inserted = Signal(int, float, float)
     COLORS = ('#34d399','#38bdf8','#fbbf24','#c084fc','#fb7185','#2dd4bf','#fb923c')
 
     def __init__(self, parent=None):
@@ -19,6 +23,7 @@ class FleetMap(MissionMap):
         self.selected_rover = 1
         self.follow_rover = None
         self.auto_fit = True
+        self.init_editor()
 
     def observe(self,rover,snapshot):
         if snapshot.vehicle_system != rover or not 1 <= rover <= 20:

@@ -109,6 +109,9 @@ def run(report_path):
    before=count();m._center=(13.62,123.19)
    mouse(QEvent.Type.MouseButtonPress,start,Qt.MouseButton.LeftButton)
    mouse(QEvent.Type.MouseButtonRelease,start,Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   menu=m._route_menu
+   checks['map_action_popup']=menu is not None and {'go','hold','rth','home'}.issubset({a.data() for a in menu.actions()}) and count()==before
+   next(a for a in menu.actions() if a.data()=='go').trigger();menu.close()
    point=window.panels[window.selected].plan.points[-1]
    checks['click_location_correct']=count()==before+1 and math.isclose(point.latitude,13.62,abs_tol=1e-7) and math.isclose(point.longitude,123.19,abs_tol=1e-7)
    before=count();view=m._center
@@ -116,6 +119,35 @@ def run(report_path):
    app.sendEvent(m,QEvent(QEvent.Type.WindowDeactivate))
    mouse(QEvent.Type.MouseButtonRelease,(start[0]+100,start[1]+50),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
    checks['drag_interrupt_no_edit']=count()==before and m._center==view and m._drag is None
+   panel=window.panels[window.selected];panel._clear()
+   m._center=(13.62,123.19);m._zoom=18
+   panel.map_action('home',13.62,123.19)
+   panel.map_action('go',13.62,123.1895)
+   panel.map_action('hold',13.6204,123.1905,seconds=7)
+   panel.map_action('rth',13.621,123.191)
+   from .mission_plan import parse_text
+   items=parse_text(panel._text())
+   checks['planned_home_return']=m.planned_home==(13.62,123.19) and panel.plan.points[-1].kind=='rth' and m.points[-1]==m.planned_home
+   checks['planned_hold_roundtrip']=any(i['command']==93 and i['params']==[7,-1,-1,-1] for i in items)
+   point=m.project(m.points[0]);end=point+QPointF(25,20);view=m._center
+   mouse(QEvent.Type.MouseButtonPress,(point.x(),point.y()),Qt.MouseButton.LeftButton)
+   mouse(QEvent.Type.MouseMove,(end.x(),end.y()))
+   mouse(QEvent.Type.MouseButtonRelease,(end.x(),end.y()),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   actual=m.project(m.points[0])
+   checks['waypoint_drag']=abs(actual.x()-end.x())<1e-5 and abs(actual.y()-end.y())<1e-5 and len(panel.plan.points)==3 and m._center==view
+   middle=(m.project(m.points[0])+m.project(m.points[1]))/2;end=middle+QPointF(0,25)
+   mouse(QEvent.Type.MouseButtonPress,(middle.x(),middle.y()),Qt.MouseButton.LeftButton)
+   mouse(QEvent.Type.MouseMove,(end.x(),end.y()))
+   mouse(QEvent.Type.MouseButtonRelease,(end.x(),end.y()),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   actual=m.project(m.points[1])
+   checks['route_line_drag_insert']=len(panel.plan.points)==4 and abs(actual.x()-end.x())<1e-5 and abs(actual.y()-end.y())<1e-5
+   point=m.project(m.points[0]);saved=list(m.points)
+   mouse(QEvent.Type.MouseButtonPress,(point.x(),point.y()),Qt.MouseButton.LeftButton)
+   mouse(QEvent.Type.MouseMove,(point.x()+30,point.y()+30))
+   window.select_rover(1)
+   mouse(QEvent.Type.MouseButtonRelease,(point.x()+30,point.y()+30),Qt.MouseButton.LeftButton,Qt.MouseButton.NoButton)
+   checks['route_gesture_rover_isolated']=panel.map.points==saved and m._route_preview is None and window.hub is None
+   checks['route_actions_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values())
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:
    window.close();app.processEvents()
