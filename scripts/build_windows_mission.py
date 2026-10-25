@@ -34,7 +34,10 @@ def build(commit=None):
     run(python, "-m", "pip", "install", "-e", ".[dev]")
     run(python, "-m", "pip", "check")
     run(python, "-m", "compileall", "-q", "src", "tests", "main.py")
-    run(python, "-m", "pytest", "-q", "--junitxml=windows-tests.xml")
+    # Qt/QtMultimedia retain process-wide native resources. A fresh process
+    # per module prevents cross-module teardown from corrupting later windows.
+    # Every module still runs; any subprocess/evidence failure stops packaging.
+    run(python, "scripts/run_regressions.py")
     # The immutable firmware CLI uses upstream pymavlink's Windows udpout bind.
     # Its real UDP simulations run in the required Linux firmware job, together
     # with native runtime/sanitizer and actual-board builds. The Windows app's

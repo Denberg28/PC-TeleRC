@@ -21,6 +21,7 @@ EXCLUDE = {
     ".venv",
     "venv",
     "release-dist",
+    "regression-parts",
     "build",
     "dist",
     "installer-dist",
