@@ -4,14 +4,25 @@ Mission-planning base build: **v1.2.0rc6**, designated 25 October 2026.
 Start future mission work from `baseline/mission-planning-v1.2.0rc6`.
 See the [baseline setup and version lock](docs/MISSION-PLANNING-BASELINE.md).
 
-Current development build: **1.2.0rc7**, with unchanged fleet BASE/ROVER **0.5.0rc1**.
-Adds Load from FC with a modeless, read-only mission snapshot and bounded,
-addressed retries. PC drafts remain separate; replacement uploads still require
-full readback verification before deliberate Arm and Start.
-See [release notes](docs/releases/v1.2.0rc7.md).
-See [fleet setup and limits](docs/FLEET-STATION.md). The central map replaces the
-FPV cockpit, with separate rover controls and fresh/stale GPS labels.
-Existing releases remain available for rollback.
+Current release candidate: **1.2.0rc8**, with unchanged fleet BASE/ROVER **0.5.0rc1**
+and PWM converter **1.0.5**. Compact dark panels retain the minimal Segoe UI type,
+map-first layout and expandable settings. The new icon depicts a radio-connected rover.
+
+[Download v1.2.0rc8](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc8) ·
+[Release notes](docs/releases/v1.2.0rc8.md) · [Feature review](docs/FEATURE-REVIEW-rc8.md) ·
+[Fleet setup and limits](docs/FLEET-STATION.md)
+
+The shipped Windows app supports per-rover planning, Connect, verified Upload,
+normal Arm, one-shot Mission start, Disarm, HOLD and modeless read-only Load from FC.
+Route import/export, Undo/Redo, planned home/arrival holds, raster MBTiles and
+fresh/stale GPS labels remain available. The Online tiles choice is now saved.
+Earlier rc7 and rc6 downloads remain available for rollback. Physical RF, stopping,
+RC takeover and auxiliary OFF qualification remain pending; this is a prerelease.
+
+The sections below document earlier desktop releases. Their camera, wheel,
+keyboard, Wi-Fi/manual LoRa and ELRS interfaces are **not included in the current
+map-only fleet executable**. Use the corresponding earlier release and firmware
+when those modes are needed; do not mix protocol families.
 
 # PC TeleRC v1.0.1
 

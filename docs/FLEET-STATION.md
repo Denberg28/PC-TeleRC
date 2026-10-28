@@ -1,4 +1,4 @@
-# PC TeleRC 1.2.0rc1 — map-only fleet station
+# PC TeleRC 1.2.0rc8 — compact dark fleet station
 
 The central map displays genuine GPS positions labelled Rover 1, Rover 2, etc.
 Select a rover to edit its separate mission on the right. Each rover has Connect,
@@ -73,9 +73,12 @@ synchronized fleet starts, path deconfliction or automatic fleet coordination.
 
 Current Windows regressions, a frozen map-only executable check, native guard
 sanitizers, actual encrypted three-rover graph tests and actual board builds gate
-publication. Graph tests do not model RF collisions, range or electrical behavior.
+publication. Eleven prior board-build records are hash-verified and reused for
+the byte-identical firmware. Native sanitizer and graph checks run again on this
+source. Graph tests do not model RF collisions, range or electrical behavior.
 Physical fleet capacity, failsafe timing and motor/RC qualification remain pending.
-Keep PC TeleRC 1.1.0rc1 and its matching baseline for rollback. Do not mix BASE /
+Keep PC TeleRC 1.2.0rc7 and its identical firmware pairing for immediate rollback;
+the designated mission-planning base remains 1.2.0rc6. Do not mix BASE /
 ROVER protocols. Public example binaries are RF-OFF; use private matching sketches.
 
 References: ArduPilot [normal arming commands](https://ardupilot.org/dev/docs/mavlink-arming-and-disarming.html)

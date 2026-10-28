@@ -1,0 +1,100 @@
+name: Compact dark UI release candidate
+on:
+  push:
+    branches: [release/dark-ui-v1.2.0rc8]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: fleet-map-v1.2.0rc8
+  cancel-in-progress: true
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install firmware host-test dependencies
+        run: python -m pip install -r firmware/fleet/requirements.txt pytest==9.1.1
+      - name: Download the immutable published fleet firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.2.0rc7 --repo '${{ github.repository }}' --pattern TeleRC-Fleet-LoRa-v0.5.0rc1.zip --dir fleet-dist
+          python -c "import hashlib,pathlib; p=pathlib.Path('fleet-dist/TeleRC-Fleet-LoRa-v0.5.0rc1.zip'); assert hashlib.sha256(p.read_bytes()).hexdigest()=='2c674f7278220a12287550532fa5a8b274455fc227c93e7042d9a42ed64a4751'"
+      - name: Verify unchanged firmware and reuse the exact eleven qualified board builds
+        run: |
+          git diff --exit-code 6ba272867165eee31e21792ea259fce7225579f7 -- firmware
+          python -c "import sys;sys.path.insert(0,'scripts');from fleet_release_support import verify_firmware,FW_NAME,FIRMWARE_COMMIT;verify_firmware('fleet-dist/'+FW_NAME,FIRMWARE_COMMIT)"
+          python -m unittest discover -s scripts -p 'test_*safety.py' -v
+          python firmware/fleet/tests/run_native.py
+          python -m pytest -q firmware/fleet/tests/test_fleet_network.py
+      - name: Retain feature and firmware review evidence
+        run: cp docs/FEATURE-REVIEW-rc8.md fleet-dist/FEATURE-REVIEW.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fleet-current-firmware
+          path: |
+            fleet-dist/*.zip
+            fleet-dist/*.md
+  windows:
+    needs: firmware
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fleet-current-firmware
+          path: fleet-dist
+      - name: Build and check Windows map-only executable, fleet regressions and frozen map
+        run: python scripts/build_windows_mission.py --source-commit '${{ github.sha }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Fleet-Windows-startup-diagnostics
+          path: |
+            frozen-ui-check.json
+            frozen-stdout.txt
+            frozen-stderr.txt
+            windows-tests.xml
+      - name: Build installer and retain evidence
+        shell: pwsh
+        run: |
+          $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $compiler)) {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          & $compiler 'installer\PC-TeleRC.iss'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item installer-dist\PC-TeleRC-Setup-v1.2.0rc8.exe release-dist\
+          Copy-Item frozen-ui-check.json,windows-tests.xml,frozen-stdout.txt,frozen-stderr.txt release-dist\
+          Copy-Item fleet-dist\TeleRC-Fleet-LoRa-v0.5.0rc1.zip release-dist\
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fleet-current-Windows
+          path: release-dist/
+  publish:
+    needs: [firmware, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Fleet-current-Windows
+          path: incoming
+      - name: Validate Windows and matching firmware, download-verify all assets and publish candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/publish_fleet.py

@@ -43,6 +43,9 @@ def position_fresh(snapshot, now=None):
 
 
 class RoverMap(QWidget):
+    MAP_BACKGROUND = "#182330"
+    MAP_TEXT = "#ffffff"
+    MAP_CHROME = "#0a1018"
     TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     CACHE_SECONDS = 7 * 24 * 3600
     DRAG_THRESHOLD = 5
@@ -368,9 +371,9 @@ class RoverMap(QWidget):
         """Subclass overlays share the same painter and backing-store frame."""
 
     def _paint_map(self, painter):
-        painter.fillRect(self.rect(), QColor("#182330"))
+        painter.fillRect(self.rect(), QColor(self.MAP_BACKGROUND))
         if self._center is None:
-            painter.setPen(QColor("#c2cedd"))
+            painter.setPen(QColor(self.MAP_TEXT))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "MAP\nWaiting for rover GPS")
             return
         cx, cy = world_pixel(*self._center, self._zoom)
@@ -423,13 +426,13 @@ class RoverMap(QWidget):
             status += " · offline"
         # Shadowed text, leaving the map visible behind its status.
         painter.setPen(QColor("#10151c")); painter.drawText(9,17,status)
-        painter.setPen(QColor("#ffffff")); painter.drawText(8,16,status)
+        painter.setPen(QColor(self.MAP_TEXT)); painter.drawText(8,16,status)
         if not visible_tiles:
             message = ("Loading map…" if self._pending else "Map unavailable · retrying") if self._online and not self._offline_map else "No offline coverage"
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, message)
-        painter.fillRect(QRectF(0,self.height()-20,self.width(),20),QColor(10,16,24,220))
+        painter.fillRect(QRectF(0,self.height()-20,self.width(),20),QColor(self.MAP_CHROME))
         font=painter.font(); font.setPointSize(8); painter.setFont(font)
-        painter.setPen(QColor("#e2e8f0")); painter.drawText(6,self.height()-6, painter.fontMetrics().elidedText(
+        painter.setPen(QColor(self.MAP_TEXT)); painter.drawText(6,self.height()-6, painter.fontMetrics().elidedText(
             (self._offline_map.attribution or self._offline_map.name) if self._offline_map else "© OpenStreetMap contributors",
             Qt.TextElideMode.ElideRight, self.width()-12))
 

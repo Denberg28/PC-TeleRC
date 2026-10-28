@@ -90,10 +90,10 @@ class MissionMap(RoverMap):
                 self.width() / 2 + (x - cx + size / 2) % size - size / 2,
                 self.height() / 2 + y - cy,
             )
-            painter.setPen(QPen(QColor("#fbbf24"), 2))
+            painter.setPen(QPen(QColor("#d7b670"), 2))
             if previous is not None:
                 painter.drawLine(previous, p)
-            painter.setBrush(QColor("#142438"))
+            painter.setBrush(QColor("#102640"))
             painter.drawEllipse(p, 12, 12)
             painter.setPen(QColor("white"))
             painter.drawText(int(p.x() - 8), int(p.y() + 5), str(i + 1))
@@ -138,7 +138,7 @@ class MissionDialog(QDialog):
             root.setContentsMargins(0, 0, 0, 0)
             root.setSpacing(6)
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("Plan · Connect · Upload · Arm · Start"), 1)
+        toolbar.addWidget(QLabel("Route tools" if embedded else "Plan · Connect · Upload · Arm · Start"), 1)
         self.plan_toggle = QPushButton("Hide plan")
         self.plan_toggle.setCheckable(True)
         self.plan_toggle.setChecked(True)
@@ -199,6 +199,18 @@ class MissionDialog(QDialog):
         root.addWidget(self.firmware_label)
         root.addWidget(self.status)
         root.addWidget(self.telemetry)
+        if embedded:
+            # Keep command/readiness status visible; optional identifiers and
+            # detailed telemetry can be expanded without changing the session.
+            self.details_toggle = QPushButton("▸ Connection details")
+            self.details_toggle.setObjectName('Disclosure')
+            self.details_toggle.setCheckable(True)
+            root.addWidget(self.details_toggle)
+            self.details_toggle.toggled.connect(self.firmware_label.setVisible)
+            self.details_toggle.toggled.connect(self.telemetry.setVisible)
+            self.details_toggle.toggled.connect(lambda expanded:self.details_toggle.setText(
+                ('▾ ' if expanded else '▸ ')+'Connection details'))
+            self.firmware_label.hide();self.telemetry.hide()
         body = QSplitter(Qt.Orientation.Horizontal)
         root.addWidget(body, 1)
         self.map = MissionMap()
@@ -250,6 +262,21 @@ class MissionDialog(QDialog):
             "Choose an F event, then tap its location. Waypoint mode resumes after each tap."
         )
         el.addWidget(self.mode)
+        self.coordinate_toggle = QPushButton("▸ Add by coordinates",self)
+        self.coordinate_toggle.setObjectName('Disclosure')
+        self.coordinate_toggle.setCheckable(True)
+        self.coordinate_fields = QWidget()
+        coordinate_layout = QVBoxLayout(self.coordinate_fields)
+        coordinate_layout.setContentsMargins(0,0,0,0)
+        coordinate_layout.setSpacing(8)
+        if embedded:
+            el.addWidget(self.coordinate_toggle)
+            self.coordinate_fields.hide()
+            self.coordinate_toggle.toggled.connect(self.coordinate_fields.setVisible)
+            self.coordinate_toggle.toggled.connect(lambda expanded:self.coordinate_toggle.setText(
+                ('▾ ' if expanded else '▸ ')+'Add by coordinates'))
+        else:
+            self.coordinate_toggle.hide()
         coords = QFormLayout()
         coords.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         coords.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
@@ -261,7 +288,7 @@ class MissionDialog(QDialog):
         self.lon.setDecimals(7)
         coords.addRow("Latitude", self.lat)
         coords.addRow("Longitude", self.lon)
-        el.addLayout(coords)
+        coordinate_layout.addLayout(coords)
         row = QHBoxLayout()
         add = QPushButton("Add location")
         add.clicked.connect(lambda: self._add(self.lat.value(), self.lon.value()))
@@ -269,7 +296,11 @@ class MissionDialog(QDialog):
         center.clicked.connect(self._center)
         row.addWidget(add)
         row.addWidget(center)
-        el.addLayout(row)
+        coordinate_layout.addLayout(row)
+        el.addWidget(self.coordinate_fields)
+        self.route_heading = QLabel("Waypoints · click the map to begin")
+        self.route_heading.setObjectName('Muted')
+        el.addWidget(self.route_heading)
         self.rows = QListWidget()
         self.rows.setMinimumHeight(90)
         self.rows.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -304,7 +335,8 @@ class MissionDialog(QDialog):
                 shortcut = QShortcut(QKeySequence(key), self)
                 shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
                 shortcut.activated.connect(lambda d=direction: self._history_step(d))
-        self.advanced_toggle = QPushButton("Output settings")
+        self.advanced_toggle = QPushButton("▸ Output settings")
+        self.advanced_toggle.setObjectName('Disclosure')
         self.advanced_toggle.setCheckable(True)
         el.addWidget(self.advanced_toggle)
         self.output_settings = QWidget()
@@ -312,6 +344,8 @@ class MissionDialog(QDialog):
         output_layout.setContentsMargins(0, 0, 0, 0)
         self.output_settings.hide()
         self.advanced_toggle.toggled.connect(self.output_settings.setVisible)
+        self.advanced_toggle.toggled.connect(lambda expanded:self.advanced_toggle.setText(
+            ('▾ ' if expanded else '▸ ')+'Output settings'))
         self.advanced_toggle.toggled.connect(
             lambda expanded: self.editor.setMinimumHeight(0 if embedded else 550 if expanded else 410)
         )
@@ -348,7 +382,10 @@ class MissionDialog(QDialog):
         self.speed.setValue(0.5)
         self.speed.setSuffix(" m/s")
         self.speed.valueChanged.connect(self._invalidate)
-        el.addWidget(self.speed)
+        speed_row = QFormLayout()
+        speed_row.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        speed_row.addRow("Cruise speed",self.speed)
+        el.addLayout(speed_row)
         if not embedded:
             row = QHBoxLayout()
             row.addWidget(self.import_btn)
@@ -393,7 +430,8 @@ class MissionDialog(QDialog):
         self.upload_btn = QPushButton("Upload & verify")
         self.start_btn = QPushButton("Start mission")
         self.hold_btn = QPushButton("HOLD")
-        self.hold_btn.setObjectName("Danger")
+        self.hold_btn.setObjectName("Hold")
+        self.upload_btn.setObjectName("Primary")
         self.upload_btn.clicked.connect(lambda: self._submit("upload"))
         self.start_btn.clicked.connect(lambda: self._submit("start"))
         self.hold_btn.clicked.connect(self._hold)
@@ -864,6 +902,7 @@ class MissionDialog(QDialog):
         self.rows.setCurrentRow(min(selected, self.rows.count()-1))
         self.rows.verticalScrollBar().setValue(scroll)
         self.rows.setUpdatesEnabled(True)
+        self.route_heading.setText(f"Waypoints · {self.rows.count()}" if self.rows.count() else "Waypoints · click the map to begin")
         self.map.update()
         self.sync_external_route()
 

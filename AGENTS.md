@@ -5,6 +5,18 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+28 October 2026: user explicitly authorizes evolving the compact Aero UI into a
+dark theme, replacing the app icon with a suitable technology design, complete
+feature/function review, sanitation and public GitHub release. Work from rc7
+plus the local Aero UI commit 22f73624b4deccf9efdc067363852ed32905873f as
+application-only v1.2.0rc8 on release/dark-ui-v1.2.0rc8. New rover/radio icon
+supersedes the old exact-power-logo preference for this build. Preserve firmware,
+private pairing, draft formats and all command gates. Require fresh Windows,
+frozen, native sanitizer, addressed graph, sanitation and download/hash gates
+before publishing a separate candidate. Preserve rc7/rc6 and existing stable
+releases; missing physical qualification prevents a new stable claim.
+
+
 26 October 2026: continue the authorized rc7 FC-readback release from
 `dev/mission-v1.2.0rc7-fc-readback`. User designates published rc6 source
 8412c91ea9c0fd753f1fb4d0be73f0f502fd72ef as the baseline; preserve its release

@@ -1,0 +1,50 @@
+name: Aero UI Windows preview
+on:
+  push:
+    branches: [dev/aero-minimal-ui]
+permissions:
+  contents: read
+concurrency:
+  group: aero-ui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - name: Verify source, dependencies and unchanged firmware
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pip check
+          python -m compileall -q src tests main.py
+          git diff --exit-code 9e6ed22dd78ce680962a74ba3e69639064cabff0 -- firmware
+      - name: All application regressions in isolated processes
+        run: python scripts/run_regressions.py
+      - name: Build Windows preview
+        run: python -m PyInstaller --noconfirm --clean PC-TeleRC.spec
+      - name: Verify frozen executable and stage preview with exact provenance
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; import subprocess; subprocess.run([str(Path('dist/PC-TeleRC/PC-TeleRC.exe').resolve()), '--self-test-ui', str(Path('frozen-ui-check.json').resolve())], check=True, timeout=90)"
+          python -c "import json; d=json.load(open('frozen-ui-check.json')); assert d['passed'], d"
+          "Unreleased Aero UI preview based on v1.2.0rc7. Source: ${{ github.sha }}. Firmware unchanged; use the existing matched rc7 firmware. Hardware validation not performed." | Set-Content dist/PC-TeleRC/PREVIEW.txt
+          Copy-Item frozen-ui-check.json,windows-tests.xml dist/PC-TeleRC/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Aero-UI-verification-${{ github.sha }}
+          path: |
+            frozen-ui-check.json
+            windows-tests.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC-TeleRC-Aero-UI-preview-${{ github.sha }}
+          path: dist/PC-TeleRC/
+          if-no-files-found: error
+          retention-days: 30

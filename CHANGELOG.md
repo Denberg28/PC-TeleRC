@@ -1,3 +1,14 @@
+## 1.2.0rc8 — 28 October 2026
+
+- Charcoal panels and restrained teal accents retain compact minimal type and spacing.
+- Narrow roster, central map, fixed command access and expandable details/coordinates/outputs.
+- New scalable radio-connected rover icon, PNG and seven Windows ICO resolutions.
+- Dark popup, snapshot table, checkbox, dropdown and numeric-field indicators.
+- Persist Online tiles preference; saved-map changes never acquire control.
+- Full feature/safety/compatibility review included with source and release evidence.
+- Current Windows/frozen and source/private-file/asset gates precede publication.
+- Firmware, private pairing, plan formats and command protocols unchanged.
+
 ## 1.2.0rc7 — 26 October 2026
 
 - Load from FC: modeless, read-only mission snapshot with empty/home-only handling.

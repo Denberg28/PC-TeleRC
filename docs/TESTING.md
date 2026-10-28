@@ -1,3 +1,21 @@
+## Compact dark fleet candidate v1.2.0rc8
+
+See [FEATURE-REVIEW-rc8.md](FEATURE-REVIEW-rc8.md) for the complete active feature
+inventory, source review, software evidence and physical acceptance limits.
+The `Compact dark UI release candidate` workflow runs native ASan/UBSan, encrypted
+fleet graph scenarios, the isolated Windows application suite, build, strict
+frozen icon/UI verification, installer compilation and recursive asset sanitation.
+A draft becomes public only after all uploaded assets have been downloaded and
+SHA-256/provenance verified. Reuse the unchanged firmware archive and its original
+eleven actual board-build records; do not regenerate or distribute private profiles.
+
+## Aero Academy presentation update
+
+See [AERO-UI.md](AERO-UI.md) for scope, baseline, preview renders and current
+verification. The branch-specific `Aero UI Windows preview` workflow runs the full
+isolated suite and frozen fleet verifier before uploading a portable UI preview.
+No releases or firmware are modified by that workflow.
+
 # Verification record
 
 ## Automated

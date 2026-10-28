@@ -197,7 +197,7 @@ def test_http_map_load_finishes_and_keeps_conditional_cache_metadata(tmp_path, m
         thread.join(timeout=1)
 
 
-def test_application_and_header_use_green_power_icon(window):
+def test_application_and_header_use_packaged_rover_icon(window):
     from pathlib import Path
     assets = Path(ui.__file__).parent / "assets"
     assert not window.windowIcon().isNull()
@@ -205,6 +205,7 @@ def test_application_and_header_use_green_power_icon(window):
     for name in ("telerc.png", "telerc.ico"):
         image = QImage(str(assets / name))
         assert not image.isNull()
-        greens = sum(color.green() > color.red()*1.5 and color.green() > color.blue()*1.5
-                     for color in (image.pixelColor(x, y) for x in range(image.width()) for y in range(image.height())))
-        assert greens > image.width() * image.height() * .02
+        assert image.width() >= 16 and image.height() == image.width()
+    from PySide6.QtGui import QIcon
+    sizes={size.width() for size in QIcon(str(assets/'telerc.ico')).availableSizes()}
+    assert {16,24,32,48,64,128,256}.issubset(sizes)

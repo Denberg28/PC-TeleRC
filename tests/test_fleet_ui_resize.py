@@ -54,6 +54,29 @@ def test_idle_fleet_tick_does_not_repaint_map(window, monkeypatch):
     assert not calls and window.hub is None
 
 
+def test_map_source_preference_persists_without_acquiring_control(window, monkeypatch):
+    saved=[]
+    monkeypatch.setattr(ui,'save_settings',lambda settings:saved.append(settings.map_online))
+    window.online.click();window.online.click()
+    assert saved==[True,False] and not window.map._online and not window.settings.map_online
+    assert window.hub is None and not any(panel.service.running for panel in window.panels.values())
+
+
+def test_optional_details_preserve_draft_verification_and_command_access(window, qt_application):
+    p=window.panels[window.selected]
+    window.add_location(13.6,123.2)
+    p.digest='display-only sentinel'
+    before=p._draft_text()
+    assert not p.coordinate_fields.isVisibleTo(window)
+    assert not p.firmware_label.isVisibleTo(window)
+    for toggle in (p.coordinate_toggle,p.details_toggle,p.advanced_toggle,p.help_toggle):
+        toggle.click();qt_application.processEvents()
+        assert p.status.isVisibleTo(window) and p.hold_btn.isVisibleTo(window)
+        toggle.click();qt_application.processEvents()
+    assert p._draft_text()==before and p.digest=='display-only sentinel'
+    assert window.hub is None and not any(panel.service.running for panel in window.panels.values())
+
+
 def test_add_remove_restore_draft_and_ignore_retired_service(window):
     assert not hasattr(window,'add_id')
     window.select_rover(2);window.add_location(13.6,123.2)
@@ -86,6 +109,7 @@ def test_route_actions_fit_and_expansion_scrolls_without_horizontal_clipping(win
         assert button.isVisibleTo(window)
         origin=button.mapTo(window,button.rect().topLeft())
         assert window.rect().contains(origin) and origin.x()+button.width()<=window.width()
+    p.coordinate_toggle.setChecked(True)
     p.advanced_toggle.setChecked(True);qt_application.processEvents()
     details = dict(viewport=p.editor_scroll.viewport().width(),content=p.editor.width(),
         minimum=p.editor.minimumSizeHint().width(),native_minimum=p.editor.minimumWidth())

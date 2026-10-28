@@ -5,7 +5,7 @@ from pathlib import Path
 import json,sqlite3,tempfile,time,math,os
 from PySide6.QtWidgets import QApplication, QFileDialog, QDialogButtonBox, QDialog
 from PySide6.QtCore import QBuffer,QIODevice,Qt,QEvent,QPointF,QTimer
-from PySide6.QtGui import QImage,QMouseEvent
+from PySide6.QtGui import QImage,QMouseEvent,QIcon
 from .rover_map import world_pixel,world_location
 
 from .fleet_contract import FROZEN_CHECKS as CHECKS
@@ -37,6 +37,14 @@ def run(report_path):
    checks['initial_no_authority']=window.hub is None and not any(p.service.running for p in window.panels.values())
    checks['per_rover_controls']=all(set(('connect','arm','start','disarm')).issubset(card) for card in window.cards.values())
    checks['logo']=not window.windowIcon().isNull()
+   assets=Path(ui.__file__).parent/'assets'
+   checks['compact_dark_theme']=window.centralWidget().grab().toImage().pixelColor(0,0).name()=='#0d131c'
+   checks['rover_icon_resolutions']={16,24,32,48,64,128,256}.issubset({s.width() for s in QIcon(str(assets/'telerc.ico')).availableSizes()})
+   checks['theme_assets_decode']=all(not QImage(str(assets/name)).isNull() for name in ('telerc.png','telerc.ico','check.svg','chevron.svg','chevron-up.svg'))
+   panel=window.panels[1];draft=panel._draft_text();digest=panel.digest
+   for toggle in (panel.details_toggle,panel.coordinate_toggle,panel.advanced_toggle,panel.help_toggle):
+    toggle.click();app.processEvents();toggle.click();app.processEvents()
+   checks['optional_panels_no_authority']=draft==panel._draft_text() and digest==panel.digest and window.hub is None and not any(p.service.running for p in window.panels.values()) and panel.hold_btn.isVisibleTo(window)
    image=QImage(256,256,QImage.Format.Format_RGB32);image.fill(0xff2468ac)
    buf=QBuffer();buf.open(QIODevice.OpenModeFlag.WriteOnly);image.save(buf,'PNG')
    path=folder/'map.mbtiles'
@@ -73,9 +81,9 @@ def run(report_path):
    panel=window.panels[3]
    checks['resize_opaque_map']=window.map.testAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent) and not window.split.opaqueResize()
    checks['route_file_controls_visible']=all(b.isVisibleTo(window) and window.rect().contains(b.mapTo(window,b.rect().bottomRight())) for b in (panel.import_btn,panel.export_btn))
-   panel.advanced_toggle.setChecked(True);app.processEvents()
+   panel.coordinate_toggle.setChecked(True);panel.advanced_toggle.setChecked(True);app.processEvents()
    checks['compact_layout_no_horizontal_scroll']=panel.editor_scroll.horizontalScrollBar().maximum()==0 and window.roster.horizontalScrollBar().maximum()==0
-   panel.advanced_toggle.setChecked(False)
+   panel.coordinate_toggle.setChecked(False);panel.advanced_toggle.setChecked(False)
    window.add_next_rover();added=window.selected
    checks['roster_add_remove']=added==4 and not hasattr(window,'add_id') and window.remove_rover(added) and set(window.panels)=={1,2,3} and window.hub is None
    # Display refresh must not continually dirty the terrain at the 10Hz

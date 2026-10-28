@@ -13,7 +13,10 @@ class FleetMap(RouteEditor, MissionMap):
     route_action = Signal(str, float, float, int, int)
     route_moved = Signal(int, float, float)
     route_inserted = Signal(int, float, float)
-    COLORS = ('#34d399','#38bdf8','#fbbf24','#c084fc','#fb7185','#2dd4bf','#fb923c')
+    MAP_BACKGROUND = '#101924'
+    MAP_TEXT = '#a4b2c4'
+    MAP_CHROME = '#151e2a'
+    COLORS = ('#71cfc5','#79b9f5','#e5c06e','#bca0f5','#f59cb7','#63d3e0','#f4ae79')
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -137,10 +140,11 @@ class FleetMap(RouteEditor, MissionMap):
                     y+=offset;occupied.append(candidate);break
             if abs(y-(p.y()-10))>1:
                 painter.setPen(QPen(color,1));painter.drawLine(p,QPointF(x,y))
-            painter.setPen(QPen(QColor('#0b1220'),3))
-            painter.drawText(QPointF(x+1,y+1),label)
+            badge=QRectF(x-4,y-14,width+6,20)
+            painter.setPen(QPen(color,1));painter.setBrush(QColor('#192534'))
+            painter.drawRoundedRect(badge,4,4)
             painter.setPen(color);painter.drawText(QPointF(x,y),label)
         live = sum(self.fresh(rover) for rover in self.positions)
-        painter.fillRect(QRectF(0,0,270,26),QColor('#111827'))
-        painter.setPen(QColor('#e2e8f0'))
+        painter.fillRect(QRectF(0,0,min(self.width(),300),28),QColor('#192534'))
+        painter.setPen(QColor('#a4b2c4'))
         painter.drawText(8,18,f'{live} GPS live · {len(self.positions)-live} stale · Rover {self.selected_rover} plan')

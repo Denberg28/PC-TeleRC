@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pc-telerc"
-version = "1.2.0rc7"
+version = "1.2.0rc8"
 description = "Windows MAVLink rover bridge for keyboard, PXN and compatible steering wheel controllers"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
@@ -30,7 +30,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-pctelerc = ["assets/*.png", "assets/*.ico"]
+pctelerc = ["assets/*.png", "assets/*.ico", "assets/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

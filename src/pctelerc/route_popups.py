@@ -3,16 +3,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QPushButton, QAbstractSpinBox
 
 
-POPUP_STYLE = '''
-QDialog { background:#132032; color:#e8edf5; }
-QLabel { background:transparent; color:#a5b4c7; font-size:12px; }
-QLabel#PopupTitle { color:#eef3fa; font-size:16px; font-weight:600; }
-QSpinBox { background:#1c2b40; color:#eef3fa; border:1px solid #3b506c;
- border-radius:5px; padding:7px 10px; font-size:14px; min-height:24px; }
-QPushButton { background:#1c2b40; color:#e8edf5; border:1px solid #354961;
- border-radius:5px; padding:7px 14px; min-width:60px; }
-QPushButton:hover { border-color:#57c8ac; }
-QPushButton#Apply { background:#17614e; border-color:#3caa8b; }
+from .theme import STYLE
+
+POPUP_STYLE = STYLE + '''
+QLabel#PopupTitle { color:#e8eef6; font-size:16px; font-weight:600; }
+QSpinBox { font-size:14px; min-height:24px; }
 '''
 
 

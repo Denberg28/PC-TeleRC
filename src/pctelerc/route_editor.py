@@ -4,6 +4,7 @@ from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import QMenu, QLabel, QWidgetAction, QWidget, QVBoxLayout
 from .rover_map import world_pixel, world_location
 from .route_popups import choose_hold
+from .theme import MENU_STYLE
 
 
 class RouteEditor:
@@ -122,12 +123,7 @@ class RouteEditor:
         if self._route_menu is not None:
             self._route_menu.close()
         menu = QMenu(self)
-        menu.setStyleSheet('QMenu { background:#132032; color:#e8edf5; border:1px solid #354961; '
-            'border-radius:8px; padding:6px 0; font-size:13px; } '
-            'QMenu::item { padding:9px 16px; min-width:190px; } '
-            'QMenu::item:selected { background:#20443e; color:#f1fff9; } '
-            'QMenu::item:disabled { color:#78879b; } '
-            'QMenu::separator { height:1px; background:#2b3d53; margin:6px 12px; }')
+        menu.setStyleSheet(MENU_STYLE)
         menu.setToolTipsVisible(True)
         menu.setObjectName("RouteActions")
         header = QWidgetAction(menu)
@@ -136,9 +132,9 @@ class RouteEditor:
         header_layout = QVBoxLayout(header_widget)
         header_layout.setContentsMargins(16,8,16,9);header_layout.setSpacing(5)
         title = QLabel(f'Rover {self.selected_rover} · '+(f'Waypoint {index+1}' if index >= 0 else 'Route'))
-        title.setStyleSheet('color:#eef3fa; font-size:13px; font-weight:600; background:transparent;')
+        title.setStyleSheet('color:#e8eef6; font-size:13px; font-weight:600; background:transparent;')
         coordinates = QLabel(f'{lat:.6f}, {lon:.6f}')
-        coordinates.setStyleSheet('color:#94a6bd; font-size:11px; background:transparent;')
+        coordinates.setStyleSheet('color:#a4b2c4; font-size:11px; background:transparent;')
         header_layout.addWidget(title);header_layout.addWidget(coordinates)
         header.setDefaultWidget(header_widget);menu.addAction(header);menu.addSeparator()
         rover, revision = self.selected_rover, self._route_revision
@@ -213,12 +209,12 @@ class RouteEditor:
             self.points = original
         if self._center is None:
             return
-        painter.setPen(QPen(QColor("#fbbf24"), 2))
+        painter.setPen(QPen(QColor("#d7b670"), 2))
         for i, point in enumerate(shown):
             p = self.project(point)
             if i:
                 midpoint = (self.project(shown[i-1])+p)/2
-                painter.setBrush(QColor("#fbbf24"))
+                painter.setBrush(QColor("#d7b670"))
                 painter.drawEllipse(midpoint, 3, 3)
             if self._route_preview is None and i < len(self.route_kinds):
                 caption = {"hold":"Hold", "rth":"RTH"}.get(self.route_kinds[i])
@@ -226,9 +222,13 @@ class RouteEditor:
                     painter.drawText(p+QPointF(15, -7), caption)
         if self.planned_home is not None:
             p = self.project(self.planned_home)
-            painter.setBrush(QColor("#0c4a6e"))
-            painter.setPen(QPen(QColor("#38bdf8"), 2))
+            painter.setBrush(QColor("#102640"))
+            painter.setPen(QPen(QColor("#d8e4f1"), 2))
             painter.drawRoundedRect(p.x()-12, p.y()-30, 24, 22, 4, 4)
             painter.drawText(p+QPointF(-5, -14), "H")
             width = painter.fontMetrics().horizontalAdvance('Planned home')
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor('#192534'))
+            painter.drawRoundedRect(p.x()-width-22,p.y()-34,width+8,20,4,4)
+            painter.setPen(QColor('#e8eef6'))
             painter.drawText(p+QPointF(-width-18, -19), "Planned home")
