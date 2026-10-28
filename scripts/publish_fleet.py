@@ -70,7 +70,7 @@ def main():
     firmware_sha = verify_firmware(OUT/NAME, FIRMWARE_COMMIT)
     shutil.copyfile(ROOT/f'docs/releases/v{VERSION}.md', OUT/'README.md')
     shutil.copyfile(ROOT/'docs/FLEET-STATION.md', OUT/'FIRMWARE-COMPATIBILITY.md')
-    shutil.copyfile(ROOT/'docs/FEATURE-REVIEW-rc8.md', OUT/'FEATURE-REVIEW.md')
+    shutil.copyfile(ROOT/'docs/FEATURE-REVIEW-rc9.md', OUT/'FEATURE-REVIEW.md')
     shutil.copyfile(ROOT/'docs/ui/dark-ui-rc8.png', OUT/'DARK-UI.png')
     shutil.copyfile(ROOT/'src/pctelerc/assets/telerc.png', OUT/'APP-ICON.png')
     with zipfile.ZipFile(OUT/'test-evidence.zip','w',zipfile.ZIP_DEFLATED) as z:
@@ -87,7 +87,7 @@ def main():
     if any(r['tag_name']==TAG for r in releases):
         raise ValueError('Refusing to replace an existing release')
     gh('release','create',TAG,'--repo',repo,'--target',commit,'--draft','--prerelease','--latest=false',
-       '--title',f'PC TeleRC v{VERSION} — Compact dark fleet station','--notes-file',str(OUT/'README.md'),
+       '--title',f'PC TeleRC v{VERSION} — Route recovery and BASE reliability','--notes-file',str(OUT/'README.md'),
        *[str(p) for p in sorted(OUT.iterdir())])
     release = next(r for r in json.loads(gh('api',f'repos/{repo}/releases?per_page=100')) if r['tag_name']==TAG)
     expected = {p.name:sha(p) for p in OUT.iterdir()}

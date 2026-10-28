@@ -4,7 +4,9 @@ from pathlib import Path
 import json
 import math
 import queue
+import shutil
 import time
+import uuid
 
 from PySide6.QtCore import Qt, QTimer, Signal, QPointF, QSignalBlocker
 from PySide6.QtGui import QColor, QPainter, QPen, QShortcut, QKeySequence
@@ -501,7 +503,12 @@ class MissionDialog(QDialog):
             return
         self._close_stored_viewer()
         self.draft_timer.stop()
-        self._save_draft()
+        if not self._save_draft():
+            self.rover.blockSignals(True)
+            self.rover.setValue(self._selected_rover)
+            self.rover.blockSignals(False)
+            self._message('Route could not be saved; export it before changing rover')
+            return
         self._history_paused = True
         self._selected_rover = rover
         if self._fleet_root is not None:
@@ -690,6 +697,8 @@ class MissionDialog(QDialog):
         self._message('Draft edit undone' if delta < 0 else 'Draft edit redone')
 
     def _restore_draft(self):
+        self._failed_restore_text = None
+        self._draft_recovery_path = None
         try:
             if self._draft_path.stat().st_size > MAX_BYTES:raise ValueError('Draft exceeds size limit')
             self._apply_draft(decode_draft(self._draft_path.read_text(encoding='utf-8')))
@@ -702,15 +711,38 @@ class MissionDialog(QDialog):
             self.imported = None
             self.plan = Plan()
             self._render()
-            self._message('Saved draft could not be restored; rebuild or import the route')
+            self._failed_restore_text = self._draft_text()
+            self._message('Saved draft could not be restored; original retained. Rebuild or import the route')
 
     def _save_draft(self):
         try:
             text = self._draft_text()
+            if self._failed_restore_text is not None:
+                # Startup, selection and shutdown must never replace an unreadable
+                # route with the empty editor. An actual edit first preserves its
+                # original bytes in an exclusive, per-rover recovery file.
+                if text == self._failed_restore_text:
+                    return True
+                if self._draft_recovery_path is None:
+                    recovery = self._draft_path.with_name(
+                        self._draft_path.stem+'.recovery-'+uuid.uuid4().hex+'.json')
+                    created = False
+                    try:
+                        with self._draft_path.open('rb') as source:
+                            with recovery.open('xb') as output:
+                                created = True
+                                shutil.copyfileobj(source, output)
+                    except OSError:
+                        if created:recovery.unlink(missing_ok=True)
+                        raise
+                    self._draft_recovery_path = recovery
             self._draft_path.parent.mkdir(parents=True, exist_ok=True)
             temp = self._draft_path.with_suffix('.tmp')
             temp.write_text(text, encoding='utf-8')
             temp.replace(self._draft_path)
+            self._failed_restore_text = None
+            if self._draft_recovery_path is not None:
+                self._message('Original unreadable route retained as '+self._draft_recovery_path.name)
             return True
         except (OSError, ValueError):
             self._message('Draft could not be saved; use Export route')

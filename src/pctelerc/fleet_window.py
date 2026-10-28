@@ -253,10 +253,13 @@ class FleetWindow(QMainWindow):
             if not self.port.currentText().strip():raise ValueError('Select the fleet BASE native USB COM port')
             self.hub=self.hub_factory(self.port.currentText().strip())
             for panel in self.panels.values():panel.service.operation_gate=self.hub.operation
-            self.settings.lora_port=self.port.currentText().strip();save_settings(self.settings)
             self.base_button.setText('Close BASE');self.port.setEnabled(False);self.refresh.setEnabled(False)
             self.status.setText('Fleet BASE ready · connect rovers individually · measured radio capacity applies')
         except Exception as exc:self.status.setText(str(exc))
+        else:
+            self.settings.lora_port=self.port.currentText().strip()
+            try:save_settings(self.settings)
+            except OSError:self.status.setText('Fleet BASE ready · USB port preference could not be saved')
 
     def close_base(self):
         if self.hub is not None:self.hub.close()

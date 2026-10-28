@@ -4,19 +4,21 @@ Mission-planning base build: **v1.2.0rc6**, designated 25 October 2026.
 Start future mission work from `baseline/mission-planning-v1.2.0rc6`.
 See the [baseline setup and version lock](docs/MISSION-PLANNING-BASELINE.md).
 
-Current release candidate: **1.2.0rc8**, with unchanged fleet BASE/ROVER **0.5.0rc1**
+Current release candidate: **1.2.0rc9**, with unchanged fleet BASE/ROVER **0.5.0rc1**
 and PWM converter **1.0.5**. Compact dark panels retain the minimal Segoe UI type,
 map-first layout and expandable settings. The new icon depicts a radio-connected rover.
 
-[Download v1.2.0rc8](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc8) ·
-[Release notes](docs/releases/v1.2.0rc8.md) · [Feature review](docs/FEATURE-REVIEW-rc8.md) ·
+[Download v1.2.0rc9](https://github.com/Denberg28/PC-TeleRC/releases/tag/v1.2.0rc9) ·
+[Release notes](docs/releases/v1.2.0rc9.md) · [Feature review](docs/FEATURE-REVIEW-rc9.md) ·
 [Fleet setup and limits](docs/FLEET-STATION.md)
 
 The shipped Windows app supports per-rover planning, Connect, verified Upload,
 normal Arm, one-shot Mission start, Disarm, HOLD and modeless read-only Load from FC.
 Route import/export, Undo/Redo, planned home/arrival holds, raster MBTiles and
 fresh/stale GPS labels remain available. The Online tiles choice is now saved.
-Earlier rc7 and rc6 downloads remain available for rollback. Physical RF, stopping,
+Unreadable drafts remain intact until edited; a recovery copy preserves original bytes
+before saving a replacement. A USB preference-save failure keeps the opened BASE
+visible and closable. Earlier rc8, rc7 and rc6 downloads remain available for rollback. Physical RF, stopping,
 RC takeover and auxiliary OFF qualification remain pending; this is a prerelease.
 
 The sections below document earlier desktop releases. Their camera, wheel,

@@ -10,3 +10,4 @@ FROZEN_CHECKS |= frozenset('popup_route_file_roundtrip legacy_menu_draft_recover
 
 FROZEN_CHECKS |= frozenset('fc_load_control_visible fc_view_read_only_modeless fc_snapshot_no_draft_mutation fc_stale_result_ignored'.split())
 FROZEN_CHECKS |= frozenset('compact_dark_theme rover_icon_resolutions theme_assets_decode optional_panels_no_authority'.split())
+FROZEN_CHECKS |= frozenset('unreadable_draft_retained draft_recovery_copy recovery_no_authority base_preference_failure_consistent'.split())

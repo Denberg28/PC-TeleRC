@@ -5,6 +5,17 @@ Build a reliable Windows operator bridge between the TeleRC-style ESP32-S3 MAVLi
 
 ## Current milestone
 
+29 October 2026: user authorizes continued development and GitHub build/release.
+Continue the published rc8 source 37e9dc696f9183317da92bda021c2abe1a32aee3
+on release/fleet-hardening-v1.2.0rc9 as application-only reliability work.
+Preserve unreadable drafts on untouched save/shutdown; preserve original bytes
+in an exclusive recovery copy before edited replacement. Failed saves must block
+non-embedded rover switching. BASE ownership and controls must remain accurate
+when saving its port preference fails. Keep firmware, pairing, command gates,
+rc6 baseline and all prior releases unchanged. Require fresh complete Windows,
+frozen recovery checks, native sanitizer/graph, sanitation and downloaded-asset
+verification before publishing a prerelease. Physical qualification is pending.
+
 28 October 2026: user explicitly authorizes evolving the compact Aero UI into a
 dark theme, replacing the app icon with a suitable technology design, complete
 feature/function review, sanitation and public GitHub release. Work from rc7

@@ -230,8 +230,31 @@ def run(report_path):
    viewer.close();app.processEvents()
    panel._show_stored_mission(dict(snapshot,generation=-1))
    checks['fc_stale_result_ignored']=getattr(panel,'_fc_viewer',None) is None and not panel.service.running
-
-
+   from .mission_widget import MissionDialog
+   damaged=folder/'damaged.json';original=b'\xff\xfe damaged route'
+   damaged.write_bytes(original)
+   recovered=MissionDialog(lambda:False,draft_path=damaged)
+   try:
+    checks['unreadable_draft_retained']=recovered._save_draft() and damaged.read_bytes()==original
+    recovered._add(13.6,123.2)
+    saved=recovered._save_draft();backups=list(folder.glob('damaged.recovery-*.json'))
+    checks['draft_recovery_copy']=saved and len(backups)==1 and backups[0].read_bytes()==original and json.loads(damaged.read_text())['points'][0][:2]==[13.6,123.2]
+    checks['recovery_no_authority']=not recovered.service.running and not recovered.digest and not recovered.aux.isChecked() and window.hub is None
+   finally:recovered._shutdown()
+   import threading
+   class FakeHub:
+    def __init__(self,_):
+     self.operation=threading.Lock();self.stopped=threading.Event();self.error=''
+    def close(self):self.stopped.set()
+   def no_disk(_):raise OSError('Self-test preference failure')
+   window.hub_factory=FakeHub;window.port.setCurrentText('SELF-TEST-NO-USB');ui.save_settings=no_disk
+   try:
+    window.toggle_base();hub=window.hub
+    opened=hub is not None and window.base_button.text()=='Close BASE' and not window.port.isEnabled() and not window.refresh.isEnabled() and 'could not be saved' in window.status.text()
+    window.toggle_base()
+    checks['base_preference_failure_consistent']=opened and hub.stopped.is_set() and window.hub is None and window.port.isEnabled() and not any(p.service.running for p in window.panels.values())
+   finally:
+    window.hub_factory=forbidden;ui.save_settings=lambda *_:None
 
   except Exception as exc:checks['error']=type(exc).__name__+': '+str(exc)
   finally:
